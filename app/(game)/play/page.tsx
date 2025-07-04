@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/firebase/auth';
-import { User, Question, QuestionType } from '@/types';
+import { User, Question } from '@/types';
 import QuestionDisplay from '@/components/game/QuestionDisplay';
 import GameHeader from '@/components/game/GameHeader';
 import GameProgress from '@/components/game/GameProgress';
@@ -30,11 +30,7 @@ export default function PlayPage() {
   const [startTime, setStartTime] = useState<number>(0);
 
   // Check authentication
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const userData = await getCurrentUser();
       if (!userData) {
@@ -49,7 +45,11 @@ export default function PlayPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   // Get grade display name
   const getGradeDisplayName = (grade: string): string => {

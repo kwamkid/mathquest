@@ -59,13 +59,14 @@ export default function LoginPage() {
     
     try {
       // Firebase authentication
-      const user = await signIn(formData.username, formData.password);
+      await signIn(formData.username, formData.password);
       
       // Success - redirect to game
       router.push('/play');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Login error:', error);
-      setErrors({ submit: error.message || 'Username หรือรหัสผ่านไม่ถูกต้อง' });
+      const errorMessage = error instanceof Error ? error.message : 'Username หรือรหัสผ่านไม่ถูกต้อง';
+      setErrors({ submit: errorMessage });
     } finally {
       setIsLoading(false);
     }

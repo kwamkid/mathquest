@@ -3,8 +3,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
-  onAuthStateChanged,
-  User as FirebaseUser
+  onAuthStateChanged
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from './client';
@@ -77,9 +76,9 @@ export const signUp = async (
     
     try {
       userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    } catch (authError: any) {
+    } catch (authError: unknown) {
       console.error('Auth creation error:', authError);
-      if (authError.code === 'auth/email-already-in-use') {
+      if (authError instanceof Error && 'code' in authError && authError.code === 'auth/email-already-in-use') {
         throw new Error('Username นี้มีผู้ใช้แล้ว');
       }
       throw authError;
@@ -135,21 +134,26 @@ export const signUp = async (
       await user.delete();
       throw firestoreError;
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle Firebase auth errors
-    if (error.code === 'auth/email-already-in-use') {
-      throw new Error('Username นี้มีผู้ใช้แล้ว');
-    } else if (error.code === 'auth/invalid-email') {
-      throw new Error('Username ไม่ถูกต้อง');
-    } else if (error.code === 'auth/weak-password') {
-      throw new Error('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
-    } else if (error.message) {
-      // Re-throw our custom errors
-      throw error;
-    } else {
-      // Unknown error
-      throw new Error('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+    if (error instanceof Error) {
+      if ('code' in error) {
+        const errorCode = (error as any).code;
+        if (errorCode === 'auth/email-already-in-use') {
+          throw new Error('Username นี้มีผู้ใช้แล้ว');
+        } else if (errorCode === 'auth/invalid-email') {
+          throw new Error('Username ไม่ถูกต้อง');
+        } else if (errorCode === 'auth/weak-password') {
+          throw new Error('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+        }
+      }
+      if (error.message) {
+        // Re-throw our custom errors
+        throw error;
+      }
     }
+    // Unknown error
+    throw new Error('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
   }
 };
 
@@ -200,16 +204,19 @@ export const signIn = async (username: string, password: string): Promise<User> 
       lastLoginDate: today.toISOString(),
       dailyStreak: newStreak,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle Firebase auth errors
-    if (error.code === 'auth/user-not-found') {
-      throw new Error('ไม่พบ Username นี้ในระบบ');
-    } else if (error.code === 'auth/wrong-password') {
-      throw new Error('รหัสผ่านไม่ถูกต้อง');
-    } else if (error.code === 'auth/invalid-email') {
-      throw new Error('Username ไม่ถูกต้อง');
-    } else if (error.code === 'auth/user-disabled') {
-      throw new Error('บัญชีนี้ถูกระงับการใช้งาน');
+    if (error instanceof Error && 'code' in error) {
+      const errorCode = (error as any).code;
+      if (errorCode === 'auth/user-not-found') {
+        throw new Error('ไม่พบ Username นี้ในระบบ');
+      } else if (errorCode === 'auth/wrong-password') {
+        throw new Error('รหัสผ่านไม่ถูกต้อง');
+      } else if (errorCode === 'auth/invalid-email') {
+        throw new Error('Username ไม่ถูกต้อง');
+      } else if (errorCode === 'auth/user-disabled') {
+        throw new Error('บัญชีนี้ถูกระงับการใช้งาน');
+      }
     }
     
     // Re-throw other errors

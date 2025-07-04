@@ -171,9 +171,10 @@ export default function RegisterPage() {
       
       // Success - redirect to login
       router.push('/login?registered=true');
-    } catch (error: any) {
+    } catch (error) {
       console.error('Registration error:', error);
-      setErrors({ submit: error.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง' });
+      const errorMessage = error instanceof Error ? error.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+      setErrors({ submit: errorMessage });
     } finally {
       setIsLoading(false);
     }
