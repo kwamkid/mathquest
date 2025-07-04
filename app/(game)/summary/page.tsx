@@ -9,7 +9,7 @@ import { User } from '@/types';
 import { LEVEL_PROGRESSION } from '@/lib/game/config';
 import { 
   Trophy, TrendingUp, TrendingDown, Star, Target, Clock, 
-  Zap, Award, ChevronRight, RotateCcw, Home
+  Zap, Award, ChevronRight, RotateCcw, Home, Rocket
 } from 'lucide-react';
 
 interface GameSummaryData {
@@ -276,59 +276,70 @@ export default function GameSummaryPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2 }}
-          className="flex gap-4 justify-center flex-wrap"
+          className="space-y-4"
         >
-          {/* Play Next Level Button (if level increased) */}
-          {summaryData.levelChange === 'increase' && summaryData.newLevel <= 100 && (
+          {/* Primary Button - Play Next/Again */}
+          <div className="flex justify-center">
+            {summaryData.levelChange === 'increase' && summaryData.newLevel <= 100 ? (
+              <motion.button
+                onClick={() => router.push('/play')}
+                className="px-12 py-5 metaverse-button text-white font-bold text-xl rounded-full shadow-lg hover:shadow-xl flex items-center gap-3"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Rocket className="w-6 h-6" />
+                <span>เล่น Level {summaryData.newLevel}</span>
+              </motion.button>
+            ) : (
+              <motion.button
+                onClick={() => router.push('/play')}
+                className="px-12 py-5 metaverse-button text-white font-bold text-xl rounded-full shadow-lg hover:shadow-xl flex items-center gap-3"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <RotateCcw className="w-6 h-6" />
+                <span>เล่นอีกครั้ง</span>
+              </motion.button>
+            )}
+          </div>
+
+          {/* Secondary Buttons */}
+          <div className="flex gap-3 justify-center">
+            {/* Play Again Button (only show if level increased) */}
+            {summaryData.levelChange === 'increase' && summaryData.newLevel <= 100 && (
+              <motion.button
+                onClick={() => router.push('/play')}
+                className="px-6 py-3 glass border border-metaverse-purple/50 text-white/80 font-medium text-lg rounded-full shadow-md hover:bg-white/10 flex items-center gap-2"
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                <RotateCcw className="w-5 h-5" />
+                เล่น Level เดิม
+              </motion.button>
+            )}
+
+            {/* View Ranking Button */}
+            <motion.button
+              onClick={() => router.push('/ranking')}
+              className="px-6 py-3 glass border border-metaverse-purple/50 text-white/80 font-medium text-lg rounded-full shadow-md hover:bg-white/10 flex items-center gap-2"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              <Trophy className="w-5 h-5" />
+              ดูอันดับ
+            </motion.button>
+
+            {/* Home Button */}
             <motion.button
               onClick={() => router.push('/play')}
-              className="px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold text-xl rounded-full shadow-2xl flex items-center gap-3 ring-2 ring-green-400/30 ring-offset-2 ring-offset-metaverse-black"
-              whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(34, 197, 94, 0.5)' }}
-              whileTap={{ scale: 0.95 }}
+              className="px-6 py-3 glass border border-metaverse-purple/50 text-white/80 font-medium text-lg rounded-full shadow-md hover:bg-white/10 flex items-center gap-2"
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
             >
-              <Rocket className="w-7 h-7" />
-              <span className="text-2xl">เล่น Level {summaryData.newLevel}</span>
-              <motion.span
-                animate={{ x: [0, 5, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                →
-              </motion.span>
+              <Home className="w-5 h-5" />
+              หน้าหลัก
             </motion.button>
-          )}
-
-          {/* Play Again Button */}
-          <motion.button
-            onClick={() => router.push('/play')}
-            className="px-8 py-4 glass border border-metaverse-purple/50 text-white/80 font-bold text-xl rounded-full shadow-lg hover:bg-white/10 flex items-center gap-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <RotateCcw className="w-6 h-6" />
-            {summaryData.levelChange === 'increase' ? 'เล่น Level เดิมอีกครั้ง' : 'เล่นอีกครั้ง'}
-          </motion.button>
-
-          {/* View Ranking Button */}
-          <motion.button
-            onClick={() => router.push('/ranking')}
-            className="px-8 py-4 glass border border-metaverse-purple/50 text-white font-bold text-xl rounded-full shadow-lg hover:bg-white/10 flex items-center gap-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Trophy className="w-6 h-6" />
-            ดูอันดับ
-          </motion.button>
-
-          {/* Home Button */}
-          <motion.button
-            onClick={() => router.push('/play')}
-            className="px-8 py-4 glass border border-metaverse-purple/50 text-white font-bold text-xl rounded-full shadow-lg hover:bg-white/10 flex items-center gap-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Home className="w-6 h-6" />
-            หน้าหลัก
-          </motion.button>
+          </div>
         </motion.div>
 
         {/* Achievements (Optional) */}

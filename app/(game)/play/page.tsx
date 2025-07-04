@@ -12,13 +12,13 @@ import GameProgress from '@/components/game/GameProgress';
 import { generateQuestion } from '@/lib/game/questionGenerator';
 import { getQuestionCount, calculateLevelChange, LEVEL_PROGRESSION, getLevelConfig } from '@/lib/game/config';
 import { useSound } from '@/lib/game/soundManager';
-import { Sparkles, Rocket, Trophy, TrendingDown, TrendingUp, X, AlertTriangle } from 'lucide-react';
+import { Sparkles, Rocket, Trophy, TrendingDown, TrendingUp, X, AlertTriangle, Star, Settings, ChevronRight, Pi } from 'lucide-react';
 
 export default function PlayPage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const [gameState, setGameState] = useState<'ready' | 'playing' | 'result'>('ready');
+  const [gameState, setGameState] = useState<'ready' | 'playing' | 'result' | 'processing'>('ready');
   const [showExitModal, setShowExitModal] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<number>(0);
   
@@ -124,37 +124,42 @@ export default function PlayPage() {
     playSound(isCorrect ? 'correct' : 'incorrect');
     
     // Save answer
-    setAnswers([...answers, {
+    const newAnswers = [...answers, {
       question: currentQuestion,
       userAnswer,
       isCorrect,
       timeSpent
-    }]);
+    }];
+    setAnswers(newAnswers);
     
     // Update score
     if (isCorrect) {
       setScore(score + 1);
-      // ไม่อัปเดตคะแนนรวมชั่วคราวทันที รอคำนวณตอนจบเกม
     }
     
-    // Check if game finished
-    if (questionNumber >= totalQuestions) {
-      // Wait a bit before ending to ensure last answer is processed
+    // Check if this was the last question
+    if (questionNumber === totalQuestions) {
+      // This is the last question - show processing animation
+      setGameState('processing');
+      
+      // End game after delay
       setTimeout(() => {
-        endGame();
-      }, 100);
+        // Use the updated score
+        const finalScore = isCorrect ? score + 1 : score;
+        endGame(finalScore);
+      }, 2000);
     } else {
-      // Next question
+      // Not the last question - continue to next
       setQuestionNumber(questionNumber + 1);
       generateNewQuestion();
     }
   };
 
   // End game
-  const endGame = async () => {
-    // ใช้ score ล่าสุดที่อัปเดตแล้ว
-    const finalScore = answers.filter(a => a.isCorrect).length + (currentQuestion && answers[answers.length - 1]?.isCorrect ? 0 : 0);
-    const percentage = Math.round((finalScore / totalQuestions) * 100);
+  const endGame = async (finalScore?: number) => {
+    // ใช้คะแนนที่ส่งมา หรือใช้จาก state
+    const actualScore = finalScore !== undefined ? finalScore : score;
+    const percentage = Math.round((actualScore / totalQuestions) * 100);
     const levelChange = calculateLevelChange(percentage);
     
     // Play appropriate sound
@@ -173,7 +178,7 @@ export default function PlayPage() {
         const { scoreDiff, isNewHighScore, oldHighScore } = await calculateScoreDifference(
           user.id,
           user.level,
-          finalScore
+          actualScore
         );
         
         // เก็บข้อมูล high score
@@ -192,7 +197,7 @@ export default function PlayPage() {
         }
         
         // คำนวณ EXP (ตอบถูก 1 ข้อ = 10 EXP + bonus)
-        const baseExp = finalScore * 10;
+        const baseExp = actualScore * 10;
         const bonusExp = percentage >= 85 ? 50 : percentage >= 70 ? 30 : 0;
         const highScoreBonus = isNewHighScore ? 100 : 0; // โบนัสพิเศษถ้าทำ high score ใหม่
         const totalExp = baseExp + bonusExp + highScoreBonus;
@@ -205,7 +210,7 @@ export default function PlayPage() {
         const levelKey = user.level.toString();
         levelScores[levelKey] = {
           level: user.level,
-          highScore: Math.max(finalScore, oldHighScore),
+          highScore: Math.max(actualScore, oldHighScore),
           lastPlayed: new Date().toISOString(),
           playCount: (levelScores[levelKey]?.playCount || 0) + 1
         };
@@ -236,7 +241,7 @@ export default function PlayPage() {
         
         // Redirect ไปหน้า summary พร้อมข้อมูล
         const params = new URLSearchParams({
-          score: finalScore.toString(),
+          score: actualScore.toString(),
           total: totalQuestions.toString(),
           percentage: percentage.toString(),
           levelChange: levelChange,
@@ -342,7 +347,7 @@ export default function PlayPage() {
 
       {user && <GameHeader user={{ ...user, totalScore: tempTotalScore }} />}
       
-      <div className="relative z-10 container mx-auto px-4 py-8 max-w-4xl">
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-6xl">
         <AnimatePresence mode="wait">
           {/* Ready State */}
           {gameState === 'ready' && (
@@ -351,9 +356,9 @@ export default function PlayPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="text-center"
             >
-              <div className="glass-dark rounded-3xl shadow-2xl p-12 border border-metaverse-purple/30">
+              {/* Main Game Card */}
+              <div className="glass-dark rounded-3xl shadow-2xl p-12 border border-metaverse-purple/30 mb-8">
                 <motion.div
                   animate={{ 
                     rotate: [0, 5, -5, 0],
@@ -369,11 +374,11 @@ export default function PlayPage() {
                   <Sparkles className="w-20 h-20 text-metaverse-purple filter drop-shadow-[0_0_30px_rgba(147,51,234,0.5)]" />
                 </motion.div>
                 
-                <h1 className="text-4xl font-bold text-white mb-4">
+                <h1 className="text-4xl font-bold text-white mb-4 text-center">
                   พร้อมเริ่มการผจญภัยหรือยัง?
                 </h1>
                 
-                <div className="mb-8 space-y-2">
+                <div className="mb-8 space-y-2 text-center">
                   <p className="text-xl text-white/80">
                     <span className="font-medium">ระดับชั้น:</span>{' '}
                     <span className="text-metaverse-pink">{getGradeDisplayName(user?.grade || '')}</span>
@@ -391,18 +396,103 @@ export default function PlayPage() {
                     <span className="text-metaverse-glow">{totalQuestions} ข้อ</span>
                   </p>
                 </div>
-                <motion.button
-                  onClick={startGame}
-                  onMouseDown={() => playSound('click')}
-                  className="px-12 py-6 metaverse-button text-white font-bold text-2xl rounded-full shadow-lg hover:shadow-xl relative overflow-hidden"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                <div className="text-center">
+                  <motion.button
+                    onClick={startGame}
+                    onMouseDown={() => playSound('click')}
+                    className="px-12 py-6 metaverse-button text-white font-bold text-2xl rounded-full shadow-lg hover:shadow-xl relative overflow-hidden"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <span className="relative z-10 flex items-center gap-3">
+                      <Rocket className="w-7 h-7" />
+                      เริ่มเลย!
+                    </span>
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Quick Menu Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Ranking Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  onClick={() => router.push('/ranking')}
+                  className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <span className="relative z-10 flex items-center gap-3">
-                    <Rocket className="w-7 h-7" />
-                    เริ่มเลย!
-                  </span>
-                </motion.button>
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-gradient-to-br from-yellow-400/20 to-orange-400/20 rounded-xl group-hover:scale-110 transition">
+                      <Trophy className="w-8 h-8 text-yellow-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-2">อันดับคะแนน</h3>
+                      <p className="text-white/60 text-sm mb-3">ดูอันดับคะแนนในระดับชั้นของคุณ</p>
+                      <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
+                        <span>ดูอันดับ</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* High Score Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  onClick={() => router.push('/highscores')}
+                  className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-gradient-to-br from-metaverse-purple/20 to-metaverse-pink/20 rounded-xl group-hover:scale-110 transition">
+                      <Star className="w-8 h-8 text-metaverse-purple" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-2">คะแนนสูงสุด</h3>
+                      <p className="text-white/60 text-sm mb-3">
+                        {user?.levelScores && Object.keys(user.levelScores).length > 0 
+                          ? `เล่นแล้ว ${Object.keys(user.levelScores).length} Level`
+                          : 'ยังไม่มีประวัติ'
+                        }
+                      </p>
+                      <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
+                        <span>ดูทั้งหมด</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Profile Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  onClick={() => router.push('/profile')}
+                  className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-gradient-to-br from-metaverse-red/20 to-metaverse-darkRed/20 rounded-xl group-hover:scale-110 transition">
+                      <Settings className="w-8 h-8 text-metaverse-red" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-2">โปรไฟล์</h3>
+                      <p className="text-white/60 text-sm mb-3">แก้ไขข้อมูลส่วนตัวและดูความก้าวหน้า</p>
+                      <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
+                        <span>จัดการโปรไฟล์</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
               </div>
             </motion.div>
           )}
@@ -439,6 +529,61 @@ export default function PlayPage() {
                 questionNumber={questionNumber}
                 onAnswer={handleAnswer}
               />
+            </motion.div>
+          )}
+
+          {/* Processing State */}
+          {gameState === 'processing' && (
+            <motion.div
+              key="processing"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="flex flex-col items-center justify-center min-h-[400px]"
+            >
+              <motion.div
+                animate={{ 
+                  rotate: [0, -10, 10, -10, 0],
+                  scale: [1, 1.1, 0.9, 1.1, 1],
+                  y: [0, -20, 0, -10, 0]
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="mb-8"
+              >
+                <Pi className="w-32 h-32 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
+              </motion.div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-center"
+              >
+                <h2 className="text-3xl font-bold text-white mb-4">
+                  กำลังคำนวณผล...
+                </h2>
+                <div className="flex justify-center gap-2">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-3 h-3 bg-metaverse-purple rounded-full"
+                      animate={{
+                        opacity: [0.3, 1, 0.3],
+                        scale: [0.8, 1.2, 0.8],
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        delay: i * 0.2,
+                      }}
+                    />
+                  ))}
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
