@@ -159,8 +159,10 @@ export const signUp = async (
 
 // Sign in existing user
 export const signIn = async (username: string, password: string): Promise<User> => {
+  const email = createEmailFromUsername(username);
+  
   try {
-    const email = createEmailFromUsername(username);
+    // Try to sign in
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     
     // Get user data
@@ -204,23 +206,39 @@ export const signIn = async (username: string, password: string): Promise<User> 
       lastLoginDate: today.toISOString(),
       dailyStreak: newStreak,
     };
-  } catch (error: unknown) {
-    // Handle Firebase auth errors
-    if (error instanceof Error && 'code' in error) {
-      const errorCode = (error as { code?: string }).code;
-      if (errorCode === 'auth/user-not-found') {
-        throw new Error('ไม่พบ Username นี้ในระบบ');
-      } else if (errorCode === 'auth/wrong-password') {
-        throw new Error('รหัสผ่านไม่ถูกต้อง');
-      } else if (errorCode === 'auth/invalid-email') {
-        throw new Error('Username ไม่ถูกต้อง');
-      } else if (errorCode === 'auth/user-disabled') {
-        throw new Error('บัญชีนี้ถูกระงับการใช้งาน');
-      }
+  } catch (error: any) {
+    // Log for debugging but don't console.error to avoid the red error
+    console.log('Sign in error details:', error);
+    
+    // Check if it's a Firebase Auth error
+    if (error?.code?.startsWith('auth/')) {
+      const errorCode = error.code;
+      
+      // Map Firebase error codes to Thai messages
+      const errorMessages: { [key: string]: string } = {
+        'auth/invalid-credential': 'Username หรือรหัสผ่านไม่ถูกต้อง',
+        'auth/invalid-login-credentials': 'Username หรือรหัสผ่านไม่ถูกต้อง',
+        'auth/wrong-password': 'รหัสผ่านไม่ถูกต้อง',
+        'auth/user-not-found': 'ไม่พบ Username นี้ในระบบ',
+        'auth/invalid-email': 'Username ไม่ถูกต้อง',
+        'auth/user-disabled': 'บัญชีนี้ถูกระงับการใช้งาน',
+        'auth/too-many-requests': 'มีการพยายามเข้าสู่ระบบมากเกินไป กรุณาลองใหม่ภายหลัง',
+        'auth/network-request-failed': 'ไม่สามารถเชื่อมต่อได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต',
+      };
+      
+      const message = errorMessages[errorCode] || 'เกิดข้อผิดพลาดในการเข้าสู่ระบบ';
+      
+      // Return a clean error without Firebase details
+      return Promise.reject(new Error(message));
     }
     
-    // Re-throw other errors
-    throw error;
+    // If it's our custom error, re-throw it
+    if (error instanceof Error && error.message) {
+      return Promise.reject(error);
+    }
+    
+    // Unknown error
+    return Promise.reject(new Error('เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุ'));
   }
 };
 

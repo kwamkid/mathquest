@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/firebase/auth';
 import { User, LevelScore } from '@/types';
-import { ArrowLeft, Trophy, Star, TrendingUp, Calendar, Target, Zap } from 'lucide-react';
+import { ArrowLeft, Trophy, Star, TrendingUp, Calendar, Target, Zap, Pi } from 'lucide-react';
 import { GRADE_CONFIGS, getQuestionCount, getLevelConfig } from '@/lib/game/config';
 
 interface ScoreWithDescription extends LevelScore {
@@ -88,18 +88,25 @@ export default function HighScoresPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
+        <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-30"></div>
         <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="text-6xl relative z-10"
+            animate={{ 
+            rotate: [0, -10, 10, -10, 0],
+            scale: [1, 1.1, 0.9, 1.1, 1],
+            }}
+            transition={{ 
+            duration: 2, 
+            repeat: Infinity,
+            ease: "easeInOut"
+            }}
+            className="relative z-10"
         >
-          ⏳
+            <Pi className="w-24 h-24 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
         </motion.div>
-      </div>
+        </div>
     );
-  }
+    }
 
   if (!user) return null;
 

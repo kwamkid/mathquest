@@ -65,6 +65,21 @@ export default function PlayPage() {
     checkAuth();
   }, [checkAuth]);
 
+  // Check if we need to play specific level
+  useEffect(() => {
+    if (user) {
+      const forceLevel = localStorage.getItem('forceLevel');
+      if (forceLevel) {
+        const level = parseInt(forceLevel);
+        if (!isNaN(level) && level >= 1 && level <= 100) {
+          // Update user level temporarily for this session
+          setUser({ ...user, level });
+          localStorage.removeItem('forceLevel'); // Clear after use
+        }
+      }
+    }
+  }, [user]);
+
   // Get grade display name
   const getGradeDisplayName = (grade: string): string => {
     const gradeMap: Record<string, string> = {
@@ -108,7 +123,11 @@ export default function PlayPage() {
   const generateNewQuestion = () => {
     if (!user) return;
     
-    const question = generateQuestion(user.grade, user.level);
+    // Check if playing specific level
+    const forceLevel = localStorage.getItem('forceLevel');
+    const levelToPlay = forceLevel ? parseInt(forceLevel) : user.level;
+    
+    const question = generateQuestion(user.grade, levelToPlay);
     setCurrentQuestion(question);
     setStartTime(Date.now());
   };
@@ -302,11 +321,18 @@ export default function PlayPage() {
       <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-30"></div>
         <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="text-6xl relative z-10"
+          animate={{ 
+            rotate: [0, -10, 10, -10, 0],
+            scale: [1, 1.1, 0.9, 1.1, 1],
+          }}
+          transition={{ 
+            duration: 2, 
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="relative z-10"
         >
-          ⏳
+          <Pi className="w-24 h-24 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
         </motion.div>
       </div>
     );
@@ -641,6 +667,8 @@ export default function PlayPage() {
                   playSound('click');
                   // รีเซ็ตคะแนนรวมชั่วคราว
                   setTempTotalScore(user?.totalScore || 0);
+                  // Clear any forced level
+                  localStorage.removeItem('forceLevel');
                   // กลับหน้าหลัก
                   router.push('/play');
                   // รีเซ็ต state
