@@ -17,6 +17,28 @@ export default function GameHeader({ user }: GameHeaderProps) {
     router.push('/');
   };
 
+  // Get grade display name
+  const getGradeDisplayName = (grade: string): string => {
+    const gradeMap: Record<string, string> = {
+      K1: 'อนุบาล 1',
+      K2: 'อนุบาล 2',
+      K3: 'อนุบาล 3',
+      P1: 'ประถม 1',
+      P2: 'ประถม 2',
+      P3: 'ประถม 3',
+      P4: 'ประถม 4',
+      P5: 'ประถม 5',
+      P6: 'ประถม 6',
+      M1: 'มัธยม 1',
+      M2: 'มัธยม 2',
+      M3: 'มัธยม 3',
+      M4: 'มัธยม 4',
+      M5: 'มัธยม 5',
+      M6: 'มัธยม 6',
+    };
+    return gradeMap[grade] || grade;
+  };
+
   // Get avatar emoji from avatar id
   const getAvatarEmoji = (avatarId: string): string => {
     const avatarMap: Record<string, string> = {
@@ -75,6 +97,8 @@ export default function GameHeader({ user }: GameHeaderProps) {
                 {user.displayName || user.username}
               </h3>
               <div className="flex items-center gap-4 text-sm text-gray-600">
+                <span>{getGradeDisplayName(user.grade)}</span>
+                <span>•</span>
                 <span>ระดับ {user.level}</span>
                 <span>•</span>
                 <span>🔥 {user.dailyStreak} วัน</span>

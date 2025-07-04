@@ -22,6 +22,19 @@ const createEmailFromUsername = (username: string) => {
   return `${username.toLowerCase()}@mathquest.local`;
 };
 
+// Check if username is available
+export const checkUsernameAvailability = async (username: string): Promise<boolean> => {
+  if (!username || username.length < 1) return false;
+  
+  try {
+    const usernameDoc = await getDoc(doc(db, COLLECTIONS.USERNAMES, username.toLowerCase()));
+    return !usernameDoc.exists();
+  } catch (error) {
+    console.error('Error checking username:', error);
+    return false;
+  }
+};
+
 // Sign up new user
 export const signUp = async (
   username: string,
@@ -33,12 +46,14 @@ export const signUp = async (
   registrationCode: string
 ): Promise<User> => {
   try {
+    console.log('1. Checking username availability...');
     // 1. Check if username already exists
     const usernameDoc = await getDoc(doc(db, COLLECTIONS.USERNAMES, username.toLowerCase()));
     if (usernameDoc.exists()) {
       throw new Error('Username นี้มีผู้ใช้แล้ว');
     }
 
+    console.log('2. Validating registration code...');
     // 2. Validate registration code
     const codeDoc = await getDoc(doc(db, COLLECTIONS.REGISTRATION_CODES, registrationCode));
     if (!codeDoc.exists()) {
@@ -55,47 +70,71 @@ export const signUp = async (
       throw new Error('Registration Code นี้ถูกใช้งานเต็มจำนวนแล้ว');
     }
 
+    console.log('3. Creating auth user...');
     // 3. Create authentication user
     const email = createEmailFromUsername(username);
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    // 4. Create user document
-    const now = new Date().toISOString();
-    const userData: User = {
-      id: user.uid,
-      username: username.toLowerCase(),
-      displayName: displayName || undefined,
-      email,
-      avatar,
-      school,
-      grade: grade as Grade,
-      level: 1,
-      experience: 0,
-      totalScore: 0,
-      dailyStreak: 0,
-      lastLoginDate: now,
-      registrationCode,
-      createdAt: now,
-      isActive: true,
-    };
-
-    // 5. Save to Firestore
-    await setDoc(doc(db, COLLECTIONS.USERS, user.uid), userData);
+    let userCredential;
     
-    // 6. Save username mapping
-    await setDoc(doc(db, COLLECTIONS.USERNAMES, username.toLowerCase()), {
-      userId: user.uid,
-      createdAt: now,
-    });
+    try {
+      userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    } catch (authError: any) {
+      console.error('Auth creation error:', authError);
+      if (authError.code === 'auth/email-already-in-use') {
+        throw new Error('Username นี้มีผู้ใช้แล้ว');
+      }
+      throw authError;
+    }
+    
+    const user = userCredential.user;
+    console.log('Auth user created:', user.uid);
 
-    // 7. Update registration code usage
-    await updateDoc(doc(db, COLLECTIONS.REGISTRATION_CODES, registrationCode), {
-      currentUses: (codeData.currentUses || 0) + 1,
-      lastUsedAt: now,
-    });
+    try {
+      console.log('4. Creating user document...');
+      // 4. Create user document
+      const now = new Date().toISOString();
+      const userData: User = {
+        id: user.uid,
+        username: username.toLowerCase(),
+        displayName: displayName || undefined,
+        email,
+        avatar,
+        school,
+        grade: grade as Grade,
+        level: 1,
+        experience: 0,
+        totalScore: 0,
+        dailyStreak: 0,
+        lastLoginDate: now,
+        registrationCode,
+        createdAt: now,
+        isActive: true,
+      };
 
-    return userData;
+      // 5. Save to Firestore (remove undefined fields)
+      const userDataToSave = Object.fromEntries(
+        Object.entries(userData).filter(([_, value]) => value !== undefined)
+      );
+      
+      await setDoc(doc(db, COLLECTIONS.USERS, user.uid), userDataToSave);
+      
+      // 6. Save username mapping
+      await setDoc(doc(db, COLLECTIONS.USERNAMES, username.toLowerCase()), {
+        userId: user.uid,
+        createdAt: now,
+      });
+
+      // 7. Update registration code usage
+      await updateDoc(doc(db, COLLECTIONS.REGISTRATION_CODES, registrationCode), {
+        currentUses: (codeData.currentUses || 0) + 1,
+        lastUsedAt: now,
+      });
+
+      return userData;
+    } catch (firestoreError) {
+      // If Firestore operations fail, delete the auth user
+      await user.delete();
+      throw firestoreError;
+    }
   } catch (error: any) {
     // Handle Firebase auth errors
     if (error.code === 'auth/email-already-in-use') {
@@ -104,10 +143,13 @@ export const signUp = async (
       throw new Error('Username ไม่ถูกต้อง');
     } else if (error.code === 'auth/weak-password') {
       throw new Error('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+    } else if (error.message) {
+      // Re-throw our custom errors
+      throw error;
+    } else {
+      // Unknown error
+      throw new Error('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
     }
-    
-    // Re-throw other errors
-    throw error;
   }
 };
 

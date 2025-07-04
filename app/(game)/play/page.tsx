@@ -51,6 +51,28 @@ export default function PlayPage() {
     }
   };
 
+  // Get grade display name
+  const getGradeDisplayName = (grade: string): string => {
+    const gradeMap: Record<string, string> = {
+      K1: 'อนุบาล 1',
+      K2: 'อนุบาล 2',
+      K3: 'อนุบาล 3',
+      P1: 'ประถม 1',
+      P2: 'ประถม 2',
+      P3: 'ประถม 3',
+      P4: 'ประถม 4',
+      P5: 'ประถม 5',
+      P6: 'ประถม 6',
+      M1: 'มัธยม 1',
+      M2: 'มัธยม 2',
+      M3: 'มัธยม 3',
+      M4: 'มัธยม 4',
+      M5: 'มัธยม 5',
+      M6: 'มัธยม 6',
+    };
+    return gradeMap[grade] || grade;
+  };
+
   // Get question count based on grade
   const getQuestionCount = (grade: string): number => {
     if (grade.startsWith('K')) return 10; // อนุบาล
@@ -159,9 +181,17 @@ export default function PlayPage() {
                 <h1 className="text-4xl font-bold text-gray-800 mb-4">
                   พร้อมเริ่มการผจญภัยหรือยัง?
                 </h1>
-                <p className="text-xl text-gray-600 mb-8">
-                  ระดับ {user?.level} • {totalQuestions} ข้อ
-                </p>
+                <div className="mb-8 space-y-2">
+                  <p className="text-xl text-gray-600">
+                    <span className="font-medium">ระดับชั้น:</span> {getGradeDisplayName(user?.grade || '')}
+                  </p>
+                  <p className="text-xl text-gray-600">
+                    <span className="font-medium">ระดับ:</span> {user?.level}
+                  </p>
+                  <p className="text-xl text-gray-600">
+                    <span className="font-medium">จำนวนข้อ:</span> {totalQuestions} ข้อ
+                  </p>
+                </div>
                 <motion.button
                   onClick={startGame}
                   className="px-12 py-6 bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold text-2xl rounded-full shadow-lg hover:shadow-xl"
