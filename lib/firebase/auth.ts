@@ -111,7 +111,7 @@ export const signUp = async (
 
       // 5. Save to Firestore (remove undefined fields)
       const userDataToSave = Object.fromEntries(
-        Object.entries(userData).filter(([_, value]) => value !== undefined)
+        Object.entries(userData).filter(([, value]) => value !== undefined)
       );
       
       await setDoc(doc(db, COLLECTIONS.USERS, user.uid), userDataToSave);
@@ -138,7 +138,7 @@ export const signUp = async (
     // Handle Firebase auth errors
     if (error instanceof Error) {
       if ('code' in error) {
-        const errorCode = (error as any).code;
+        const errorCode = (error as { code?: string }).code;
         if (errorCode === 'auth/email-already-in-use') {
           throw new Error('Username นี้มีผู้ใช้แล้ว');
         } else if (errorCode === 'auth/invalid-email') {
@@ -207,7 +207,7 @@ export const signIn = async (username: string, password: string): Promise<User> 
   } catch (error: unknown) {
     // Handle Firebase auth errors
     if (error instanceof Error && 'code' in error) {
-      const errorCode = (error as any).code;
+      const errorCode = (error as { code?: string }).code;
       if (errorCode === 'auth/user-not-found') {
         throw new Error('ไม่พบ Username นี้ในระบบ');
       } else if (errorCode === 'auth/wrong-password') {
