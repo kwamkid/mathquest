@@ -1,7 +1,7 @@
 // app/(game)/summary/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser } from '@/lib/firebase/auth';
@@ -26,7 +26,31 @@ interface GameSummaryData {
   timeSpent: number;
 }
 
-export default function GameSummaryPage() {
+// Loading component
+function SummaryLoading() {
+  return (
+    <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
+      <div className="absolute inset-0 bg-metaverse-gradient opacity-30"></div>
+      <motion.div
+        animate={{ 
+          rotate: [0, -10, 10, -10, 0],
+          scale: [1, 1.1, 0.9, 1.1, 1],
+        }}
+        transition={{ 
+          duration: 2, 
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+        className="relative z-10"
+      >
+        <Pi className="w-24 h-24 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
+      </motion.div>
+    </div>
+  );
+}
+
+// Main component wrapped with search params
+function GameSummaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
@@ -35,7 +59,7 @@ export default function GameSummaryPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadData = async () => {
     try {
@@ -375,5 +399,14 @@ export default function GameSummaryPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+// Main component with Suspense
+export default function GameSummaryPage() {
+  return (
+    <Suspense fallback={<SummaryLoading />}>
+      <GameSummaryContent />
+    </Suspense>
   );
 }
