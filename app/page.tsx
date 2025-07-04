@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { Rocket, Swords, Target, Trophy, Gift, Pi, UserPlus } from 'lucide-react';
 
 // Math symbols for floating animation
 const mathSymbols = ['+', '-', '×', '÷', '=', '>', '<', '√', 'π', '∞', '∑', '∫'];
@@ -24,13 +25,14 @@ export default function HomePage() {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-600 via-orange-500 to-yellow-500 overflow-hidden relative">
-      {/* Animated Background Pattern */}
-      <div className="absolute inset-0 opacity-20">
+    <div className="min-h-screen bg-metaverse-black overflow-hidden relative">
+      {/* Animated Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-metaverse-gradient opacity-50"></div>
         <div 
           className="absolute inset-0"
           style={{
-            backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(255,255,255,0.1) 0%, transparent 50%)',
+            backgroundImage: 'radial-gradient(circle at 20% 80%, rgba(147, 51, 234, 0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(220, 38, 38, 0.3) 0%, transparent 50%)',
           }}
         />
       </div>
@@ -41,8 +43,8 @@ export default function HomePage() {
           {floatingSymbols.map((item) => (
             <motion.div
               key={item.id}
-              className="absolute text-white/10 text-4xl md:text-6xl font-bold"
-              style={{ left: item.left }}
+              className="absolute text-metaverse-purple/30 text-4xl md:text-6xl font-bold"
+              style={{ left: item.left, textShadow: '0 0 20px rgba(147, 51, 234, 0.5)' }}
               initial={{ y: '120vh' }}
               animate={{ y: '-20vh' }}
               transition={{
@@ -69,7 +71,7 @@ export default function HomePage() {
         >
           {/* Animated Game Icon */}
           <motion.div
-            className="inline-block mb-6"
+            className="inline-block mb-6 text-white"
             animate={{ 
               rotate: [0, 10, -10, 0],
               scale: [1, 1.05, 0.95, 1]
@@ -80,17 +82,17 @@ export default function HomePage() {
               ease: "easeInOut"
             }}
           >
-            <div className="bg-white/20 backdrop-blur-sm rounded-3xl p-8 shadow-2xl">
-              <span className="text-7xl">🎮</span>
-            </div>
+            <Pi className="w-20 h-20 filter drop-shadow-[0_0_30px_rgba(147,51,234,0.5)]" />
           </motion.div>
 
           {/* Title */}
           <h1 className="text-6xl md:text-8xl font-bold text-white mb-4 drop-shadow-lg">
             Math
-            <span className="text-yellow-300">Quest</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-red">
+              Quest
+            </span>
           </h1>
-          <p className="text-xl md:text-3xl text-white/90 font-medium">
+          <p className="text-xl md:text-3xl text-white/80 font-medium">
             การผจญภัยแห่งตัวเลข
           </p>
         </motion.div>
@@ -102,7 +104,7 @@ export default function HomePage() {
           transition={{ delay: 0.3, duration: 0.6 }}
           className="mb-12"
         >
-          <div className="bg-white/10 backdrop-blur-md rounded-full px-8 py-4 flex items-center gap-4 shadow-xl">
+          <div className="glass-dark rounded-full px-8 py-4 flex items-center gap-4 shadow-xl border border-metaverse-purple/30">
             {['🦸‍♂️', '🦸‍♀️', '🧙‍♂️', '🧙‍♀️', '🦹‍♂️', '🦹‍♀️', '🐉', '🦊'].map((emoji, index) => (
               <motion.span
                 key={index}
@@ -123,36 +125,38 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.6 }}
-          className="flex flex-col sm:flex-row gap-4 mb-16"
+          className="space-y-4 mb-16"
         >
-          <Link
-            href="/register"
-            className="group relative px-10 py-5 bg-white text-red-600 font-bold text-xl rounded-full shadow-2xl overflow-hidden transition-all hover:shadow-3xl inline-block"
-          >
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 opacity-0 group-hover:opacity-100 transition-opacity"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            />
-            <span className="relative z-10 flex items-center gap-2 group-hover:text-white transition-colors">
-              <span className="text-2xl">🚀</span>
-              เริ่มการผจญภัย
-            </span>
-          </Link>
-
-          <Link
-            href="/login"
-            className="px-10 py-5 bg-white/20 backdrop-blur-md text-white font-bold text-xl rounded-full shadow-xl border-2 border-white/30 hover:bg-white/30 transition-all inline-block"
-          >
-            <motion.span 
-              className="flex items-center gap-2"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+          {/* Main Login Button */}
+          <div className="text-center">
+            <Link
+              href="/login"
+              className="group relative px-12 py-5 metaverse-button text-white font-bold text-xl rounded-full shadow-2xl overflow-hidden transition-all hover:shadow-metaverse-purple/50 inline-block"
             >
-              <span className="text-2xl">⚔️</span>
-              เข้าสู่ระบบ
-            </motion.span>
-          </Link>
+              <span className="relative z-10 flex items-center justify-center gap-2">
+                <Swords className="w-6 h-6" />
+                เริ่มการผจญภัย
+              </span>
+            </Link>
+          </div>
+
+          {/* Register Section */}
+          <div className="text-center">
+            <p className="text-white/60 mb-2">ยังไม่มีบัญชี?</p>
+            <Link
+              href="/register"
+              className="px-8 py-3 glass text-white font-medium text-lg rounded-full shadow-xl border border-metaverse-purple/50 hover:bg-white/10 transition-all inline-block"
+            >
+              <motion.span 
+                className="flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <UserPlus className="w-5 h-5" />
+                สมัครสมาชิก
+              </motion.span>
+            </Link>
+          </div>
         </motion.div>
 
         {/* Features Grid */}
@@ -164,22 +168,22 @@ export default function HomePage() {
         >
           {[
             {
-              icon: '🎯',
+              icon: <Target className="w-12 h-12" />,
               title: '100 ระดับท้าทาย',
               description: 'ฝึกฝนทักษะคณิตศาสตร์ ตั้งแต่ง่ายจนถึงยาก',
-              color: 'from-pink-500 to-red-500'
+              color: 'from-metaverse-purple to-metaverse-pink'
             },
             {
-              icon: '🏆',
+              icon: <Trophy className="w-12 h-12" />,
               title: 'ระบบแรงกิ้ง',
               description: 'แข่งขันกับเพื่อนๆ ในระดับชั้นเดียวกัน',
-              color: 'from-yellow-500 to-orange-500'
+              color: 'from-metaverse-pink to-metaverse-red'
             },
             {
-              icon: '🎁',
+              icon: <Gift className="w-12 h-12" />,
               title: 'รางวัลทุกวัน',
               description: 'เข้าเล่นต่อเนื่อง รับโบนัสพิเศษ',
-              color: 'from-green-500 to-teal-500'
+              color: 'from-metaverse-red to-metaverse-darkRed'
             }
           ].map((feature, index) => (
             <motion.div
@@ -191,9 +195,9 @@ export default function HomePage() {
               whileHover={{ y: -10 }}
             >
               <div className={`absolute inset-0 bg-gradient-to-r ${feature.color} rounded-3xl blur-xl opacity-0 group-hover:opacity-50 transition-opacity`} />
-              <div className="relative bg-white/90 backdrop-blur-sm rounded-3xl p-8 shadow-xl h-full">
+              <div className="relative glass-dark rounded-3xl p-8 shadow-xl h-full border border-metaverse-purple/20">
                 <motion.div 
-                  className="text-5xl mb-4"
+                  className="text-white mb-4"
                   animate={{ 
                     rotate: mounted ? [0, -5, 5, 0] : 0,
                   }}
@@ -205,8 +209,8 @@ export default function HomePage() {
                 >
                   {feature.icon}
                 </motion.div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-3">{feature.title}</h3>
-                <p className="text-gray-600">{feature.description}</p>
+                <h3 className="text-2xl font-bold text-white mb-3">{feature.title}</h3>
+                <p className="text-white/70">{feature.description}</p>
               </div>
             </motion.div>
           ))}
@@ -217,34 +221,32 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 1.2 }}
-          className="bg-white/20 backdrop-blur-md rounded-full px-8 py-6 shadow-xl"
+          className="glass-dark rounded-full px-6 py-4 sm:px-8 sm:py-6 shadow-xl border border-metaverse-purple/30 w-full max-w-sm sm:max-w-none"
         >
-          <div className="flex flex-col sm:flex-row items-center gap-8 text-white">
+          <div className="grid grid-cols-3 gap-4 sm:gap-8 text-white">
             <motion.div 
               className="text-center"
               animate={{ scale: mounted ? [1, 1.05, 1] : 1 }}
               transition={{ duration: 2, repeat: Infinity }}
             >
-              <p className="text-3xl font-bold">1,000+</p>
-              <p className="text-sm opacity-90">นักเรียน</p>
+              <p className="text-xl sm:text-3xl font-bold">1,000+</p>
+              <p className="text-xs sm:text-sm opacity-70">นักเรียน</p>
             </motion.div>
-            <div className="hidden sm:block w-px h-12 bg-white/30" />
             <motion.div 
               className="text-center"
               animate={{ scale: mounted ? [1, 1.05, 1] : 1 }}
               transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
             >
-              <p className="text-3xl font-bold">50,000+</p>
-              <p className="text-sm opacity-90">โจทย์ที่ถูกแก้</p>
+              <p className="text-xl sm:text-3xl font-bold">50K+</p>
+              <p className="text-xs sm:text-sm opacity-70">โจทย์</p>
             </motion.div>
-            <div className="hidden sm:block w-px h-12 bg-white/30" />
             <motion.div 
               className="text-center"
               animate={{ scale: mounted ? [1, 1.05, 1] : 1 }}
               transition={{ duration: 2, repeat: Infinity, delay: 1 }}
             >
-              <p className="text-3xl font-bold">4.9 ⭐</p>
-              <p className="text-sm opacity-90">คะแนนรีวิว</p>
+              <p className="text-xl sm:text-3xl font-bold">4.9⭐</p>
+              <p className="text-xs sm:text-sm opacity-70">รีวิว</p>
             </motion.div>
           </div>
         </motion.div>
@@ -254,7 +256,7 @@ export default function HomePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.5 }}
-          className="mt-12 text-white/80 text-center text-lg"
+          className="mt-12 text-white/60 text-center text-lg"
         >
           📱 เล่นได้ทุกอุปกรณ์ • 🌐 ไม่ต้องดาวน์โหลด • 🔒 ปลอดภัย 100%
         </motion.p>

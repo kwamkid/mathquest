@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AvatarSelection from '@/components/AvatarSelection';
 import { signUp, checkUsernameAvailability } from '@/lib/firebase/auth';
+import { User, Lock, Eye, EyeOff, School, GraduationCap, Ticket, Check, X, ArrowRight, ArrowLeft } from 'lucide-react';
 
 // Grade options
 const grades = [
@@ -181,32 +182,44 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 via-orange-50 to-yellow-50 py-12 px-4">
-      <div className="container mx-auto max-w-4xl">
+    <div className="min-h-screen bg-metaverse-black py-12 px-4">
+      {/* Background */}
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+      </div>
+
+      <div className="relative z-10 container mx-auto max-w-4xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">สมัครสมาชิก</h1>
-          <p className="text-gray-600">เริ่มต้นการผจญภัยในโลกแห่งตัวเลข</p>
+          <h1 className="text-4xl font-bold text-white mb-2">สมัครสมาชิก</h1>
+          <p className="text-white/60">เริ่มต้นการผจญภัยในโลกแห่งตัวเลข</p>
         </motion.div>
 
         {/* Progress Steps */}
         <div className="flex items-center justify-center mb-8">
           <div className="flex items-center">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-              step >= 1 ? 'bg-red-500 text-white' : 'bg-gray-300 text-gray-600'
-            }`}>
+            <motion.div 
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                step >= 1 ? 'bg-gradient-to-r from-metaverse-purple to-metaverse-red text-white' : 'bg-white/10 text-white/50'
+              }`}
+              whileHover={{ scale: 1.1 }}
+            >
               1
-            </div>
-            <div className={`w-24 h-1 ${step >= 2 ? 'bg-red-500' : 'bg-gray-300'}`} />
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-              step >= 2 ? 'bg-red-500 text-white' : 'bg-gray-300 text-gray-600'
-            }`}>
+            </motion.div>
+            <div className={`w-24 h-1 ${step >= 2 ? 'bg-gradient-to-r from-metaverse-purple to-metaverse-red' : 'bg-white/10'}`} />
+            <motion.div 
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                step >= 2 ? 'bg-gradient-to-r from-metaverse-purple to-metaverse-red text-white' : 'bg-white/10 text-white/50'
+              }`}
+              whileHover={{ scale: 1.1 }}
+            >
               2
-            </div>
+            </motion.div>
           </div>
         </div>
 
@@ -216,7 +229,7 @@ export default function RegisterPage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
-          className="bg-white rounded-3xl shadow-xl p-8"
+          className="glass-dark rounded-3xl shadow-xl p-8 border border-metaverse-purple/30"
         >
           {step === 1 ? (
             <>
@@ -226,23 +239,25 @@ export default function RegisterPage() {
               />
               
               {errors.avatar && (
-                <p className="text-red-500 text-center mt-4">{errors.avatar}</p>
+                <p className="text-red-400 text-center mt-4">{errors.avatar}</p>
               )}
               
               <div className="mt-8 flex justify-between">
                 <button
                   type="button"
                   onClick={() => router.push('/')}
-                  className="px-6 py-3 text-gray-600 hover:text-gray-800 transition"
+                  className="px-6 py-3 text-white/60 hover:text-white transition flex items-center gap-2"
                 >
+                  <ArrowLeft className="w-5 h-5" />
                   ย้อนกลับ
                 </button>
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="px-8 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition"
+                  className="px-8 py-3 metaverse-button text-white font-bold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition flex items-center gap-2"
                 >
                   ถัดไป
+                  <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
             </>
@@ -252,21 +267,22 @@ export default function RegisterPage() {
                 {/* Username & Display Name */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
-                      Username <span className="text-red-500">*</span>
+                    <label className="block text-white/80 font-medium mb-2">
+                      Username <span className="text-red-400">*</span>
                     </label>
                     <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
                       <input
                         type="text"
                         name="username"
                         value={formData.username}
                         onChange={handleInputChange}
-                        className={`w-full px-4 py-3 pr-10 border-2 rounded-xl focus:outline-none focus:border-red-500 transition ${
-                          errors.username ? 'border-red-500' : 
-                          usernameAvailable === false ? 'border-red-500' :
-                          usernameAvailable === true ? 'border-green-500' :
-                          'border-gray-200'
-                        }`}
+                        className={`w-full pl-10 pr-10 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition ${
+                          errors.username ? 'border-2 border-red-500' : 
+                          usernameAvailable === false ? 'border-2 border-red-500' :
+                          usernameAvailable === true ? 'border-2 border-green-500' :
+                          'border border-metaverse-purple/30 focus:border-metaverse-pink'
+                        } text-white placeholder-white/40`}
                         placeholder="ชื่อผู้ใช้สำหรับเข้าสู่ระบบ"
                       />
                       {/* Username status indicator */}
@@ -275,27 +291,29 @@ export default function RegisterPage() {
                           <motion.div
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            className="text-gray-400"
+                            className="text-white/40"
                           >
                             ⏳
                           </motion.div>
                         ) : usernameAvailable === true && formData.username ? (
-                          <span className="text-green-500">✓</span>
+                          <Check className="w-5 h-5 text-green-400" />
                         ) : usernameAvailable === false ? (
-                          <span className="text-red-500">✗</span>
+                          <X className="w-5 h-5 text-red-400" />
                         ) : null}
                       </div>
                     </div>
                     {errors.username && (
-                      <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+                      <p className="text-red-400 text-sm mt-1">{errors.username}</p>
                     )}
                     {usernameAvailable === true && formData.username && (
-                      <p className="text-green-500 text-sm mt-1">✓ Username นี้ใช้ได้</p>
+                      <p className="text-green-400 text-sm mt-1 flex items-center gap-1">
+                        <Check className="w-4 h-4" /> Username นี้ใช้ได้
+                      </p>
                     )}
                   </div>
                   
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
+                    <label className="block text-white/80 font-medium mb-2">
                       ชื่อที่แสดง (ไม่บังคับ)
                     </label>
                     <input
@@ -303,7 +321,7 @@ export default function RegisterPage() {
                       name="displayName"
                       value={formData.displayName}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-red-500 transition"
+                      className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink transition text-white placeholder-white/40"
                       placeholder="ชื่อที่จะแสดงใน Ranking"
                     />
                   </div>
@@ -312,62 +330,60 @@ export default function RegisterPage() {
                 {/* Password */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
-                      รหัสผ่าน <span className="text-red-500">*</span>
+                    <label className="block text-white/80 font-medium mb-2">
+                      รหัสผ่าน <span className="text-red-400">*</span>
                     </label>
                     <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
                       <input
                         type={showPassword ? 'text' : 'password'}
                         name="password"
                         value={formData.password}
                         onChange={handleInputChange}
-                        className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none focus:border-red-500 transition ${
-                          errors.password ? 'border-red-500' : 'border-gray-200'
-                        }`}
+                        className={`w-full pl-10 pr-12 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition ${
+                          errors.password ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
+                        } text-white placeholder-white/40`}
                         placeholder="อย่างน้อย 6 ตัวอักษร"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-white/40 hover:text-white/80"
                       >
-                        <span className="text-2xl text-gray-500 hover:text-gray-700">
-                          {showPassword ? '👁️' : '👁️‍🗨️'}
-                        </span>
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
                     {errors.password && (
-                      <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                      <p className="text-red-400 text-sm mt-1">{errors.password}</p>
                     )}
                   </div>
                   
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
-                      ยืนยันรหัสผ่าน <span className="text-red-500">*</span>
+                    <label className="block text-white/80 font-medium mb-2">
+                      ยืนยันรหัสผ่าน <span className="text-red-400">*</span>
                     </label>
                     <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
                       <input
                         type={showConfirmPassword ? 'text' : 'password'}
                         name="confirmPassword"
                         value={formData.confirmPassword}
                         onChange={handleInputChange}
-                        className={`w-full px-4 py-3 pr-12 border-2 rounded-xl focus:outline-none focus:border-red-500 transition ${
-                          errors.confirmPassword ? 'border-red-500' : 'border-gray-200'
-                        }`}
+                        className={`w-full pl-10 pr-12 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition ${
+                          errors.confirmPassword ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
+                        } text-white placeholder-white/40`}
                         placeholder="กรอกรหัสผ่านอีกครั้ง"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-white/40 hover:text-white/80"
                       >
-                        <span className="text-2xl text-gray-500 hover:text-gray-700">
-                          {showConfirmPassword ? '👁️' : '👁️‍🗨️'}
-                        </span>
+                        {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
                     </div>
                     {errors.confirmPassword && (
-                      <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>
+                      <p className="text-red-400 text-sm mt-1">{errors.confirmPassword}</p>
                     )}
                   </div>
                 </div>
@@ -375,71 +391,80 @@ export default function RegisterPage() {
                 {/* School & Grade */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
-                      โรงเรียน <span className="text-red-500">*</span>
+                    <label className="block text-white/80 font-medium mb-2">
+                      โรงเรียน <span className="text-red-400">*</span>
                     </label>
-                    <input
-                      type="text"
-                      name="school"
-                      value={formData.school}
-                      onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-red-500 transition ${
-                        errors.school ? 'border-red-500' : 'border-gray-200'
-                      }`}
-                      placeholder="ชื่อโรงเรียน"
-                    />
+                    <div className="relative">
+                      <School className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
+                      <input
+                        type="text"
+                        name="school"
+                        value={formData.school}
+                        onChange={handleInputChange}
+                        className={`w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition ${
+                          errors.school ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
+                        } text-white placeholder-white/40`}
+                        placeholder="ชื่อโรงเรียน"
+                      />
+                    </div>
                     {errors.school && (
-                      <p className="text-red-500 text-sm mt-1">{errors.school}</p>
+                      <p className="text-red-400 text-sm mt-1">{errors.school}</p>
                     )}
                   </div>
                   
                   <div>
-                    <label className="block text-gray-700 font-medium mb-2">
-                      ระดับชั้น <span className="text-red-500">*</span>
+                    <label className="block text-white/80 font-medium mb-2">
+                      ระดับชั้น <span className="text-red-400">*</span>
                     </label>
-                    <select
-                      name="grade"
-                      value={formData.grade}
-                      onChange={handleInputChange}
-                      className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-red-500 transition ${
-                        errors.grade ? 'border-red-500' : 'border-gray-200'
-                      }`}
-                    >
-                      <option value="">เลือกระดับชั้น</option>
-                      {grades.map(grade => (
-                        <option key={grade.value} value={grade.value}>
-                          {grade.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
+                      <select
+                        name="grade"
+                        value={formData.grade}
+                        onChange={handleInputChange}
+                        className={`w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition appearance-none ${
+                          errors.grade ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
+                        } text-white`}
+                      >
+                        <option value="" className="bg-metaverse-black">เลือกระดับชั้น</option>
+                        {grades.map(grade => (
+                          <option key={grade.value} value={grade.value} className="bg-metaverse-black">
+                            {grade.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     {errors.grade && (
-                      <p className="text-red-500 text-sm mt-1">{errors.grade}</p>
+                      <p className="text-red-400 text-sm mt-1">{errors.grade}</p>
                     )}
                   </div>
                 </div>
 
                 {/* Registration Code */}
                 <div>
-                  <label className="block text-gray-700 font-medium mb-2">
-                    Registration Code <span className="text-red-500">*</span>
+                  <label className="block text-white/80 font-medium mb-2">
+                    Registration Code <span className="text-red-400">*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="registrationCode"
-                    value={formData.registrationCode}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-3 border-2 rounded-xl focus:outline-none focus:border-red-500 transition ${
-                      errors.registrationCode ? 'border-red-500' : 'border-gray-200'
-                    }`}
-                    placeholder="รหัสที่ได้รับจากครู/ผู้ดูแล"
-                  />
+                  <div className="relative">
+                    <Ticket className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
+                    <input
+                      type="text"
+                      name="registrationCode"
+                      value={formData.registrationCode}
+                      onChange={handleInputChange}
+                      className={`w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition ${
+                        errors.registrationCode ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
+                      } text-white placeholder-white/40`}
+                      placeholder="รหัสที่ได้รับจากครู/ผู้ดูแล"
+                    />
+                  </div>
                   {errors.registrationCode && (
-                    <p className="text-red-500 text-sm mt-1">{errors.registrationCode}</p>
+                    <p className="text-red-400 text-sm mt-1">{errors.registrationCode}</p>
                   )}
                 </div>
 
                 {errors.submit && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
+                  <div className="glass border border-red-500/50 text-red-400 px-4 py-3 rounded-xl">
                     {errors.submit}
                   </div>
                 )}
@@ -449,17 +474,19 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="px-6 py-3 text-gray-600 hover:text-gray-800 transition"
+                  className="px-6 py-3 text-white/60 hover:text-white transition flex items-center gap-2"
                   disabled={isLoading}
                 >
+                  <ArrowLeft className="w-5 h-5" />
                   ย้อนกลับ
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="px-8 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-8 py-3 metaverse-button text-white font-bold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   {isLoading ? 'กำลังสมัคร...' : 'สมัครสมาชิก'}
+                  {!isLoading && <ArrowRight className="w-5 h-5" />}
                 </button>
               </div>
             </form>
@@ -468,9 +495,9 @@ export default function RegisterPage() {
 
         {/* Login Link */}
         <div className="text-center mt-6">
-          <p className="text-gray-600">
+          <p className="text-white/60">
             มีบัญชีอยู่แล้ว?{' '}
-            <Link href="/login" className="text-red-500 hover:text-red-600 font-medium">
+            <Link href="/login" className="text-metaverse-pink hover:text-metaverse-glow font-medium transition">
               เข้าสู่ระบบ
             </Link>
           </p>

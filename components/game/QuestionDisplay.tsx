@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types';
+import { Check, X, Send } from 'lucide-react';
 
 interface QuestionDisplayProps {
   question: Question;
@@ -36,36 +37,68 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
 
     return (
       <div className="grid grid-cols-2 gap-4 mt-8">
-        {question.choices.map((choice, index) => {
-          const isSelected = selectedAnswer === choice;
-          const isCorrect = choice === question.answer;
-          const showCorrect = showResult && isCorrect;
-          const showWrong = showResult && isSelected && !isCorrect;
+        <AnimatePresence>
+          {question.choices.map((choice, index) => {
+            const isSelected = selectedAnswer === choice;
+            const isCorrect = choice === question.answer;
+            const showCorrect = showResult && isCorrect;
+            const showWrong = showResult && isSelected && !isCorrect;
 
-          return (
-            <motion.button
-              key={index}
-              onClick={() => handleAnswerClick(choice)}
-              disabled={showResult}
-              className={`p-6 text-2xl font-bold rounded-2xl transition-all ${
-                showCorrect
-                  ? 'bg-green-500 text-white'
-                  : showWrong
-                  ? 'bg-red-500 text-white'
-                  : isSelected
-                  ? 'bg-orange-200'
-                  : 'bg-white hover:bg-gray-100 shadow-md hover:shadow-lg'
-              }`}
-              whileHover={!showResult ? { scale: 1.05 } : {}}
-              whileTap={!showResult ? { scale: 0.95 } : {}}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              {choice}
-            </motion.button>
-          );
-        })}
+            return (
+              <motion.button
+                key={index}
+                onClick={() => handleAnswerClick(choice)}
+                disabled={showResult}
+                className={`relative p-6 text-2xl font-bold rounded-2xl transition-all overflow-hidden ${
+                  showCorrect
+                    ? 'bg-green-500/20 border-2 border-green-400 text-green-400'
+                    : showWrong
+                    ? 'bg-red-500/20 border-2 border-red-400 text-red-400'
+                    : isSelected
+                    ? 'bg-metaverse-purple/30 border-2 border-metaverse-purple text-white'
+                    : 'glass-dark border border-metaverse-purple/30 text-white hover:border-metaverse-purple/60 hover:bg-white/5'
+                }`}
+                whileHover={!showResult ? { scale: 1.05 } : {}}
+                whileTap={!showResult ? { scale: 0.95 } : {}}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                {/* Background animation */}
+                {(showCorrect || showWrong) && (
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                    initial={{ x: '-100%' }}
+                    animate={{ x: '100%' }}
+                    transition={{ duration: 0.5 }}
+                  />
+                )}
+                
+                <span className="relative z-10">{choice}</span>
+                
+                {showCorrect && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute top-2 right-2"
+                  >
+                    <Check className="w-6 h-6 text-green-400" />
+                  </motion.div>
+                )}
+                
+                {showWrong && (
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute top-2 right-2"
+                  >
+                    <X className="w-6 h-6 text-red-400" />
+                  </motion.div>
+                )}
+              </motion.button>
+            );
+          })}
+        </AnimatePresence>
       </div>
     );
   };
@@ -83,29 +116,37 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
     return (
       <form onSubmit={handleSubmit} className="mt-8">
         <div className="flex flex-col items-center gap-4">
-          <input
-            type="number"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            disabled={showResult}
-            className={`text-4xl font-bold text-center w-48 p-4 rounded-2xl border-4 ${
-              showResult
-                ? selectedAnswer === question.answer
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-red-500 bg-red-50'
-                : 'border-gray-300 focus:border-red-500'
-            } focus:outline-none transition-all`}
-            placeholder="?"
-            autoFocus
-          />
+          <div className="relative">
+            <input
+              type="number"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              disabled={showResult}
+              className={`text-4xl font-bold text-center w-48 p-4 rounded-2xl bg-white/10 backdrop-blur-md border-2 ${
+                showResult
+                  ? selectedAnswer === question.answer
+                    ? 'border-green-400 text-green-400'
+                    : 'border-red-400 text-red-400'
+                  : 'border-metaverse-purple/50 focus:border-metaverse-pink text-white'
+              } focus:outline-none transition-all`}
+              placeholder="?"
+              autoFocus
+            />
+            
+            {/* Glow effect */}
+            {!showResult && (
+              <div className="absolute inset-0 rounded-2xl bg-metaverse-purple/20 blur-xl -z-10" />
+            )}
+          </div>
           
           {!showResult && (
             <motion.button
               type="submit"
-              className="px-8 py-4 bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold text-xl rounded-full shadow-lg"
+              className="px-8 py-4 metaverse-button text-white font-bold text-xl rounded-full shadow-lg flex items-center gap-2"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
+              <Send className="w-5 h-5" />
               ตอบ
             </motion.button>
           )}
@@ -114,12 +155,18 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
             <motion.div
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-2xl font-bold"
+              className="text-2xl font-bold flex items-center gap-2"
             >
               {selectedAnswer === question.answer ? (
-                <span className="text-green-600">✓ ถูกต้อง!</span>
+                <>
+                  <Check className="w-8 h-8 text-green-400" />
+                  <span className="text-green-400">ถูกต้อง!</span>
+                </>
               ) : (
-                <span className="text-red-600">✗ ตอบ: {question.answer}</span>
+                <>
+                  <X className="w-8 h-8 text-red-400" />
+                  <span className="text-red-400">ตอบ: {question.answer}</span>
+                </>
               )}
             </motion.div>
           )}
@@ -134,17 +181,47 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
-      className="bg-white rounded-3xl shadow-xl p-8"
+      className="glass-dark rounded-3xl shadow-xl p-8 border border-metaverse-purple/30"
     >
+      {/* Question Number Badge */}
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        className="absolute -top-4 -right-4 w-12 h-12 bg-gradient-to-br from-metaverse-purple to-metaverse-red rounded-full flex items-center justify-center text-white font-bold shadow-lg"
+      >
+        {questionNumber}
+      </motion.div>
+
       {/* Question */}
       <div className="text-center">
         <motion.h2
-          className="text-4xl md:text-5xl font-bold text-gray-800 mb-8"
+          className="text-4xl md:text-5xl font-bold text-white mb-8"
           initial={{ scale: 0.9 }}
           animate={{ scale: 1 }}
         >
           {question.question}
         </motion.h2>
+        
+        {/* Math symbols decoration */}
+        <div className="flex justify-center gap-4 mb-4">
+          {['∞', 'π', '∑'].map((symbol, i) => (
+            <motion.span
+              key={i}
+              className="text-metaverse-purple/20 text-2xl"
+              animate={{ 
+                opacity: [0.2, 0.5, 0.2],
+                y: [0, -10, 0],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                delay: i * 0.5,
+              }}
+            >
+              {symbol}
+            </motion.span>
+          ))}
+        </div>
       </div>
 
       {/* Answer Options */}
