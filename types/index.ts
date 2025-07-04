@@ -16,6 +16,7 @@ export interface User {
   registrationCode: string;
   createdAt: string;
   isActive: boolean;
+  levelScores?: Record<string, LevelScore>; // เพิ่มฟิลด์นี้
 }
 
 export enum Grade {
@@ -105,3 +106,14 @@ export interface DailyScore {
   correctAnswers: number;
   timeSpent: number; // in seconds
 }
+
+// เพิ่มใน types/index.ts
+
+// เพิ่ม interface สำหรับเก็บคะแนนแต่ละ level
+export interface LevelScore {
+  level: number;
+  highScore: number;
+  lastPlayed: string;
+  playCount: number;
+}
+

@@ -1,8 +1,10 @@
+// components/game/QuestionDisplay.tsx
 'use client';
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types';
+import { useSound } from '@/lib/game/soundManager';
 import { Check, X, Send } from 'lucide-react';
 
 interface QuestionDisplayProps {
@@ -15,10 +17,12 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const { playSound } = useSound();
 
   const handleAnswerClick = (answer: number) => {
     if (showResult) return;
     
+    playSound('click');
     setSelectedAnswer(answer);
     setShowResult(true);
     
@@ -142,6 +146,7 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
           {!showResult && (
             <motion.button
               type="submit"
+              onMouseDown={() => playSound('click')}
               className="px-8 py-4 metaverse-button text-white font-bold text-xl rounded-full shadow-lg flex items-center gap-2"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}

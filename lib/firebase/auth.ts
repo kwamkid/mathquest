@@ -251,3 +251,48 @@ export const onAuthChange = (callback: (user: User | null) => void) => {
     }
   });
 };
+
+// เพิ่ม function นี้ในไฟล์ lib/firebase/auth.ts
+
+// Update user profile
+export const updateUserProfile = async (
+  userId: string,
+  updates: {
+    displayName?: string;
+    school?: string;
+    grade?: string;
+    avatar?: string;
+  }
+): Promise<void> => {
+  try {
+    const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, userId));
+    if (!userDoc.exists()) {
+      throw new Error('ไม่พบข้อมูลผู้ใช้');
+    }
+
+    const currentData = userDoc.data() as User;
+    const updateData: any = {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // If grade changed, reset level to 1
+    if (updates.grade && updates.grade !== currentData.grade) {
+      updateData.level = 1;
+      // Optionally reset other grade-specific data
+      updateData.experience = 0;
+    }
+
+    // Remove undefined values
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
+    await updateDoc(doc(db, COLLECTIONS.USERS, userId), updateData);
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    throw new Error('ไม่สามารถอัปเดตข้อมูลได้');
+  }
+};

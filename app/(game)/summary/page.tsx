@@ -1,0 +1,351 @@
+// app/(game)/summary/page.tsx
+'use client';
+
+import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { getCurrentUser } from '@/lib/firebase/auth';
+import { User } from '@/types';
+import { LEVEL_PROGRESSION } from '@/lib/game/config';
+import { 
+  Trophy, TrendingUp, TrendingDown, Star, Target, Clock, 
+  Zap, Award, ChevronRight, RotateCcw, Home
+} from 'lucide-react';
+
+interface GameSummaryData {
+  score: number;
+  totalQuestions: number;
+  percentage: number;
+  levelChange: 'increase' | 'decrease' | 'maintain';
+  newLevel: number;
+  oldLevel: number;
+  expGained: number;
+  isNewHighScore: boolean;
+  oldHighScore: number;
+  scoreDiff: number;
+  timeSpent: number;
+}
+
+export default function GameSummaryPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [user, setUser] = useState<User | null>(null);
+  const [summaryData, setSummaryData] = useState<GameSummaryData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      // Get user data
+      const userData = await getCurrentUser();
+      if (!userData) {
+        router.push('/login');
+        return;
+      }
+      setUser(userData);
+
+      // Parse summary data from URL params
+      const data: GameSummaryData = {
+        score: parseInt(searchParams.get('score') || '0'),
+        totalQuestions: parseInt(searchParams.get('total') || '0'),
+        percentage: parseInt(searchParams.get('percentage') || '0'),
+        levelChange: searchParams.get('levelChange') as 'increase' | 'decrease' | 'maintain' || 'maintain',
+        newLevel: parseInt(searchParams.get('newLevel') || '0'),
+        oldLevel: parseInt(searchParams.get('oldLevel') || '0'),
+        expGained: parseInt(searchParams.get('exp') || '0'),
+        isNewHighScore: searchParams.get('highScore') === 'true',
+        oldHighScore: parseInt(searchParams.get('oldHighScore') || '0'),
+        scoreDiff: parseInt(searchParams.get('scoreDiff') || '0'),
+        timeSpent: parseInt(searchParams.get('time') || '0'),
+      };
+
+      setSummaryData(data);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      router.push('/play');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading || !summaryData || !user) {
+    return (
+      <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
+        <div className="absolute inset-0 bg-metaverse-gradient opacity-30"></div>
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="text-6xl relative z-10"
+        >
+          ⏳
+        </motion.div>
+      </div>
+    );
+  }
+
+  const getLevelChangeInfo = () => {
+    switch (summaryData.levelChange) {
+      case 'increase':
+        return {
+          icon: <TrendingUp className="w-8 h-8" />,
+          text: 'Level Up!',
+          color: 'text-green-400',
+          bgColor: 'bg-green-500/20',
+          borderColor: 'border-green-500/50',
+        };
+      case 'decrease':
+        return {
+          icon: <TrendingDown className="w-8 h-8" />,
+          text: 'Level Down',
+          color: 'text-red-400',
+          bgColor: 'bg-red-500/20',
+          borderColor: 'border-red-500/50',
+        };
+      default:
+        return {
+          icon: <ChevronRight className="w-8 h-8" />,
+          text: 'Level คงเดิม',
+          color: 'text-orange-400',
+          bgColor: 'bg-orange-500/20',
+          borderColor: 'border-orange-500/50',
+        };
+    }
+  };
+
+  const levelChangeInfo = getLevelChangeInfo();
+  const minutes = Math.floor(summaryData.timeSpent / 60);
+  const seconds = summaryData.timeSpent % 60;
+
+  return (
+    <div className="min-h-screen bg-metaverse-black py-8">
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
+        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+      </div>
+
+      <div className="relative z-10 container mx-auto px-4 max-w-4xl">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-4xl font-bold text-white mb-2">สรุปผลการเล่น</h1>
+          <p className="text-white/60">Level {summaryData.oldLevel}</p>
+        </motion.div>
+
+        {/* Main Score Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="glass-dark rounded-3xl shadow-2xl p-8 mb-6 border border-metaverse-purple/30"
+        >
+          {/* Score Display */}
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", delay: 0.3 }}
+              className="inline-block"
+            >
+              <div className="text-8xl mb-4 filter drop-shadow-[0_0_30px_rgba(147,51,234,0.5)]">
+                {summaryData.percentage >= 85 ? '🏆' : 
+                 summaryData.percentage >= 50 ? '😊' : '😢'}
+              </div>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              <div className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-red mb-2">
+                {summaryData.score}/{summaryData.totalQuestions}
+              </div>
+              <div className="text-3xl text-white/80">
+                {summaryData.percentage}%
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="glass rounded-xl p-4 text-center border border-metaverse-purple/20"
+            >
+              <Target className="w-6 h-6 text-metaverse-purple mx-auto mb-2" />
+              <p className="text-2xl font-bold text-white">{summaryData.score}</p>
+              <p className="text-sm text-white/60">ตอบถูก</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="glass rounded-xl p-4 text-center border border-metaverse-purple/20"
+            >
+              <Clock className="w-6 h-6 text-metaverse-pink mx-auto mb-2" />
+              <p className="text-2xl font-bold text-white">
+                {minutes > 0 ? `${minutes}:${seconds.toString().padStart(2, '0')}` : `${seconds}s`}
+              </p>
+              <p className="text-sm text-white/60">เวลา</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              className="glass rounded-xl p-4 text-center border border-metaverse-purple/20"
+            >
+              <Zap className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
+              <p className="text-2xl font-bold text-white">+{summaryData.expGained}</p>
+              <p className="text-sm text-white/60">EXP</p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.9 }}
+              className="glass rounded-xl p-4 text-center border border-metaverse-purple/20"
+            >
+              <Star className="w-6 h-6 text-orange-400 mx-auto mb-2" />
+              <p className="text-2xl font-bold text-white">
+                {summaryData.scoreDiff > 0 ? `+${summaryData.scoreDiff}` : '0'}
+              </p>
+              <p className="text-sm text-white/60">คะแนนรวม</p>
+            </motion.div>
+          </div>
+
+          {/* High Score Info */}
+          {summaryData.isNewHighScore && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1 }}
+              className="glass bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/50 rounded-xl p-4 mb-6"
+            >
+              <div className="flex items-center gap-3">
+                <Trophy className="w-8 h-8 text-yellow-400" />
+                <div>
+                  <p className="text-lg font-bold text-yellow-400">New High Score!</p>
+                  <p className="text-sm text-white/70">
+                    คะแนนเดิม: {summaryData.oldHighScore} → คะแนนใหม่: {summaryData.score}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Level Change */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.1 }}
+            className={`glass ${levelChangeInfo.bgColor} border ${levelChangeInfo.borderColor} rounded-xl p-4`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={levelChangeInfo.color}>
+                  {levelChangeInfo.icon}
+                </div>
+                <div>
+                  <p className={`text-lg font-bold ${levelChangeInfo.color}`}>
+                    {levelChangeInfo.text}
+                  </p>
+                  <p className="text-sm text-white/70">
+                    Level {summaryData.oldLevel} → Level {summaryData.newLevel}
+                  </p>
+                </div>
+              </div>
+              <div className="text-sm text-white/50">
+                <p>เกณฑ์: &gt;{LEVEL_PROGRESSION.INCREASE_THRESHOLD}% เพิ่มระดับ</p>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Action Buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2 }}
+          className="flex gap-4 justify-center flex-wrap"
+        >
+          {/* Play Next Level Button (if level increased) */}
+          {summaryData.levelChange === 'increase' && summaryData.newLevel <= 100 && (
+            <motion.button
+              onClick={() => router.push('/play')}
+              className="px-10 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white font-bold text-xl rounded-full shadow-2xl flex items-center gap-3 ring-2 ring-green-400/30 ring-offset-2 ring-offset-metaverse-black"
+              whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(34, 197, 94, 0.5)' }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Rocket className="w-7 h-7" />
+              <span className="text-2xl">เล่น Level {summaryData.newLevel}</span>
+              <motion.span
+                animate={{ x: [0, 5, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                →
+              </motion.span>
+            </motion.button>
+          )}
+
+          {/* Play Again Button */}
+          <motion.button
+            onClick={() => router.push('/play')}
+            className="px-8 py-4 glass border border-metaverse-purple/50 text-white/80 font-bold text-xl rounded-full shadow-lg hover:bg-white/10 flex items-center gap-2"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <RotateCcw className="w-6 h-6" />
+            {summaryData.levelChange === 'increase' ? 'เล่น Level เดิมอีกครั้ง' : 'เล่นอีกครั้ง'}
+          </motion.button>
+
+          {/* View Ranking Button */}
+          <motion.button
+            onClick={() => router.push('/ranking')}
+            className="px-8 py-4 glass border border-metaverse-purple/50 text-white font-bold text-xl rounded-full shadow-lg hover:bg-white/10 flex items-center gap-2"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Trophy className="w-6 h-6" />
+            ดูอันดับ
+          </motion.button>
+
+          {/* Home Button */}
+          <motion.button
+            onClick={() => router.push('/play')}
+            className="px-8 py-4 glass border border-metaverse-purple/50 text-white font-bold text-xl rounded-full shadow-lg hover:bg-white/10 flex items-center gap-2"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Home className="w-6 h-6" />
+            หน้าหลัก
+          </motion.button>
+        </motion.div>
+
+        {/* Achievements (Optional) */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.4 }}
+          className="mt-8 text-center"
+        >
+          {summaryData.percentage === 100 && (
+            <div className="inline-flex items-center gap-2 glass px-6 py-3 rounded-full border border-yellow-500/50">
+              <Award className="w-6 h-6 text-yellow-400" />
+              <span className="text-yellow-400 font-bold">Perfect Score! 💯</span>
+            </div>
+          )}
+        </motion.div>
+      </div>
+    </div>
+  );
+}

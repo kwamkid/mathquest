@@ -1,5 +1,6 @@
 // lib/game/questionGenerator.ts
 import { Question, QuestionType } from '@/types';
+import { getLevelConfig, LevelConfig } from './config';
 
 // Generate unique ID for question
 const generateId = () => {
@@ -35,400 +36,406 @@ const generateChoices = (correctAnswer: number, count: number = 4): number[] => 
   return Array.from(choices).sort(() => Math.random() - 0.5);
 };
 
-// Question generators by grade and level
+// Main question generator using config
 export const generateQuestion = (grade: string, level: number): Question => {
-  // Kindergarten (K1-K3)
-  if (grade.startsWith('K')) {
-    return generateKindergartenQuestion(grade, level);
+  const config = getLevelConfig(grade, level);
+  
+  if (!config) {
+    // Fallback if no config found
+    return generateFallbackQuestion(grade, level);
   }
   
-  // Primary 1-3
-  if (['P1', 'P2', 'P3'].includes(grade)) {
-    return generatePrimaryLowerQuestion(grade, level);
-  }
+  // Select random question type from available types
+  const questionType = config.questionTypes[random(0, config.questionTypes.length - 1)];
   
-  // Primary 4-6
-  if (['P4', 'P5', 'P6'].includes(grade)) {
-    return generatePrimaryUpperQuestion(grade, level);
+  // Generate question based on type and config
+  switch (questionType) {
+    case QuestionType.ADDITION:
+      return generateAdditionQuestion(config, level);
+    case QuestionType.SUBTRACTION:
+      return generateSubtractionQuestion(config, level);
+    case QuestionType.MULTIPLICATION:
+      return generateMultiplicationQuestion(config, level);
+    case QuestionType.DIVISION:
+      return generateDivisionQuestion(config, level);
+    case QuestionType.WORD_PROBLEM:
+      return generateWordProblem(config, level, grade);
+    case QuestionType.MIXED:
+      return generateMixedQuestion(config, level, grade);
+    default:
+      return generateFallbackQuestion(grade, level);
   }
-  
-  // Secondary
-  return generateSecondaryQuestion(grade, level);
 };
 
-// Kindergarten questions (อนุบาล)
-const generateKindergartenQuestion = (grade: string, level: number): Question => {
-  let a: number, b: number, answer: number, question: string;
-  let type: QuestionType = QuestionType.ADDITION;
+// Addition questions
+const generateAdditionQuestion = (config: LevelConfig, level: number): Question => {
+  const { min, max } = config.numberRange;
   
-  if (level <= 30) {
-    // Level 1-30: นับเลขและบวกง่ายๆ (1-5)
-    a = random(1, 3);
-    b = random(1, 2);
-    answer = a + b;
-    question = `${a} + ${b} = ?`;
-    type = QuestionType.ADDITION;
-  } else if (level <= 60) {
-    // Level 31-60: บวกเลข (1-10)
-    a = random(1, 5);
-    b = random(1, 5);
-    answer = a + b;
-    question = `${a} + ${b} = ?`;
-    type = QuestionType.ADDITION;
-  } else {
-    // Level 61-100: บวกลบเบื้องต้น (ผลลัพธ์ไม่เกิน 10)
-    a = random(5, 10);
-    b = random(1, Math.min(5, a));
-    
-    if (random(0, 1) === 0) {
-      answer = a + b;
-      question = `${a} + ${b} = ?`;
-      type = QuestionType.ADDITION;
-    } else {
-      answer = a - b;
-      question = `${a} - ${b} = ?`;
-      type = QuestionType.SUBTRACTION;
+  let a = random(min, max);
+  let b = random(min, max);
+  
+  // Special handling for features
+  if (config.features?.includes('noCarrying')) {
+    // Ensure no carrying (for 2-digit addition)
+    const aOnes = a % 10;
+    const bOnes = b % 10;
+    if (aOnes + bOnes >= 10) {
+      b = b - (aOnes + bOnes - 9);
     }
   }
+  
+  const answer = a + b;
+  const question = `${a} + ${b} = ?`;
   
   return {
     id: generateId(),
     question,
     answer,
-    choices: generateChoices(answer, 4),
-    type,
+    choices: config.features?.includes('visualAids') ? undefined : generateChoices(answer),
+    type: QuestionType.ADDITION,
     difficulty: level
   };
 };
 
-// Primary 1-3 questions (ประถม 1-3)
-const generatePrimaryLowerQuestion = (grade: string, level: number): Question => {
-  let a: number, b: number, answer: number, question: string;
-  let type: QuestionType = QuestionType.ADDITION;
-  let useChoices = true;
+// Subtraction questions
+const generateSubtractionQuestion = (config: LevelConfig, level: number): Question => {
+  const { min, max } = config.numberRange;
   
-  if (grade === 'P1') {
-    // ประถม 1
-    if (level <= 25) {
-      // Level 1-25: บวกเลขหลักเดียว
-      a = random(1, 9);
-      b = random(1, 9);
-      answer = a + b;
-      question = `${a} + ${b} = ?`;
-      type = QuestionType.ADDITION;
-    } else if (level <= 50) {
-      // Level 26-50: ลบเลขหลักเดียว (ไม่ติดลบ)
-      a = random(5, 10);
-      b = random(1, a);
-      answer = a - b;
-      question = `${a} - ${b} = ?`;
-      type = QuestionType.SUBTRACTION;
-    } else if (level <= 75) {
-      // Level 51-75: บวกเลข 2 หลักกับ 1 หลัก
-      a = random(10, 20);
-      b = random(1, 9);
-      answer = a + b;
-      question = `${a} + ${b} = ?`;
-      type = QuestionType.ADDITION;
-    } else {
-      // Level 76-100: บวกลบผสม (ไม่เกิน 20)
-      a = random(10, 20);
-      b = random(1, 10);
-      
-      if (random(0, 1) === 0) {
-        answer = a + b;
-        question = `${a} + ${b} = ?`;
-        type = QuestionType.ADDITION;
-      } else {
-        answer = a - b;
-        question = `${a} - ${b} = ?`;
-        type = QuestionType.SUBTRACTION;
-      }
-    }
-  } else if (grade === 'P2') {
-    // ประถม 2
-    if (level <= 20) {
-      // Level 1-20: บวกเลข 2 หลัก (ไม่ทด)
-      a = random(10, 40);
-      b = random(10, 40);
-      answer = a + b;
-      question = `${a} + ${b} = ?`;
-      type = QuestionType.ADDITION;
-    } else if (level <= 40) {
-      // Level 21-40: ลบเลข 2 หลัก (ไม่ติดลบ)
-      a = random(20, 50);
-      b = random(10, Math.min(30, a));
-      answer = a - b;
-      question = `${a} - ${b} = ?`;
-      type = QuestionType.SUBTRACTION;
-    } else if (level <= 60) {
-      // Level 41-60: สูตรคูณแม่ 2, 5, 10
+  let a = random(Math.max(min, 5), max);
+  let b = random(min, Math.min(a, max));
+  
+  // Ensure non-negative result
+  if (b > a) {
+    [a, b] = [b, a];
+  }
+  
+  const answer = a - b;
+  const question = `${a} - ${b} = ?`;
+  
+  return {
+    id: generateId(),
+    question,
+    answer,
+    choices: generateChoices(answer),
+    type: QuestionType.SUBTRACTION,
+    difficulty: level
+  };
+};
+
+// Multiplication questions
+const generateMultiplicationQuestion = (config: LevelConfig, level: number): Question => {
+  let a: number, b: number;
+  
+  if (config.features?.includes('multiplicationTables')) {
+    // Specific multiplication tables
+    if (config.features.includes('tables_2_5_10')) {
       const tables = [2, 5, 10];
       a = tables[random(0, tables.length - 1)];
-      b = random(1, 10);
-      answer = a * b;
-      question = `${a} × ${b} = ?`;
-      type = QuestionType.MULTIPLICATION;
-    } else if (level <= 80) {
-      // Level 61-80: สูตรคูณแม่ 3, 4
+      b = random(config.numberRange.min, config.numberRange.max);
+    } else if (config.features.includes('tables_3_4')) {
       const tables = [3, 4];
       a = tables[random(0, tables.length - 1)];
-      b = random(1, 10);
-      answer = a * b;
-      question = `${a} × ${b} = ?`;
-      type = QuestionType.MULTIPLICATION;
-      useChoices = false;
+      b = random(config.numberRange.min, config.numberRange.max);
+    } else if (config.features.includes('tables_2_to_5')) {
+      a = random(2, 5);
+      b = random(config.numberRange.min, config.numberRange.max);
+    } else if (config.features.includes('tables_6_to_9')) {
+      a = random(6, 9);
+      b = random(config.numberRange.min, config.numberRange.max);
     } else {
-      // Level 81-100: บวกลบเลข 2 หลัก (มีการทด)
-      a = random(25, 70);
-      b = random(15, 50);
-      
-      if (random(0, 1) === 0) {
-        answer = a + b;
-        question = `${a} + ${b} = ?`;
-        type = QuestionType.ADDITION;
-      } else {
-        // ทำให้แน่ใจว่าไม่ติดลบ
-        if (b > a) {
-          [a, b] = [b, a];
-        }
-        answer = a - b;
-        question = `${a} - ${b} = ?`;
-        type = QuestionType.SUBTRACTION;
-      }
-      useChoices = false;
+      a = random(2, 12);
+      b = random(config.numberRange.min, config.numberRange.max);
     }
   } else {
-    // ประถม 3
-    if (level <= 20) {
-      // Level 1-20: บวกลบเลข 3 หลัก
-      a = random(100, 300);
-      b = random(50, 200);
-      
-      if (random(0, 1) === 0) {
-        answer = a + b;
-        question = `${a} + ${b} = ?`;
-        type = QuestionType.ADDITION;
-      } else {
-        answer = a - b;
-        question = `${a} - ${b} = ?`;
-        type = QuestionType.SUBTRACTION;
-      }
-    } else if (level <= 40) {
-      // Level 21-40: สูตรคูณแม่ 2-5
-      a = random(2, 5);
-      b = random(1, 12);
-      answer = a * b;
-      question = `${a} × ${b} = ?`;
-      type = QuestionType.MULTIPLICATION;
-    } else if (level <= 60) {
-      // Level 41-60: สูตรคูณแม่ 6-9
-      a = random(6, 9);
-      b = random(1, 12);
-      answer = a * b;
-      question = `${a} × ${b} = ?`;
-      type = QuestionType.MULTIPLICATION;
-      useChoices = false;
-    } else if (level <= 80) {
-      // Level 61-80: หารเบื้องต้น
-      b = random(2, 5);
-      answer = random(2, 10);
-      a = b * answer;
-      question = `${a} ÷ ${b} = ?`;
-      type = QuestionType.DIVISION;
-      useChoices = false;
-    } else {
-      // Level 81-100: โจทย์ปัญหาง่ายๆ
-      const problems = [
-        {
-          generate: () => {
-            const a = random(20, 50);
-            const b = random(10, 30);
-            return {
-              question: `แม่มีเงิน ${a} บาท ซื้อของไป ${b} บาท เหลือเงินกี่บาท?`,
-              answer: a - b
-            };
-          }
-        },
-        {
-          generate: () => {
-            const a = random(5, 15);
-            const b = random(5, 15);
-            return {
-              question: `มีแอปเปิ้ล ${a} ผล และส้ม ${b} ผล รวมมีผลไม้กี่ผล?`,
-              answer: a + b
-            };
-          }
-        }
-      ];
-      
-      const problem = problems[random(0, problems.length - 1)].generate();
-      question = problem.question;
-      answer = problem.answer;
-      type = QuestionType.WORD_PROBLEM;
-      useChoices = false;
-    }
+    // General multiplication
+    const { min, max } = config.numberRange;
+    a = random(min, max);
+    b = random(2, 12);
   }
+  
+  const answer = a * b;
+  const question = `${a} × ${b} = ?`;
   
   return {
     id: generateId(),
     question,
     answer,
-    choices: useChoices ? generateChoices(answer, 4) : undefined,
-    type,
+    choices: level <= 60 ? generateChoices(answer) : undefined,
+    type: QuestionType.MULTIPLICATION,
     difficulty: level
   };
 };
 
-// Primary 4-6 questions (ประถม 4-6)
-const generatePrimaryUpperQuestion = (grade: string, level: number): Question => {
-  let a: number, b: number, c: number, answer: number, question: string;
-  let type: QuestionType = QuestionType.MIXED;
+// Division questions
+const generateDivisionQuestion = (config: LevelConfig, level: number): Question => {
+  const { min, max } = config.numberRange;
   
-  if (level <= 25) {
-    // Level 1-25: คูณเลข 2 หลัก
-    a = random(10, 25);
-    b = random(2, 12);
-    answer = a * b;
-    question = `${a} × ${b} = ?`;
-    type = QuestionType.MULTIPLICATION;
-  } else if (level <= 50) {
-    // Level 26-50: หาร
-    b = random(2, 12);
-    answer = random(5, 25);
-    a = b * answer;
-    question = `${a} ÷ ${b} = ?`;
-    type = QuestionType.DIVISION;
-  } else if (level <= 75) {
-    // Level 51-75: โจทย์ผสมมีวงเล็บ
-    a = random(10, 50);
-    b = random(5, 20);
-    c = random(2, 10);
-    
-    const operation = random(0, 3);
-    if (operation === 0) {
-      answer = (a + b) * c;
-      question = `(${a} + ${b}) × ${c} = ?`;
-    } else if (operation === 1) {
-      answer = a + (b * c);
-      question = `${a} + (${b} × ${c}) = ?`;
-    } else if (operation === 2) {
-      answer = (a - b) * c;
-      question = `(${a} - ${b}) × ${c} = ?`;
-    } else {
-      answer = a - (b * c);
-      question = `${a} - (${b} × ${c}) = ?`;
-    }
-    type = QuestionType.MIXED;
-  } else {
-    // Level 76-100: โจทย์ปัญหา
+  const divisor = random(min, max);
+  const quotient = random(2, 12);
+  const dividend = divisor * quotient;
+  
+  const answer = quotient;
+  const question = `${dividend} ÷ ${divisor} = ?`;
+  
+  return {
+    id: generateId(),
+    question,
+    answer,
+    choices: config.features?.includes('basicDivision') ? generateChoices(answer) : undefined,
+    type: QuestionType.DIVISION,
+    difficulty: level
+  };
+};
+
+// Word problems
+const generateWordProblem = (config: LevelConfig, level: number, grade: string): Question => {
+  const { min, max } = config.numberRange;
+  
+  // Simple word problems for lower grades
+  if (grade.startsWith('P') && parseInt(grade.substring(1)) <= 3) {
     const problems = [
       {
         generate: () => {
-          const a = random(200, 500);
-          const b = random(50, 150);
+          const a = random(min, max);
+          const b = random(min, Math.min(max, 30));
           return {
-            question: `ร้านค้ามีสินค้า ${a} ชิ้น ขายไป ${b} ชิ้น เหลือกี่ชิ้น?`,
+            question: `แม่มีเงิน ${a} บาท ซื้อของไป ${b} บาท เหลือเงินกี่บาท?`,
             answer: a - b
           };
         }
       },
       {
         generate: () => {
-          const b = random(4, 8);
-          const perGroup = random(5, 15);
-          const a = b * perGroup;
+          const a = random(min, max);
+          const b = random(min, max);
           return {
-            question: `นักเรียน ${a} คน แบ่งเป็น ${b} กลุ่มเท่าๆ กัน กลุ่มละกี่คน?`,
-            answer: perGroup
+            question: `มีแอปเปิ้ล ${a} ผล และส้ม ${b} ผล รวมมีผลไม้กี่ผล?`,
+            answer: a + b
           };
         }
       },
       {
         generate: () => {
-          const price = random(15, 50);
-          const quantity = random(3, 8);
+          const boxes = random(2, 5);
+          const perBox = random(min, max);
           return {
-            question: `ดินสอแท่งละ ${price} บาท ซื้อ ${quantity} แท่ง ต้องจ่ายเงินกี่บาท?`,
-            answer: price * quantity
+            question: `มีกล่องทั้งหมด ${boxes} กล่อง แต่ละกล่องมีลูกบอล ${perBox} ลูก รวมมีลูกบอลกี่ลูก?`,
+            answer: boxes * perBox
           };
         }
       }
     ];
     
     const problem = problems[random(0, problems.length - 1)].generate();
-    question = problem.question;
-    answer = problem.answer;
-    type = QuestionType.WORD_PROBLEM;
+    return {
+      id: generateId(),
+      question: problem.question,
+      answer: problem.answer,
+      choices: undefined,
+      type: QuestionType.WORD_PROBLEM,
+      difficulty: level
+    };
   }
   
+  // Complex word problems for higher grades
+  if (config.features?.includes('multiStepProblems')) {
+    const problems = [
+      {
+        generate: () => {
+          const students = random(20, 40);
+          const busCapacity = random(10, 15);
+          const buses = Math.ceil(students / busCapacity);
+          return {
+            question: `โรงเรียนมีนักเรียน ${students} คน รถบัสคันหนึ่งนั่งได้ ${busCapacity} คน ต้องใช้รถบัสอย่างน้อยกี่คัน?`,
+            answer: buses
+          };
+        }
+      },
+      {
+        generate: () => {
+          const total = random(500, 1000);
+          const spent1 = random(100, 300);
+          const spent2 = random(50, 200);
+          return {
+            question: `พ่อมีเงิน ${total} บาท ซื้อของใช้ ${spent1} บาท และซื้ออาหาร ${spent2} บาท เหลือเงินกี่บาท?`,
+            answer: total - spent1 - spent2
+          };
+        }
+      }
+    ];
+    
+    const problem = problems[random(0, problems.length - 1)].generate();
+    return {
+      id: generateId(),
+      question: problem.question,
+      answer: problem.answer,
+      choices: undefined,
+      type: QuestionType.WORD_PROBLEM,
+      difficulty: level
+    };
+  }
+  
+  // Default word problem
+  const a = random(min, max);
+  const b = random(min, Math.min(max, a));
   return {
     id: generateId(),
-    question,
-    answer,
+    question: `มีของทั้งหมด ${a} ชิ้น ให้เพื่อนไป ${b} ชิ้น เหลือกี่ชิ้น?`,
+    answer: a - b,
     choices: undefined,
-    type,
+    type: QuestionType.WORD_PROBLEM,
     difficulty: level
   };
 };
 
-// Secondary questions (มัธยม)
-const generateSecondaryQuestion = (grade: string, level: number): Question => {
-  let a: number, b: number, c: number, answer: number, question: string;
-  let type: QuestionType = QuestionType.MIXED;
+// Mixed questions (parentheses, fractions, etc.)
+const generateMixedQuestion = (config: LevelConfig, level: number, grade: string): Question => {
+  const { min, max } = config.numberRange;
   
-  if (level <= 20) {
-    // Level 1-20: การคำนวณพื้นฐาน
-    a = random(100, 999);
-    b = random(100, 999);
+  // Questions with parentheses
+  if (config.features?.includes('parentheses')) {
+    const a = random(min, max);
+    const b = random(min, Math.min(max, 20));
+    const c = random(2, 10);
     
-    if (random(0, 1) === 0) {
+    const operation = random(0, 3);
+    let question: string;
+    let answer: number;
+    
+    switch (operation) {
+      case 0:
+        answer = (a + b) * c;
+        question = `(${a} + ${b}) × ${c} = ?`;
+        break;
+      case 1:
+        answer = a + (b * c);
+        question = `${a} + (${b} × ${c}) = ?`;
+        break;
+      case 2:
+        answer = (a - b) * c;
+        question = `(${a} - ${b}) × ${c} = ?`;
+        break;
+      default:
+        answer = a - (b * c);
+        question = `${a} - (${b} × ${c}) = ?`;
+    }
+    
+    return {
+      id: generateId(),
+      question,
+      answer,
+      choices: undefined,
+      type: QuestionType.MIXED,
+      difficulty: level
+    };
+  }
+  
+  // Fractions
+  if (config.features?.includes('fractions')) {
+    const a = random(1, 9);
+    const b = random(2, 10);
+    const c = random(1, 9);
+    const d = b; // Same denominator for simplicity
+    
+    const answer = a + c;
+    const question = `${a}/${b} + ${c}/${d} = ?/${b}`;
+    
+    return {
+      id: generateId(),
+      question,
+      answer,
+      choices: undefined,
+      type: QuestionType.MIXED,
+      difficulty: level
+    };
+  }
+  
+  // Decimals
+  if (config.features?.includes('decimals')) {
+    const a = random(1, 99) / 10;
+    const b = random(1, 99) / 10;
+    const answer = Math.round((a + b) * 10) / 10;
+    
+    return {
+      id: generateId(),
+      question: `${a} + ${b} = ?`,
+      answer,
+      choices: undefined,
+      type: QuestionType.MIXED,
+      difficulty: level
+    };
+  }
+  
+  // Integers (positive and negative)
+  if (config.features?.includes('integers')) {
+    const a = random(min, max);
+    const b = random(min, max);
+    const operation = random(0, 1);
+    
+    let answer: number;
+    let question: string;
+    
+    if (operation === 0) {
       answer = a + b;
-      question = `${a} + ${b} = ?`;
-      type = QuestionType.ADDITION;
+      question = `${a} + (${b}) = ?`;
     } else {
       answer = a - b;
-      question = `${a} - ${b} = ?`;
-      type = QuestionType.SUBTRACTION;
+      question = `${a} - (${b}) = ?`;
     }
-  } else if (level <= 40) {
-    // Level 21-40: คูณเลขหลายหลัก
-    a = random(20, 99);
-    b = random(10, 50);
-    answer = a * b;
-    question = `${a} × ${b} = ?`;
-    type = QuestionType.MULTIPLICATION;
-  } else if (level <= 60) {
-    // Level 41-60: เศษส่วนเบื้องต้น
-    a = random(1, 9);
-    b = random(2, 10);
-    c = random(1, 9);
-    const d = b; // ตัวส่วนเดียวกัน
-    answer = a + c;
-    question = `${a}/${b} + ${c}/${d} = ${answer}/${b}`;
-    type = QuestionType.MIXED;
-  } else if (level <= 80) {
-    // Level 61-80: ทศนิยมเบื้องต้น
-    const a1 = random(1, 99) / 10;
-    const b1 = random(1, 99) / 10;
-    answer = Math.round((a1 + b1) * 10) / 10;
-    question = `${a1} + ${b1} = ?`;
-    type = QuestionType.MIXED;
-  } else {
-    // Level 81-100: พีชคณิตเบื้องต้น
-    a = random(2, 10);
-    b = random(5, 20);
-    answer = b - a;
-    question = `x + ${a} = ${b}, x = ?`;
-    type = QuestionType.MIXED;
+    
+    return {
+      id: generateId(),
+      question,
+      answer,
+      choices: undefined,
+      type: QuestionType.MIXED,
+      difficulty: level
+    };
   }
+  
+  // Algebra
+  if (config.features?.includes('algebra') || config.features?.includes('linearEquations')) {
+    const a = random(2, 10);
+    const b = random(5, 20);
+    const answer = b - a;
+    
+    return {
+      id: generateId(),
+      question: `x + ${a} = ${b}, x = ?`,
+      answer,
+      choices: undefined,
+      type: QuestionType.MIXED,
+      difficulty: level
+    };
+  }
+  
+  // Default mixed question
+  const a = random(min, max);
+  const b = random(min, max);
+  const answer = a + b;
   
   return {
     id: generateId(),
-    question,
+    question: `${a} + ${b} = ?`,
     answer,
-    choices: undefined,
-    type,
+    choices: generateChoices(answer),
+    type: QuestionType.MIXED,
+    difficulty: level
+  };
+};
+
+// Fallback question generator (when no config available)
+const generateFallbackQuestion = (grade: string, level: number): Question => {
+  const a = random(1, 50);
+  const b = random(1, 50);
+  const answer = a + b;
+  
+  return {
+    id: generateId(),
+    question: `${a} + ${b} = ?`,
+    answer,
+    choices: generateChoices(answer),
+    type: QuestionType.ADDITION,
     difficulty: level
   };
 };
