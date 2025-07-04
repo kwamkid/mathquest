@@ -206,13 +206,12 @@ export const signIn = async (username: string, password: string): Promise<User> 
       lastLoginDate: today.toISOString(),
       dailyStreak: newStreak,
     };
-  } catch (error: any) {
-    // Log for debugging but don't console.error to avoid the red error
-    console.log('Sign in error details:', error);
-    
-    // Check if it's a Firebase Auth error
-    if (error?.code?.startsWith('auth/')) {
-      const errorCode = error.code;
+} catch (error: unknown) {
+  console.log('Sign in error details:', error);
+  
+  // Type guard สำหรับ Firebase error
+  if (error && typeof error === 'object' && 'code' in error) {
+    const errorCode = (error as {code: string}).code;
       
       // Map Firebase error codes to Thai messages
       const errorMessages: { [key: string]: string } = {

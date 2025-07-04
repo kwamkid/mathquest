@@ -51,7 +51,7 @@ export default function AdminDashboard() {
       try {
         const gamesSnapshot = await getDocs(collection(db, 'gameSessions'));
         totalGames = gamesSnapshot.size;
-      } catch (error) {
+    } catch {
         console.log('Game sessions collection not found');
       }
 

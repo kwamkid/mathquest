@@ -70,15 +70,15 @@ function LoginForm() {
       
       // Success - redirect to game
       router.push('/play');
-    } catch (error: any) {
-      // Get error message
-      let errorMessage = 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
-      
-      if (error?.message) {
-        errorMessage = error.message;
-      }
-      
-      setErrors({ submit: errorMessage });
+    } catch (error: unknown) {
+        // Get error message
+        let errorMessage = 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+        
+        if (error && typeof error === 'object' && 'message' in error) {
+            errorMessage = (error as Error).message;
+        }
+        
+        setErrors({ submit: errorMessage });
     } finally {
       setIsLoading(false);
       // Restore console.error

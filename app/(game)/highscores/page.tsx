@@ -2,12 +2,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/firebase/auth';
 import { User, LevelScore } from '@/types';
 import { ArrowLeft, Trophy, Star, TrendingUp, Calendar, Target, Zap, Pi } from 'lucide-react';
-import { GRADE_CONFIGS, getQuestionCount, getLevelConfig } from '@/lib/game/config';
+import { getQuestionCount, getLevelConfig } from '@/lib/game/config';
 
 interface ScoreWithDescription extends LevelScore {
   description: string;

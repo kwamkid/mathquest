@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Rocket, Swords, Target, Trophy, Gift, Pi, UserPlus } from 'lucide-react';
+import { Swords, Target, Trophy, Gift, Pi, UserPlus } from 'lucide-react';
 
 // Math symbols for floating animation
 const mathSymbols = ['+', '-', '×', '÷', '=', '>', '<', '√', 'π', '∞', '∑', '∫'];

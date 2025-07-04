@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { CheckCircle, Circle, Zap } from 'lucide-react';
+import { CheckCircle, Zap } from 'lucide-react';
 
 interface GameProgressProps {
   current: number;

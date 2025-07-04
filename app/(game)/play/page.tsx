@@ -5,12 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/firebase/auth';
 import { updateUserGameData, calculateScoreDifference } from '@/lib/firebase/game';
-import { User, Question, LevelScore } from '@/types';
+import { User, Question } from '@/types';
 import QuestionDisplay from '@/components/game/QuestionDisplay';
 import GameHeader from '@/components/game/GameHeader';
 import GameProgress from '@/components/game/GameProgress';
 import { generateQuestion } from '@/lib/game/questionGenerator';
-import { getQuestionCount, calculateLevelChange, LEVEL_PROGRESSION, getLevelConfig } from '@/lib/game/config';
+import { getQuestionCount, calculateLevelChange, getLevelConfig } from '@/lib/game/config';
 import { useSound } from '@/lib/game/soundManager';
 import { Sparkles, Rocket, Trophy, TrendingDown, TrendingUp, X, AlertTriangle, Star, Settings, ChevronRight, Pi } from 'lucide-react';
 
