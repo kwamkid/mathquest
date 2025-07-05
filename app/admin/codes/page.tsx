@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { collection, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, setDoc, getDoc, query, where, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { Plus, Search, Copy, Edit, Trash2, X, CheckCircle, XCircle, Calendar, Hash, FileText } from 'lucide-react';
 
@@ -95,7 +95,7 @@ export default function AdminCodesPage() {
     setShowEditModal(true);
   };
 
-  // Handle edit form submit
+  // Handle edit form submit - แบบใหม่ที่ใช้ field code
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingCode) return;
@@ -107,6 +107,22 @@ export default function AdminCodesPage() {
         code: editForm.code.trim(),
         description: editForm.description.trim() || null,
       };
+      
+      // ตรวจสอบว่า code ใหม่ไม่ซ้ำ (ถ้าเปลี่ยน code)
+      if (editForm.code !== editingCode.code) {
+        const codesQuery = query(
+          collection(db, 'registrationCodes'),
+          where('code', '==', editForm.code),
+          limit(1)
+        );
+        const codesSnapshot = await getDocs(codesQuery);
+        
+        if (!codesSnapshot.empty) {
+          alert('Code นี้มีอยู่ในระบบแล้ว');
+          setEditLoading(false);
+          return;
+        }
+      }
       
       // Handle maxUses
       if (editForm.maxUses) {
@@ -121,17 +137,6 @@ export default function AdminCodesPage() {
         updates.maxUses = null; // ไม่จำกัด
       }
       
-      // Check if new code already exists (if code was changed)
-      if (editForm.code !== editingCode.code) {
-        const codeDoc = await getDocs(collection(db, 'registrationCodes'));
-        const existingCode = codeDoc.docs.find(doc => doc.data().code === editForm.code);
-        if (existingCode && existingCode.id !== editingCode.id) {
-          alert('Code นี้มีอยู่ในระบบแล้ว');
-          setEditLoading(false);
-          return;
-        }
-      }
-      
       // Update in Firestore
       await updateDoc(doc(db, 'registrationCodes', editingCode.id), updates);
       
@@ -144,6 +149,7 @@ export default function AdminCodesPage() {
       
       setShowEditModal(false);
       alert('แก้ไขข้อมูลสำเร็จ');
+      
     } catch (error) {
       console.error('Error updating code:', error);
       alert('เกิดข้อผิดพลาดในการแก้ไข');

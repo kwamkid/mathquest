@@ -5,7 +5,7 @@ import {
   signOut as firebaseSignOut,
   onAuthStateChanged
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { auth, db } from './client';
 import { User, Grade } from '@/types';
 
@@ -53,13 +53,21 @@ export const signUp = async (
     }
 
     console.log('2. Validating registration code...');
-    // 2. Validate registration code
-    const codeDoc = await getDoc(doc(db, COLLECTIONS.REGISTRATION_CODES, registrationCode));
-    if (!codeDoc.exists()) {
+    // 2. Validate registration code - ค้นหาจาก field 'code' แทน document ID
+    const codesQuery = query(
+      collection(db, COLLECTIONS.REGISTRATION_CODES),
+      where('code', '==', registrationCode),
+      limit(1)
+    );
+    const codesSnapshot = await getDocs(codesQuery);
+    
+    if (codesSnapshot.empty) {
       throw new Error('Registration Code ไม่ถูกต้อง');
     }
 
+    const codeDoc = codesSnapshot.docs[0];
     const codeData = codeDoc.data();
+    
     if (!codeData.isActive) {
       throw new Error('Registration Code นี้ถูกระงับการใช้งาน');
     }
@@ -67,6 +75,14 @@ export const signUp = async (
     // Check usage limit
     if (codeData.maxUses && codeData.currentUses >= codeData.maxUses) {
       throw new Error('Registration Code นี้ถูกใช้งานเต็มจำนวนแล้ว');
+    }
+
+    // Check expiry date
+    if (codeData.expiresAt) {
+      const expiryDate = new Date(codeData.expiresAt);
+      if (expiryDate < new Date()) {
+        throw new Error('Registration Code นี้หมดอายุแล้ว');
+      }
     }
 
     console.log('3. Creating auth user...');
@@ -122,8 +138,8 @@ export const signUp = async (
         createdAt: now,
       });
 
-      // 7. Update registration code usage
-      await updateDoc(doc(db, COLLECTIONS.REGISTRATION_CODES, registrationCode), {
+      // 7. Update registration code usage - ใช้ document ID ที่ได้จากการ query
+      await updateDoc(doc(db, COLLECTIONS.REGISTRATION_CODES, codeDoc.id), {
         currentUses: (codeData.currentUses || 0) + 1,
         lastUsedAt: now,
       });
@@ -153,7 +169,7 @@ export const signUp = async (
       }
     }
     // Unknown error
-    throw new Error('เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง');
+    throw new Error('เกิดข้อผิดพลาดกรุณาลองใหม่อีกครั้ง');
   }
 };
 
@@ -268,8 +284,6 @@ export const onAuthChange = (callback: (user: User | null) => void) => {
     }
   });
 };
-
-// เพิ่ม function นี้ในไฟล์ lib/firebase/auth.ts
 
 // Update user profile
 export const updateUserProfile = async (

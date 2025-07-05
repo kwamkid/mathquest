@@ -9,8 +9,8 @@ import { Pi, User, Lock, Eye, EyeOff } from 'lucide-react';
 
 // Admin credentials (ในระบบจริงควรเก็บใน environment variables และใช้ Firebase Admin)
 const ADMIN_CREDENTIALS = {
-  username: 'admin',
-  password: 'mathquest2024' // ควรเปลี่ยนเป็นรหัสที่ปลอดภัยกว่านี้
+  username: process.env.NEXT_PUBLIC_ADMIN_USERNAME || 'admin',
+  password: process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'mathquest2024'
 };
 
 export default function AdminLoginPage() {
