@@ -40,7 +40,7 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
     if (!question.choices) return null;
 
     return (
-      <div className="grid grid-cols-2 gap-2 md:gap-4 mt-4 md:mt-8">
+      <div className="grid grid-cols-2 gap-4 mt-8">
         <AnimatePresence>
           {question.choices.map((choice, index) => {
             const isSelected = selectedAnswer === choice;
@@ -53,7 +53,7 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
                 key={index}
                 onClick={() => handleAnswerClick(choice)}
                 disabled={showResult}
-                className={`relative p-4 md:p-6 text-lg md:text-2xl font-bold rounded-xl md:rounded-2xl transition-all overflow-hidden ${
+                className={`relative p-6 text-2xl font-bold rounded-2xl transition-all overflow-hidden ${
                   showCorrect
                     ? 'bg-green-500/20 border-2 border-green-400 text-green-400'
                     : showWrong
@@ -84,9 +84,9 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute top-1 right-1 md:top-2 md:right-2"
+                    className="absolute top-2 right-2"
                   >
-                    <Check className="w-5 h-5 md:w-6 md:h-6 text-green-400" />
+                    <Check className="w-6 h-6 text-green-400" />
                   </motion.div>
                 )}
                 
@@ -94,9 +94,9 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute top-1 right-1 md:top-2 md:right-2"
+                    className="absolute top-2 right-2"
                   >
-                    <X className="w-5 h-5 md:w-6 md:h-6 text-red-400" />
+                    <X className="w-6 h-6 text-red-400" />
                   </motion.div>
                 )}
               </motion.button>
@@ -118,15 +118,15 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
     };
 
     return (
-      <form onSubmit={handleSubmit} className="mt-4 md:mt-8">
-        <div className="flex flex-col items-center gap-3 md:gap-4">
-          <div className="relative w-full max-w-[200px]">
+      <form onSubmit={handleSubmit} className="mt-8">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
             <input
               type="number"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               disabled={showResult}
-              className={`text-3xl md:text-4xl font-bold text-center w-full p-3 md:p-4 rounded-xl md:rounded-2xl bg-white/10 backdrop-blur-md border-2 ${
+              className={`text-4xl font-bold text-center w-48 p-4 rounded-2xl bg-white/10 backdrop-blur-md border-2 ${
                 showResult
                   ? selectedAnswer === question.answer
                     ? 'border-green-400 text-green-400'
@@ -139,7 +139,7 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
             
             {/* Glow effect */}
             {!showResult && (
-              <div className="absolute inset-0 rounded-xl md:rounded-2xl bg-metaverse-purple/20 blur-xl -z-10" />
+              <div className="absolute inset-0 rounded-2xl bg-metaverse-purple/20 blur-xl -z-10" />
             )}
           </div>
           
@@ -147,11 +147,11 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
             <motion.button
               type="submit"
               onMouseDown={() => playSound('click')}
-              className="px-6 md:px-8 py-3 md:py-4 metaverse-button text-white font-bold text-lg md:text-xl rounded-full shadow-lg flex items-center gap-2"
+              className="px-8 py-4 metaverse-button text-white font-bold text-xl rounded-full shadow-lg flex items-center gap-2"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              <Send className="w-4 h-4 md:w-5 md:h-5" />
+              <Send className="w-5 h-5" />
               ตอบ
             </motion.button>
           )}
@@ -160,16 +160,16 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
             <motion.div
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-xl md:text-2xl font-bold flex items-center gap-2"
+              className="text-2xl font-bold flex items-center gap-2"
             >
               {selectedAnswer === question.answer ? (
                 <>
-                  <Check className="w-6 h-6 md:w-8 md:h-8 text-green-400" />
+                  <Check className="w-8 h-8 text-green-400" />
                   <span className="text-green-400">ถูกต้อง!</span>
                 </>
               ) : (
                 <>
-                  <X className="w-6 h-6 md:w-8 md:h-8 text-red-400" />
+                  <X className="w-8 h-8 text-red-400" />
                   <span className="text-red-400">ตอบ: {question.answer}</span>
                 </>
               )}
@@ -186,13 +186,13 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
-      className="glass-dark rounded-2xl md:rounded-3xl shadow-xl p-4 md:p-8 border border-metaverse-purple/30 w-full"
+      className="glass-dark rounded-3xl shadow-xl p-8 border border-metaverse-purple/30"
     >
-      {/* Question Number Badge - ปรับขนาดสำหรับ mobile */}
+      {/* Question Number Badge */}
       <motion.div
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        className="absolute -top-3 -right-3 md:-top-4 md:-right-4 w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-metaverse-purple to-metaverse-red rounded-full flex items-center justify-center text-white font-bold text-sm md:text-base shadow-lg"
+        className="absolute -top-4 -right-4 w-12 h-12 bg-gradient-to-br from-metaverse-purple to-metaverse-red rounded-full flex items-center justify-center text-white font-bold shadow-lg"
       >
         {questionNumber}
       </motion.div>
@@ -200,15 +200,15 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
       {/* Question */}
       <div className="text-center">
         <motion.h2
-          className="text-2xl md:text-5xl font-bold text-white mb-4 md:mb-8"
+          className="text-4xl md:text-5xl font-bold text-white mb-8"
           initial={{ scale: 0.9 }}
           animate={{ scale: 1 }}
         >
           {question.question}
         </motion.h2>
         
-        {/* Math symbols decoration - ซ่อนบน mobile */}
-        <div className="hidden md:flex justify-center gap-4 mb-4">
+        {/* Math symbols decoration */}
+        <div className="flex justify-center gap-4 mb-4">
           {['∞', 'π', '∑'].map((symbol, i) => (
             <motion.span
               key={i}

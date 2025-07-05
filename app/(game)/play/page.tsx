@@ -27,7 +27,7 @@ export default function PlayPage() {
   const [questionNumber, setQuestionNumber] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [score, setScore] = useState(0);
-  const [tempTotalScore, setTempTotalScore] = useState(0);
+  const [tempTotalScore, setTempTotalScore] = useState(0); // คะแนนรวมชั่วคราว
   const [highScoreInfo, setHighScoreInfo] = useState<{ isNew: boolean; oldScore: number; scoreDiff: number } | null>(null);
   const [answers, setAnswers] = useState<Array<{
     question: Question;
@@ -49,7 +49,9 @@ export default function PlayPage() {
         return;
       }
       setUser(userData);
+      // ใช้ getQuestionCount จาก config
       setTotalQuestions(getQuestionCount(userData.grade));
+      // Set คะแนนรวมเริ่มต้น
       setTempTotalScore(userData.totalScore);
     } catch (error) {
       console.error('Auth error:', error);
@@ -70,8 +72,9 @@ export default function PlayPage() {
       if (forceLevel) {
         const level = parseInt(forceLevel);
         if (!isNaN(level) && level >= 1 && level <= 100) {
+          // Update user level temporarily for this session
           setUser({ ...user, level });
-          localStorage.removeItem('forceLevel');
+          localStorage.removeItem('forceLevel'); // Clear after use
         }
       }
     }
@@ -80,11 +83,21 @@ export default function PlayPage() {
   // Get grade display name
   const getGradeDisplayName = (grade: string): string => {
     const gradeMap: Record<string, string> = {
-      K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
-      P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
-      P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
-      M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
-      M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
+      K1: 'อนุบาล 1',
+      K2: 'อนุบาล 2',
+      K3: 'อนุบาล 3',
+      P1: 'ประถม 1',
+      P2: 'ประถม 2',
+      P3: 'ประถม 3',
+      P4: 'ประถม 4',
+      P5: 'ประถม 5',
+      P6: 'ประถม 6',
+      M1: 'มัธยม 1',
+      M2: 'มัธยม 2',
+      M3: 'มัธยม 3',
+      M4: 'มัธยม 4',
+      M5: 'มัธยม 5',
+      M6: 'มัธยม 6',
     };
     return gradeMap[grade] || grade;
   };
@@ -102,15 +115,18 @@ export default function PlayPage() {
     setQuestionNumber(1);
     setScore(0);
     setAnswers([]);
-    setGameStartTime(Date.now());
+    setGameStartTime(Date.now()); // บันทึกเวลาเริ่มเกม
     generateNewQuestion();
   };
 
   // Generate new question
   const generateNewQuestion = () => {
     if (!user) return;
+    
+    // Check if playing specific level
     const forceLevel = localStorage.getItem('forceLevel');
     const levelToPlay = forceLevel ? parseInt(forceLevel) : user.level;
+    
     const question = generateQuestion(user.grade, levelToPlay);
     setCurrentQuestion(question);
     setStartTime(Date.now());
@@ -123,8 +139,10 @@ export default function PlayPage() {
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
     const isCorrect = userAnswer === currentQuestion.answer;
     
+    // Play sound effect
     playSound(isCorrect ? 'correct' : 'incorrect');
     
+    // Save answer
     const newAnswers = [...answers, {
       question: currentQuestion,
       userAnswer,
@@ -133,17 +151,24 @@ export default function PlayPage() {
     }];
     setAnswers(newAnswers);
     
+    // Update score
     if (isCorrect) {
       setScore(score + 1);
     }
     
+    // Check if this was the last question
     if (questionNumber === totalQuestions) {
+      // This is the last question - show processing animation
       setGameState('processing');
+      
+      // End game after delay
       setTimeout(() => {
+        // Use the updated score
         const finalScore = isCorrect ? score + 1 : score;
         endGame(finalScore);
       }, 2000);
     } else {
+      // Not the last question - continue to next
       setQuestionNumber(questionNumber + 1);
       generateNewQuestion();
     }
@@ -151,10 +176,12 @@ export default function PlayPage() {
 
   // End game
   const endGame = async (finalScore?: number) => {
+    // ใช้คะแนนที่ส่งมา หรือใช้จาก state
     const actualScore = finalScore !== undefined ? finalScore : score;
     const percentage = Math.round((actualScore / totalQuestions) * 100);
     const levelChange = calculateLevelChange(percentage);
     
+    // Play appropriate sound
     if (levelChange === 'increase') {
       playSound('levelUp');
     } else if (levelChange === 'decrease') {
@@ -163,20 +190,24 @@ export default function PlayPage() {
       playSound('gameEnd');
     }
     
+    // Save game session to Firebase
     if (user) {
       try {
+        // คำนวณความแตกต่างของคะแนน (ระบบ high score)
         const { scoreDiff, isNewHighScore, oldHighScore } = await calculateScoreDifference(
           user.id,
           user.level,
           actualScore
         );
         
+        // เก็บข้อมูล high score
         setHighScoreInfo({
           isNew: isNewHighScore,
           oldScore: oldHighScore,
           scoreDiff: scoreDiff
         });
         
+        // คำนวณ level ใหม่
         let newLevel = user.level;
         if (levelChange === 'increase' && user.level < 100) {
           newLevel = user.level + 1;
@@ -184,13 +215,16 @@ export default function PlayPage() {
           newLevel = user.level - 1;
         }
         
+        // คำนวณ EXP (ตอบถูก 1 ข้อ = 10 EXP + bonus)
         const baseExp = actualScore * 10;
         const bonusExp = percentage >= 85 ? 50 : percentage >= 70 ? 30 : 0;
-        const highScoreBonus = isNewHighScore ? 100 : 0;
+        const highScoreBonus = isNewHighScore ? 100 : 0; // โบนัสพิเศษถ้าทำ high score ใหม่
         const totalExp = baseExp + bonusExp + highScoreBonus;
         
+        // คำนวณคะแนนรวมที่ถูกต้อง (เพิ่มเฉพาะส่วนต่าง)
         const newTotalScore = user.totalScore + scoreDiff;
         
+        // อัปเดต level scores
         const levelScores = user.levelScores || {};
         const levelKey = user.level.toString();
         levelScores[levelKey] = {
@@ -200,6 +234,7 @@ export default function PlayPage() {
           playCount: (levelScores[levelKey]?.playCount || 0) + 1
         };
         
+        // อัปเดต user data
         await updateUserGameData(user.id, {
           level: newLevel,
           totalScore: newTotalScore,
@@ -208,6 +243,7 @@ export default function PlayPage() {
           levelScores: levelScores
         });
         
+        // อัปเดต local state
         setUser({
           ...user,
           level: newLevel,
@@ -216,10 +252,13 @@ export default function PlayPage() {
           levelScores: levelScores
         });
         
+        // อัปเดต temp score ให้ตรงกับที่บันทึก
         setTempTotalScore(newTotalScore);
         
+        // คำนวณเวลาที่ใช้
         const timeSpent = Math.floor((Date.now() - gameStartTime) / 1000);
         
+        // Redirect ไปหน้า summary พร้อมข้อมูล
         const params = new URLSearchParams({
           score: actualScore.toString(),
           total: totalQuestions.toString(),
@@ -239,6 +278,41 @@ export default function PlayPage() {
       } catch (error) {
         console.error('Error saving game data:', error);
       }
+    }
+  };
+
+  // Calculate score percentage
+  const getScorePercentage = () => {
+    return Math.round((score / totalQuestions) * 100);
+  };
+
+  // Get level change message using config
+  const getLevelChangeMessage = () => {
+    const percentage = getScorePercentage();
+    const levelChange = calculateLevelChange(percentage);
+    
+    switch (levelChange) {
+      case 'decrease':
+        return { 
+          type: 'down', 
+          message: 'ระดับลดลง', 
+          icon: <TrendingDown className="w-6 h-6" />,
+          color: 'text-red-400'
+        };
+      case 'increase':
+        return { 
+          type: 'up', 
+          message: 'ระดับเพิ่มขึ้น', 
+          icon: <TrendingUp className="w-6 h-6" />,
+          color: 'text-green-400'
+        };
+      default:
+        return { 
+          type: 'same', 
+          message: 'คงระดับเดิม', 
+          icon: '➡️',
+          color: 'text-orange-400'
+        };
     }
   };
 
@@ -265,15 +339,15 @@ export default function PlayPage() {
   }
 
   return (
-    <div className="h-screen bg-metaverse-black flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-metaverse-black">
       {/* Background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
       </div>
 
-      {/* Floating particles - แสดงเฉพาะบน desktop */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none hidden md:block">
+      {/* Floating particles */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[...Array(20)].map((_, i) => (
           <motion.div
             key={i}
@@ -297,241 +371,261 @@ export default function PlayPage() {
         ))}
       </div>
 
-      {/* Header */}
       {user && <GameHeader user={{ ...user, totalScore: tempTotalScore }} />}
       
-      {/* Main Content - ปรับให้เต็มพื้นที่ที่เหลือ */}
-      <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-2 md:py-4">
-        <div className="w-full max-w-6xl">
-          <AnimatePresence mode="wait">
-            {/* Ready State - ปรับขนาดสำหรับ mobile */}
-            {gameState === 'ready' && (
-              <motion.div
-                key="ready"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="flex flex-col items-center justify-center"
-              >
-                {/* Main Game Card - ปรับ padding และขนาด */}
-                <div className="glass-dark rounded-2xl md:rounded-3xl shadow-2xl p-4 md:p-8 border border-metaverse-purple/30 mb-4 md:mb-6 w-full">
-                  <motion.div
-                    animate={{ 
-                      rotate: [0, 5, -5, 0],
-                      scale: [1, 1.05, 1],
-                    }}
-                    transition={{ 
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                    className="inline-block mb-3 md:mb-6"
-                  >
-                    <Sparkles className="w-12 h-12 md:w-20 md:h-20 text-metaverse-purple filter drop-shadow-[0_0_30px_rgba(147,51,234,0.5)]" />
-                  </motion.div>
-                  
-                  <h1 className="text-2xl md:text-4xl font-bold text-white mb-2 md:mb-4 text-center">
-                    พร้อมเริ่มการผจญภัยหรือยัง?
-                  </h1>
-                  
-                  <div className="mb-4 md:mb-6 space-y-1 text-center">
-                    <p className="text-base md:text-xl text-white/80">
-                      <span className="font-medium">ระดับชั้น:</span>{' '}
-                      <span className="text-metaverse-pink">{getGradeDisplayName(user?.grade || '')}</span>
-                    </p>
-                    <p className="text-base md:text-xl text-white/80">
-                      <span className="font-bold text-lg md:text-2xl text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
-                        Level {user?.level}
-                      </span>{' '}
-                      <span className="text-sm md:text-base text-white/60 block md:inline">
-                        {user && getLevelDescription(user.grade, user.level)}
-                      </span>
-                    </p>
-                    <p className="text-base md:text-xl text-white/80">
-                      <span className="font-medium">จำนวน:</span>{' '}
-                      <span className="text-metaverse-glow">{totalQuestions} ข้อ</span>
-                    </p>
-                  </div>
-                  <div className="text-center">
-                    <motion.button
-                      onClick={startGame}
-                      onMouseDown={() => playSound('click')}
-                      className="px-8 md:px-12 py-4 md:py-6 metaverse-button text-white font-bold text-lg md:text-2xl rounded-full shadow-lg hover:shadow-xl relative overflow-hidden"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <span className="relative z-10 flex items-center gap-2 md:gap-3">
-                        <Rocket className="w-5 h-5 md:w-7 md:h-7" />
-                        เริ่มเลย!
-                      </span>
-                    </motion.button>
-                  </div>
-                </div>
-
-                {/* Quick Menu Grid - แสดงแบบ compact บน mobile */}
-                <div className="grid grid-cols-3 gap-2 md:gap-4 w-full">
-                  {/* Ranking Card */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    onClick={() => router.push('/ranking')}
-                    className="glass-dark rounded-xl p-3 md:p-4 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group text-center"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="p-2 bg-gradient-to-br from-yellow-400/20 to-orange-400/20 rounded-lg group-hover:scale-110 transition w-fit mx-auto mb-2">
-                      <Trophy className="w-6 h-6 md:w-8 md:h-8 text-yellow-400" />
-                    </div>
-                    <h3 className="text-xs md:text-sm font-bold text-white">อันดับ</h3>
-                  </motion.div>
-
-                  {/* High Score Card */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    onClick={() => router.push('/highscores')}
-                    className="glass-dark rounded-xl p-3 md:p-4 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group text-center"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="p-2 bg-gradient-to-br from-metaverse-purple/20 to-metaverse-pink/20 rounded-lg group-hover:scale-110 transition w-fit mx-auto mb-2">
-                      <Star className="w-6 h-6 md:w-8 md:h-8 text-metaverse-purple" />
-                    </div>
-                    <h3 className="text-xs md:text-sm font-bold text-white">คะแนนสูงสุด</h3>
-                  </motion.div>
-
-                  {/* Profile Card */}
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    onClick={() => router.push('/profile')}
-                    className="glass-dark rounded-xl p-3 md:p-4 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group text-center"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="p-2 bg-gradient-to-br from-metaverse-red/20 to-metaverse-darkRed/20 rounded-lg group-hover:scale-110 transition w-fit mx-auto mb-2">
-                      <Settings className="w-6 h-6 md:w-8 md:h-8 text-metaverse-red" />
-                    </div>
-                    <h3 className="text-xs md:text-sm font-bold text-white">โปรไฟล์</h3>
-                  </motion.div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Playing State - ปรับขนาดสำหรับ mobile */}
-            {gameState === 'playing' && currentQuestion && (
-              <motion.div
-                key="playing"
-                initial={{ opacity: 0, x: 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -50 }}
-                className="h-full flex flex-col"
-              >
-                {/* Exit Button */}
-                <div className="flex justify-end mb-2">
-                  <motion.button
-                    onClick={() => setShowExitModal(true)}
-                    className="p-1.5 md:p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    title="ออกจากเกม"
-                  >
-                    <X className="w-5 h-5 md:w-6 md:h-6" />
-                  </motion.button>
-                </div>
-                
-                {/* ปรับ GameProgress ให้เล็กลง */}
-                <div className="mb-2 md:mb-4">
-                  <GameProgress 
-                    current={questionNumber} 
-                    total={totalQuestions}
-                    score={score}
-                  />
-                </div>
-                
-                {/* Question Display จะต้องปรับใน component นั้นด้วย */}
-                <div className="flex-1 flex items-center">
-                  <QuestionDisplay
-                    question={currentQuestion}
-                    questionNumber={questionNumber}
-                    onAnswer={handleAnswer}
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            {/* Processing State */}
-            {gameState === 'processing' && (
-              <motion.div
-                key="processing"
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                className="flex flex-col items-center justify-center"
-              >
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-6xl">
+        <AnimatePresence mode="wait">
+          {/* Ready State */}
+          {gameState === 'ready' && (
+            <motion.div
+              key="ready"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              {/* Main Game Card */}
+              <div className="glass-dark rounded-3xl shadow-2xl p-12 border border-metaverse-purple/30 mb-8">
                 <motion.div
                   animate={{ 
-                    rotate: [0, -10, 10, -10, 0],
-                    scale: [1, 1.1, 0.9, 1.1, 1],
-                    y: [0, -20, 0, -10, 0]
+                    rotate: [0, 5, -5, 0],
+                    scale: [1, 1.05, 1],
                   }}
                   transition={{ 
-                    duration: 2,
+                    duration: 4,
                     repeat: Infinity,
                     ease: "easeInOut"
                   }}
-                  className="mb-6 md:mb-8"
+                  className="inline-block mb-6"
                 >
-                  <Pi className="w-20 h-20 md:w-32 md:h-32 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
+                  <Sparkles className="w-20 h-20 text-metaverse-purple filter drop-shadow-[0_0_30px_rgba(147,51,234,0.5)]" />
                 </motion.div>
                 
+                <h1 className="text-4xl font-bold text-white mb-4 text-center">
+                  พร้อมเริ่มการผจญภัยหรือยัง?
+                </h1>
+                
+                <div className="mb-8 space-y-2 text-center">
+                  <p className="text-xl text-white/80">
+                    <span className="font-medium">ระดับชั้น:</span>{' '}
+                    <span className="text-metaverse-pink">{getGradeDisplayName(user?.grade || '')}</span>
+                  </p>
+                  <p className="text-xl text-white/80">
+                    <span className="font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
+                      Level {user?.level}
+                    </span>{' '}
+                    <span className="text-white/60">
+                      {user && getLevelDescription(user.grade, user.level)}
+                    </span>
+                  </p>
+                  <p className="text-xl text-white/80">
+                    <span className="font-medium">จำนวน:</span>{' '}
+                    <span className="text-metaverse-glow">{totalQuestions} ข้อ</span>
+                  </p>
+                </div>
+                <div className="text-center">
+                  <motion.button
+                    onClick={startGame}
+                    onMouseDown={() => playSound('click')}
+                    className="px-12 py-6 metaverse-button text-white font-bold text-2xl rounded-full shadow-lg hover:shadow-xl relative overflow-hidden"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <span className="relative z-10 flex items-center gap-3">
+                      <Rocket className="w-7 h-7" />
+                      เริ่มเลย!
+                    </span>
+                  </motion.button>
+                </div>
+              </div>
+
+              {/* Quick Menu Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Ranking Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  onClick={() => router.push('/ranking')}
+                  className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-gradient-to-br from-yellow-400/20 to-orange-400/20 rounded-xl group-hover:scale-110 transition">
+                      <Trophy className="w-8 h-8 text-yellow-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-2">อันดับคะแนน</h3>
+                      <p className="text-white/60 text-sm mb-3">ดูอันดับคะแนนในระดับชั้นของคุณ</p>
+                      <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
+                        <span>ดูอันดับ</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* High Score Card */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  className="text-center"
+                  onClick={() => router.push('/highscores')}
+                  className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-3 md:mb-4">
-                    กำลังคำนวณผล...
-                  </h2>
-                  <div className="flex justify-center gap-2">
-                    {[0, 1, 2].map((i) => (
-                      <motion.div
-                        key={i}
-                        className="w-3 h-3 bg-metaverse-purple rounded-full"
-                        animate={{
-                          opacity: [0.3, 1, 0.3],
-                          scale: [0.8, 1.2, 0.8],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          delay: i * 0.2,
-                        }}
-                      />
-                    ))}
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-gradient-to-br from-metaverse-purple/20 to-metaverse-pink/20 rounded-xl group-hover:scale-110 transition">
+                      <Star className="w-8 h-8 text-metaverse-purple" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-2">คะแนนสูงสุด</h3>
+                      <p className="text-white/60 text-sm mb-3">
+                        {user?.levelScores && Object.keys(user.levelScores).length > 0 
+                          ? `เล่นแล้ว ${Object.keys(user.levelScores).length} Level`
+                          : 'ยังไม่มีประวัติ'
+                        }
+                      </p>
+                      <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
+                        <span>ดูทั้งหมด</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </div>
                   </div>
                 </motion.div>
+
+                {/* Profile Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  onClick={() => router.push('/profile')}
+                  className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-gradient-to-br from-metaverse-red/20 to-metaverse-darkRed/20 rounded-xl group-hover:scale-110 transition">
+                      <Settings className="w-8 h-8 text-metaverse-red" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-2">โปรไฟล์</h3>
+                      <p className="text-white/60 text-sm mb-3">แก้ไขข้อมูลส่วนตัวและดูความก้าวหน้า</p>
+                      <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
+                        <span>จัดการโปรไฟล์</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Playing State */}
+          {gameState === 'playing' && currentQuestion && (
+            <motion.div
+              key="playing"
+              initial={{ opacity: 0, x: 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -50 }}
+            >
+              {/* Exit Button */}
+              <div className="flex justify-end mb-4">
+                <motion.button
+                  onClick={() => setShowExitModal(true)}
+                  className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  title="ออกจากเกม"
+                >
+                  <X className="w-6 h-6" />
+                </motion.button>
+              </div>
+              
+              <GameProgress 
+                current={questionNumber} 
+                total={totalQuestions}
+                score={score}
+              />
+              
+              <QuestionDisplay
+                question={currentQuestion}
+                questionNumber={questionNumber}
+                onAnswer={handleAnswer}
+              />
+            </motion.div>
+          )}
+
+          {/* Processing State */}
+          {gameState === 'processing' && (
+            <motion.div
+              key="processing"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="flex flex-col items-center justify-center min-h-[400px]"
+            >
+              <motion.div
+                animate={{ 
+                  rotate: [0, -10, 10, -10, 0],
+                  scale: [1, 1.1, 0.9, 1.1, 1],
+                  y: [0, -20, 0, -10, 0]
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+                className="mb-8"
+              >
+                <Pi className="w-32 h-32 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-center"
+              >
+                <h2 className="text-3xl font-bold text-white mb-4">
+                  กำลังคำนวณผล...
+                </h2>
+                <div className="flex justify-center gap-2">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-3 h-3 bg-metaverse-purple rounded-full"
+                      animate={{
+                        opacity: [0.3, 1, 0.3],
+                        scale: [0.8, 1.2, 0.8],
+                      }}
+                      transition={{
+                        duration: 1.5,
+                        repeat: Infinity,
+                        delay: i * 0.2,
+                      }}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Exit Confirmation Modal - ปรับขนาดสำหรับ mobile */}
+      {/* Exit Confirmation Modal */}
       {showExitModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="glass-dark rounded-2xl md:rounded-3xl p-6 md:p-8 max-w-md w-full border border-metaverse-purple/30"
+            className="glass-dark rounded-3xl p-8 max-w-md w-full border border-metaverse-purple/30"
           >
             {/* Warning Icon */}
             <motion.div
-              className="text-center mb-3 md:mb-4"
+              className="text-6xl text-center mb-4"
               animate={{ 
                 rotate: [0, -10, 10, -10, 0],
               }}
@@ -539,29 +633,29 @@ export default function PlayPage() {
                 duration: 0.5,
               }}
             >
-              <AlertTriangle className="w-16 h-16 md:w-20 md:h-20 text-orange-400 mx-auto filter drop-shadow-[0_0_20px_rgba(251,146,60,0.5)]" />
+              <AlertTriangle className="w-20 h-20 text-orange-400 mx-auto filter drop-shadow-[0_0_20px_rgba(251,146,60,0.5)]" />
             </motion.div>
             
-            <h3 className="text-xl md:text-2xl font-bold text-white text-center mb-3 md:mb-4">
+            <h3 className="text-2xl font-bold text-white text-center mb-4">
               ต้องการออกจากเกมจริงหรือไม่?
             </h3>
             
-            <div className="glass bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 md:p-4 mb-4 md:mb-6">
-              <p className="text-orange-400 text-center text-sm md:text-base">
+            <div className="glass bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-6">
+              <p className="text-orange-400 text-center">
                 ⚠️ คำเตือน: คะแนนที่ทำมาในเกมนี้จะถูกยกเลิกทั้งหมด
               </p>
-              <p className="text-white/60 text-xs md:text-sm text-center mt-2">
+              <p className="text-white/60 text-sm text-center mt-2">
                 คุณตอบถูกแล้ว {score} ข้อ จากทั้งหมด {questionNumber} ข้อที่ทำ
               </p>
             </div>
             
-            <div className="flex gap-3 md:gap-4">
+            <div className="flex gap-4">
               <motion.button
                 onClick={() => {
                   setShowExitModal(false);
                   playSound('click');
                 }}
-                className="flex-1 py-2.5 md:py-3 glass border border-metaverse-purple/50 text-white font-bold rounded-xl hover:bg-white/10 transition"
+                className="flex-1 py-3 glass border border-metaverse-purple/50 text-white font-bold rounded-xl hover:bg-white/10 transition"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -571,16 +665,20 @@ export default function PlayPage() {
               <motion.button
                 onClick={() => {
                   playSound('click');
+                  // รีเซ็ตคะแนนรวมชั่วคราว
                   setTempTotalScore(user?.totalScore || 0);
+                  // Clear any forced level
                   localStorage.removeItem('forceLevel');
+                  // กลับหน้าหลัก
                   router.push('/play');
+                  // รีเซ็ต state
                   setGameState('ready');
                   setScore(0);
                   setQuestionNumber(0);
                   setAnswers([]);
                   setShowExitModal(false);
                 }}
-                className="flex-1 py-2.5 md:py-3 bg-red-500/20 border border-red-500/50 text-red-400 font-bold rounded-xl hover:bg-red-500/30 transition"
+                className="flex-1 py-3 bg-red-500/20 border border-red-500/50 text-red-400 font-bold rounded-xl hover:bg-red-500/30 transition"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
