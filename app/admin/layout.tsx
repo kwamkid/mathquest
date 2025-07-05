@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pi } from 'lucide-react';
+import { Pi, LayoutDashboard, Ticket, Users, ChartBar, Menu, X as XIcon } from 'lucide-react';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -46,10 +46,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
   // Navigation items
   const navItems = [
-    { href: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-    { href: '/admin/codes', label: 'Registration Codes', icon: '🎫' },
-    { href: '/admin/students', label: 'นักเรียน', icon: '👥' },
-    { href: '/admin/reports', label: 'รายงาน', icon: '📈' },
+    { href: '/admin/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
+    { href: '/admin/codes', label: 'Registration Codes', icon: 'Ticket' },
+    { href: '/admin/students', label: 'นักเรียน', icon: 'Users' },
+    { href: '/admin/reports', label: 'รายงาน', icon: 'ChartBar' },
   ];
 
   if (loading) {
@@ -79,24 +79,24 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       
       {/* Header */}
       <header className="relative z-40 glass-dark border-b border-metaverse-purple/30">
-        <div className="container mx-auto px-4">
+        <div className="px-4">
           <div className="flex items-center justify-between h-16">
-            {/* Mobile Menu Toggle */}
-            <button
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="lg:hidden text-white p-2"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isSidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-              </svg>
-            </button>
+            <div className="flex items-center">
+              {/* Mobile Menu Toggle */}
+              <button
+                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                className="lg:hidden text-white p-2 mr-3"
+              >
+                {isSidebarOpen ? <XIcon className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
 
-            {/* Logo */}
-            <div className="flex items-center gap-3">
-              <Pi className="w-10 h-10 text-metaverse-purple filter drop-shadow-[0_0_20px_rgba(147,51,234,0.5)]" />
-              <div className="hidden sm:block">
-                <h1 className="font-bold text-white">MathQuest Admin</h1>
-                <p className="text-xs text-white/60">Administration Portal</p>
+              {/* Logo */}
+              <div className="flex items-center gap-3">
+                <Pi className="w-10 h-10 text-metaverse-purple filter drop-shadow-[0_0_20px_rgba(147,51,234,0.5)]" />
+                <div className="hidden sm:block">
+                  <h1 className="font-bold text-white">MathQuest Admin</h1>
+                  <p className="text-xs text-white/60">Administration Portal</p>
+                </div>
               </div>
             </div>
 
@@ -131,7 +131,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                           : 'text-white/70 hover:bg-white/10 hover:text-white'
                       }`}
                     >
-                      <span className="text-xl">{item.icon}</span>
+                      {item.icon === 'LayoutDashboard' && <LayoutDashboard className="w-5 h-5" />}
+                      {item.icon === 'Ticket' && <Ticket className="w-5 h-5" />}
+                      {item.icon === 'Users' && <Users className="w-5 h-5" />}
+                      {item.icon === 'ChartBar' && <ChartBar className="w-5 h-5" />}
                       <span className="font-medium">{item.label}</span>
                     </Link>
                   </li>
@@ -197,7 +200,10 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                                 : 'text-white/70 hover:bg-white/10 hover:text-white'
                             }`}
                           >
-                            <span className="text-xl">{item.icon}</span>
+                            {item.icon === 'LayoutDashboard' && <LayoutDashboard className="w-5 h-5" />}
+                            {item.icon === 'Ticket' && <Ticket className="w-5 h-5" />}
+                            {item.icon === 'Users' && <Users className="w-5 h-5" />}
+                            {item.icon === 'ChartBar' && <ChartBar className="w-5 h-5" />}
                             <span className="font-medium">{item.label}</span>
                           </Link>
                         </li>

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 
 export default function NewCodePage() {
   const router = useRouter();
@@ -105,26 +106,27 @@ export default function NewCodePage() {
         <div className="flex items-center gap-4 mb-4">
           <Link
             href="/admin/codes"
-            className="text-gray-500 hover:text-gray-700"
+            className="text-white/60 hover:text-white transition flex items-center gap-2"
           >
-            ← กลับ
+            <ArrowLeft className="w-5 h-5" />
+            กลับ
           </Link>
         </div>
-        <h1 className="text-3xl font-bold text-gray-800">สร้าง Registration Code ใหม่</h1>
-        <p className="text-gray-600 mt-2">สร้างรหัสสำหรับให้นักเรียนใช้สมัครสมาชิก</p>
+        <h1 className="text-3xl font-bold text-white">สร้าง Registration Code ใหม่</h1>
+        <p className="text-white/60 mt-2">สร้างรหัสสำหรับให้นักเรียนใช้สมัครสมาชิก</p>
       </div>
 
       {/* Form */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-xl shadow-md p-8"
+        className="glass-dark rounded-2xl shadow-xl p-8 border border-metaverse-purple/30"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Code */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Registration Code <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-white/80 mb-2">
+              Registration Code <span className="text-red-400">*</span>
             </label>
             <div className="flex gap-2">
               <input
@@ -132,8 +134,8 @@ export default function NewCodePage() {
                 name="code"
                 value={formData.code}
                 onChange={handleInputChange}
-                className={`flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${
-                  errors.code ? 'border-red-500' : 'border-gray-300'
+                className={`flex-1 px-4 py-3 bg-white/10 border rounded-lg focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
+                  errors.code ? 'border-red-500' : 'border-metaverse-purple/30'
                 }`}
                 placeholder="เช่น SCHOOL2024"
                 required
@@ -141,19 +143,20 @@ export default function NewCodePage() {
               <button
                 type="button"
                 onClick={generateRandomCode}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                className="px-4 py-3 glass bg-metaverse-purple/20 text-white rounded-lg hover:bg-metaverse-purple/30 transition flex items-center gap-2 border border-metaverse-purple/30"
               >
-                🎲 สุ่ม Code
+                <Sparkles className="w-5 h-5" />
+                สุ่ม Code
               </button>
             </div>
             {errors.code && (
-              <p className="text-red-500 text-sm mt-1">{errors.code}</p>
+              <p className="text-red-400 text-sm mt-1">{errors.code}</p>
             )}
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white/80 mb-2">
               คำอธิบาย
             </label>
             <textarea
@@ -161,14 +164,14 @@ export default function NewCodePage() {
               value={formData.description}
               onChange={handleInputChange}
               rows={3}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+              className="w-full px-4 py-3 bg-white/10 border border-metaverse-purple/30 rounded-lg focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40"
               placeholder="เช่น สำหรับโรงเรียน ABC"
             />
           </div>
 
           {/* Max Uses */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white/80 mb-2">
               จำนวนครั้งที่ใช้ได้
             </label>
             <input
@@ -176,23 +179,23 @@ export default function NewCodePage() {
               name="maxUses"
               value={formData.maxUses}
               onChange={handleInputChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${
-                errors.maxUses ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-4 py-3 bg-white/10 border rounded-lg focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
+                errors.maxUses ? 'border-red-500' : 'border-metaverse-purple/30'
               }`}
               placeholder="ไม่จำกัด"
               min="1"
             />
             {errors.maxUses && (
-              <p className="text-red-500 text-sm mt-1">{errors.maxUses}</p>
+              <p className="text-red-400 text-sm mt-1">{errors.maxUses}</p>
             )}
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-white/50 text-sm mt-1">
               เว้นว่างหากไม่ต้องการจำกัดจำนวน
             </p>
           </div>
 
           {/* Expiry Date */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-white/80 mb-2">
               วันหมดอายุ
             </label>
             <input
@@ -200,41 +203,76 @@ export default function NewCodePage() {
               name="expiresAt"
               value={formData.expiresAt}
               onChange={handleInputChange}
-              className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 ${
-                errors.expiresAt ? 'border-red-500' : 'border-gray-300'
+              className={`w-full px-4 py-3 bg-white/10 border rounded-lg focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
+                errors.expiresAt ? 'border-red-500' : 'border-metaverse-purple/30'
               }`}
               min={new Date().toISOString().split('T')[0]}
             />
             {errors.expiresAt && (
-              <p className="text-red-500 text-sm mt-1">{errors.expiresAt}</p>
+              <p className="text-red-400 text-sm mt-1">{errors.expiresAt}</p>
             )}
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-white/50 text-sm mt-1">
               เว้นว่างหากไม่ต้องการกำหนดวันหมดอายุ
             </p>
           </div>
 
           {/* Summary */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-700 mb-2">สรุป</h3>
-            <ul className="space-y-1 text-sm text-gray-600">
-              <li>• Code: <code className="bg-gray-200 px-2 py-1 rounded">{formData.code || '-'}</code></li>
-              <li>• จำนวนครั้งที่ใช้ได้: {formData.maxUses || 'ไม่จำกัด'}</li>
-              <li>• วันหมดอายุ: {formData.expiresAt ? new Date(formData.expiresAt).toLocaleDateString('th-TH') : 'ไม่มี'}</li>
+          <div className="glass bg-metaverse-purple/10 rounded-xl p-5 border border-metaverse-purple/30">
+            <h3 className="font-semibold text-white mb-3 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-metaverse-purple" />
+              สรุปข้อมูล
+            </h3>
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-center gap-2 text-white/80">
+                <span className="text-metaverse-purple">•</span>
+                <span>Code:</span>
+                <code className="bg-metaverse-purple/20 px-3 py-1 rounded text-white font-mono">
+                  {formData.code || '-'}
+                </code>
+              </li>
+              <li className="flex items-center gap-2 text-white/80">
+                <span className="text-metaverse-purple">•</span>
+                <span>จำนวนครั้งที่ใช้ได้:</span>
+                <span className="text-metaverse-pink font-semibold">
+                  {formData.maxUses || 'ไม่จำกัด'}
+                </span>
+              </li>
+              <li className="flex items-center gap-2 text-white/80">
+                <span className="text-metaverse-purple">•</span>
+                <span>วันหมดอายุ:</span>
+                <span className="text-metaverse-pink font-semibold">
+                  {formData.expiresAt ? new Date(formData.expiresAt).toLocaleDateString('th-TH') : 'ไม่มี'}
+                </span>
+              </li>
             </ul>
           </div>
 
           {/* Buttons */}
-          <div className="flex gap-4">
-            <button
+          <div className="flex gap-4 pt-2">
+            <motion.button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 text-white py-3 rounded-lg font-medium hover:shadow-lg transition disabled:opacity-50"
+              className="flex-1 metaverse-button text-white py-3 rounded-lg font-medium hover:shadow-lg transition disabled:opacity-50"
+              whileHover={{ scale: loading ? 1 : 1.02 }}
+              whileTap={{ scale: loading ? 1 : 0.98 }}
             >
-              {loading ? 'กำลังสร้าง...' : 'สร้าง Registration Code'}
-            </button>
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <motion.span
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                  >
+                    ⏳
+                  </motion.span>
+                  กำลังสร้าง...
+                </span>
+              ) : (
+                'สร้าง Registration Code'
+              )}
+            </motion.button>
             <Link
               href="/admin/codes"
-              className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-200 transition text-center"
+              className="flex-1 glass border border-metaverse-purple/30 text-white py-3 rounded-lg font-medium hover:bg-white/10 transition text-center"
             >
               ยกเลิก
             </Link>
