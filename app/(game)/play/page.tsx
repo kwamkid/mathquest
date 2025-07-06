@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/firebase/auth';
-import { updateUserGameData, calculateScoreDifference } from '@/lib/firebase/game';
+import { updateUserGameData, calculateScoreDifference, updatePlayStreak, calculateExpGained } from '@/lib/firebase/game';
 import { User, Question } from '@/types';
 import QuestionDisplay from '@/components/game/QuestionDisplay';
 import GameHeader from '@/components/game/GameHeader';
@@ -193,6 +193,9 @@ export default function PlayPage() {
     // Save game session to Firebase
     if (user) {
       try {
+        // Update play streak first
+        const { playStreak, isFirstToday } = await updatePlayStreak(user.id);
+        
         // คำนวณความแตกต่างของคะแนน (ระบบ high score)
         const { scoreDiff, isNewHighScore, oldHighScore } = await calculateScoreDifference(
           user.id,
@@ -215,11 +218,19 @@ export default function PlayPage() {
           newLevel = user.level - 1;
         }
         
-        // คำนวณ EXP (ตอบถูก 1 ข้อ = 10 EXP + bonus)
-        const baseExp = actualScore * 10;
-        const bonusExp = percentage >= 85 ? 50 : percentage >= 70 ? 30 : 0;
-        const highScoreBonus = isNewHighScore ? 100 : 0; // โบนัสพิเศษถ้าทำ high score ใหม่
-        const totalExp = baseExp + bonusExp + highScoreBonus;
+        // Get play count for this level
+        const playCount = (user.levelScores?.[user.level.toString()]?.playCount || 0) + 1;
+        
+        // Calculate EXP with new system
+        const expCalc = calculateExpGained(
+          actualScore,
+          totalQuestions,
+          percentage,
+          user.level,
+          playStreak,
+          isFirstToday,
+          playCount
+        );
         
         // คำนวณคะแนนรวมที่ถูกต้อง (เพิ่มเฉพาะส่วนต่าง)
         const newTotalScore = user.totalScore + scoreDiff;
@@ -231,16 +242,17 @@ export default function PlayPage() {
           level: user.level,
           highScore: Math.max(actualScore, oldHighScore),
           lastPlayed: new Date().toISOString(),
-          playCount: (levelScores[levelKey]?.playCount || 0) + 1
+          playCount: playCount
         };
         
         // อัปเดต user data
         await updateUserGameData(user.id, {
           level: newLevel,
           totalScore: newTotalScore,
-          experience: user.experience + totalExp,
+          experience: user.experience + expCalc.totalExp,
           lastPlayedAt: new Date().toISOString(),
-          levelScores: levelScores
+          levelScores: levelScores,
+          playStreak: playStreak
         });
         
         // อัปเดต local state
@@ -248,8 +260,9 @@ export default function PlayPage() {
           ...user,
           level: newLevel,
           totalScore: newTotalScore,
-          experience: user.experience + totalExp,
-          levelScores: levelScores
+          experience: user.experience + expCalc.totalExp,
+          levelScores: levelScores,
+          playStreak: playStreak
         });
         
         // อัปเดต temp score ให้ตรงกับที่บันทึก
@@ -266,11 +279,15 @@ export default function PlayPage() {
           levelChange: levelChange,
           newLevel: newLevel.toString(),
           oldLevel: user.level.toString(),
-          exp: totalExp.toString(),
+          exp: expCalc.totalExp.toString(),
           highScore: isNewHighScore.toString(),
           oldHighScore: oldHighScore.toString(),
           scoreDiff: scoreDiff.toString(),
           time: timeSpent.toString(),
+          // เพิ่มข้อมูล EXP breakdown
+          expBreakdown: JSON.stringify(expCalc.breakdown),
+          playStreak: playStreak.toString(),
+          isFirstToday: isFirstToday.toString(),
         });
         
         router.push(`/summary?${params.toString()}`);

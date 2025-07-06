@@ -2,14 +2,14 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser } from '@/lib/firebase/auth';
 import { User } from '@/types';
 import { LEVEL_PROGRESSION } from '@/lib/game/config';
 import { 
   Trophy, TrendingUp, TrendingDown, Star, Target, Clock, 
-  Zap, Award, ChevronRight, RotateCcw, Home, Rocket, Pi
+  Zap, Award, ChevronRight, RotateCcw, Home, Rocket, Pi, Info, X, Gift
 } from 'lucide-react';
 
 interface GameSummaryData {
@@ -24,6 +24,9 @@ interface GameSummaryData {
   oldHighScore: number;
   scoreDiff: number;
   timeSpent: number;
+  expBreakdown?: any[];
+  playStreak?: number;
+  isFirstToday?: boolean;
 }
 
 // Loading component
@@ -56,6 +59,7 @@ function GameSummaryContent() {
   const [user, setUser] = useState<User | null>(null);
   const [summaryData, setSummaryData] = useState<GameSummaryData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showExpModal, setShowExpModal] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -84,6 +88,9 @@ function GameSummaryContent() {
         oldHighScore: parseInt(searchParams.get('oldHighScore') || '0'),
         scoreDiff: parseInt(searchParams.get('scoreDiff') || '0'),
         timeSpent: parseInt(searchParams.get('time') || '0'),
+        expBreakdown: searchParams.get('expBreakdown') ? JSON.parse(searchParams.get('expBreakdown') || '[]') : [],
+        playStreak: parseInt(searchParams.get('playStreak') || '0'),
+        isFirstToday: searchParams.get('isFirstToday') === 'true',
       };
 
       setSummaryData(data);
@@ -240,11 +247,25 @@ function GameSummaryContent() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
-              className="glass rounded-lg md:rounded-xl p-3 md:p-4 text-center border border-metaverse-purple/20"
+              className="glass rounded-lg md:rounded-xl p-3 md:p-4 text-center border border-metaverse-purple/20 relative cursor-pointer hover:border-yellow-400/50 transition-colors"
+              onClick={() => setShowExpModal(true)}
             >
               <Zap className="w-4 h-4 md:w-6 md:h-6 text-yellow-400 mx-auto mb-1 md:mb-2" />
               <p className="text-xl md:text-2xl font-bold text-white">+{summaryData.expGained}</p>
               <p className="text-xs md:text-sm text-white/60">EXP</p>
+              <motion.div
+                className="absolute -top-2 -right-2 bg-metaverse-purple rounded-full p-1 shadow-lg border-2 border-metaverse-black"
+                animate={{ 
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{ 
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut"
+                }}
+              >
+                <Info className="w-4 h-4 text-white" />
+              </motion.div>
             </motion.div>
 
             <motion.div
@@ -303,7 +324,7 @@ function GameSummaryContent() {
                 </div>
               </div>
               <div className="text-xs md:text-sm text-white/50 text-center sm:text-right">
-                <p>เกณฑ์: &gt;{LEVEL_PROGRESSION.INCREASE_THRESHOLD}% เพิ่มระดับ</p>
+                <p>เกณฑ์: ≥85% เพิ่มระดับ</p>
               </div>
             </div>
           </motion.div>
@@ -398,6 +419,160 @@ function GameSummaryContent() {
           )}
         </motion.div>
       </div>
+
+      {/* EXP Modal */}
+      <AnimatePresence>
+        {showExpModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowExpModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="glass-dark rounded-3xl p-6 md:p-8 max-w-lg w-full border border-metaverse-purple/30"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-gradient-to-br from-yellow-400/20 to-orange-400/20 rounded-xl">
+                    <Zap className="w-8 h-8 text-yellow-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-white">ระบบ EXP</h3>
+                    <p className="text-sm text-white/60">Experience Points</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowExpModal(false)}
+                  className="p-2 glass rounded-full hover:bg-white/10 transition"
+                >
+                  <X className="w-5 h-5 text-white/60" />
+                </button>
+              </div>
+
+              {/* EXP Breakdown */}
+              {summaryData.expBreakdown && summaryData.expBreakdown.length > 0 && (
+                <div className="space-y-3 mb-6">
+                  <h4 className="text-lg font-semibold text-white mb-3">คะแนนที่ได้รับ:</h4>
+                  {summaryData.expBreakdown.map((item, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="flex items-center justify-between glass rounded-xl p-3 border border-metaverse-purple/20"
+                    >
+                      <div>
+                        <p className="text-white font-medium">{item.label}</p>
+                        <p className="text-xs text-white/50">{item.description}</p>
+                      </div>
+                      <p className={`text-xl font-bold ${
+                        item.value < 0 ? 'text-red-400' : 'text-green-400'
+                      }`}>
+                        {item.value > 0 ? '+' : ''}{item.value}
+                      </p>
+                    </motion.div>
+                  ))}
+                  
+                  {/* Total */}
+                  <div className="pt-3 border-t border-metaverse-purple/20">
+                    <div className="flex items-center justify-between">
+                      <p className="text-lg font-bold text-white">รวมทั้งหมด</p>
+                      <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
+                        +{summaryData.expGained} EXP
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Play Streak Info */}
+              {summaryData.playStreak && (
+                <div className="glass bg-gradient-to-r from-metaverse-purple/10 to-metaverse-pink/10 rounded-xl p-4 mb-6 border border-metaverse-purple/30">
+                  <div className="flex items-center gap-3">
+                    <Trophy className="w-6 h-6 text-yellow-400" />
+                    <div>
+                      <p className="text-white font-medium">
+                        เล่นต่อเนื่อง {summaryData.playStreak} วัน!
+                      </p>
+                      <p className="text-sm text-white/60">
+                        เล่นทุกวันเพื่อรับโบนัส EXP สูงสุด 100 EXP/วัน
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* How to earn EXP */}
+              <div className="space-y-3 mb-6">
+                <h4 className="text-lg font-semibold text-white mb-3">วิธีรับ EXP:</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-start gap-2">
+                    <span className="text-metaverse-purple">•</span>
+                    <p className="text-white/80">
+                      <span className="font-medium">คะแนนพื้นฐาน:</span> 10-20 EXP ต่อข้อที่ถูก (เพิ่มตาม Level)
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-metaverse-purple">•</span>
+                    <p className="text-white/80">
+                      <span className="font-medium">โบนัสความสำเร็จ:</span> สูงสุด 100 EXP (Perfect Score)
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-metaverse-purple">•</span>
+                    <p className="text-white/80">
+                      <span className="font-medium">โบนัสวันแรก:</span> 50 EXP (เล่นครั้งแรกของวัน)
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-metaverse-purple">•</span>
+                    <p className="text-white/80">
+                      <span className="font-medium">โบนัสต่อเนื่อง:</span> 10-100 EXP (เล่นทุกวัน)
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-400">•</span>
+                    <p className="text-white/80">
+                      <span className="font-medium text-red-400">หักคะแนน:</span> -50% ถ้าเล่น Level เดิมเกิน 3 ครั้ง
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Future use */}
+              <div className="glass bg-gradient-to-r from-metaverse-purple/20 to-metaverse-pink/20 rounded-xl p-4 border border-metaverse-purple/30">
+                <div className="flex items-start gap-3">
+                  <Gift className="w-6 h-6 text-metaverse-purple mt-0.5" />
+                  <div>
+                    <p className="font-semibold text-white mb-1">นำ EXP ไปใช้ในอนาคต</p>
+                    <p className="text-sm text-white/70">
+                      สะสม EXP เพื่อแลกรางวัลพิเศษ เช่น ธีมใหม่, ตัวละครพิเศษ, 
+                      หรือไอเทมช่วยเล่นในอนาคต!
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Close button */}
+              <motion.button
+                onClick={() => setShowExpModal(false)}
+                className="w-full mt-6 py-3 metaverse-button text-white font-bold rounded-xl"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                เข้าใจแล้ว
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

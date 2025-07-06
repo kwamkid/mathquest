@@ -312,6 +312,7 @@ export const updateUserProfile = async (
       updateData.level = 1;
       // Optionally reset other grade-specific data
       updateData.experience = 0;
+      updateData.levelScores = {};  // ← เพิ่มบรรทัดนี้
     }
 
     // Remove undefined values

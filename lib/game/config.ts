@@ -429,7 +429,7 @@ export const getLevelConfig = (grade: string, level: number): LevelConfig | null
 export const LEVEL_PROGRESSION = {
   DECREASE_THRESHOLD: 50,  // < 50% = ลดระดับ
   MAINTAIN_THRESHOLD: 80,  // 50-80% = คงระดับเดิม  
-  INCREASE_THRESHOLD: 85,  // > 85% = เพิ่มระดับ
+  INCREASE_THRESHOLD: 84,  // > 84% = เพิ่มระดับ
 };
 
 // Calculate level change based on score percentage

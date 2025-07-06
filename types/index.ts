@@ -17,6 +17,8 @@ export interface User {
   createdAt: string;
   isActive: boolean;
   levelScores?: Record<string, LevelScore>; // เพิ่มฟิลด์นี้
+  playStreak?: number; // จำนวนวันที่เล่นต่อเนื่อง
+  lastPlayedAt?: string; // วันที่เล่นล่าสุด
 }
 
 export enum Grade {
@@ -116,4 +118,3 @@ export interface LevelScore {
   lastPlayed: string;
   playCount: number;
 }
-
