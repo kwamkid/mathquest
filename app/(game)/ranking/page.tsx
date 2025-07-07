@@ -13,13 +13,9 @@ import {
   Medal, 
   Crown, 
   ArrowLeft, 
-  TrendingUp,
   Users,
   Star,
-  Filter,
-  Award,
   ChevronDown,
-  Search,
   Zap
 } from 'lucide-react';
 
@@ -64,7 +60,7 @@ export default function RankingPage() {
   const [selectedGrade, setSelectedGrade] = useState<string>('');
   const [rankingType, setRankingType] = useState<'score' | 'exp'>('score');
   const [showGradeDropdown, setShowGradeDropdown] = useState(false);
-  const [searchingGrade, setSearchingGrade] = useState(false);
+  const [loadingRankings, setLoadingRankings] = useState(false);
 
   useEffect(() => {
     loadUserData();
@@ -95,18 +91,23 @@ export default function RankingPage() {
   };
 
   const loadRankings = async (grade: string, userId: string) => {
-    setSearchingGrade(true);
+    setLoadingRankings(true);
     try {
-      // Query users in the selected grade
-      const usersQuery = query(
-        collection(db, 'users'),
+      // Query ข้อมูลเฉพาะระดับชั้นที่เลือก
+      console.log('Loading rankings for grade:', grade);
+      
+      const usersRef = collection(db, 'users');
+      const q = query(
+        usersRef,
         where('grade', '==', grade),
         where('isActive', '==', true),
         orderBy(rankingType === 'score' ? 'totalScore' : 'experience', 'desc'),
-        limit(100)
+        limit(20) // จำกัดแค่ 20 อันดับแรก
       );
       
-      const snapshot = await getDocs(usersQuery);
+      const snapshot = await getDocs(q);
+      console.log('Found users:', snapshot.size);
+      
       const users: RankingUser[] = [];
       let currentUserRank = null;
       let currentUserInList = false;
@@ -135,19 +136,18 @@ export default function RankingPage() {
         }
       });
       
-      // If current user not in top 100 and viewing their own grade, calculate their rank
+      // ถ้า user ไม่อยู่ใน top 20 และดูระดับชั้นตัวเอง ให้คำนวณอันดับจริง
       if (!currentUserInList && grade === user?.grade && userId) {
         try {
-          // Get all users in the grade to calculate exact rank
-          const allUsersQuery = query(
-            collection(db, 'users'),
+          const countQuery = query(
+            usersRef,
             where('grade', '==', grade),
             where('isActive', '==', true),
             where(rankingType === 'score' ? 'totalScore' : 'experience', '>', 
                   rankingType === 'score' ? (user?.totalScore || 0) : (user?.experience || 0))
           );
           
-          const higherRankedUsers = await getDocs(allUsersQuery);
+          const higherRankedUsers = await getDocs(countQuery);
           currentUserRank = higherRankedUsers.size + 1;
         } catch (error) {
           console.error('Error calculating user rank:', error);
@@ -158,11 +158,10 @@ export default function RankingPage() {
       setUserRank(currentUserRank);
     } catch (error) {
       console.error('Error loading rankings:', error);
-      // Show empty state instead of error
       setRankings([]);
       setUserRank(null);
     } finally {
-      setSearchingGrade(false);
+      setLoadingRankings(false);
     }
   };
 
@@ -170,7 +169,7 @@ export default function RankingPage() {
   const handleGradeChange = (grade: string) => {
     setSelectedGrade(grade);
     setShowGradeDropdown(false);
-    setUserRank(null); // Reset user rank when changing grade
+    setUserRank(null);
   };
 
   // Get grade display name
@@ -183,25 +182,25 @@ export default function RankingPage() {
   const getRankMedal = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Crown className="w-8 h-8 text-yellow-400 filter drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]" />;
+        return <Crown className="w-10 h-10 text-yellow-400 filter drop-shadow-[0_0_15px_rgba(250,204,21,0.8)]" />;
       case 2:
-        return <Medal className="w-8 h-8 text-gray-300 filter drop-shadow-[0_0_10px_rgba(192,192,192,0.5)]" />;
+        return <Medal className="w-9 h-9 text-gray-300 filter drop-shadow-[0_0_15px_rgba(192,192,192,0.8)]" />;
       case 3:
-        return <Medal className="w-8 h-8 text-orange-400 filter drop-shadow-[0_0_10px_rgba(251,146,60,0.5)]" />;
+        return <Medal className="w-8 h-8 text-orange-400 filter drop-shadow-[0_0_15px_rgba(251,146,60,0.8)]" />;
       default:
-        return <span className="text-2xl font-bold text-white/60">#{rank}</span>;
+        return <span className="text-3xl font-bold text-white/80">#{rank}</span>;
     }
   };
 
-  // Get rank colors
+  // Get rank color
   const getRankColor = (rank: number) => {
     switch (rank) {
       case 1:
-        return 'from-yellow-400/20 to-orange-400/20 border-yellow-400/30';
+        return 'from-yellow-400/30 to-orange-400/20 border-yellow-400/50 shadow-[0_0_20px_rgba(250,204,21,0.3)]';
       case 2:
-        return 'from-gray-300/20 to-gray-400/20 border-gray-300/30';
+        return 'from-gray-300/30 to-gray-400/20 border-gray-300/50 shadow-[0_0_20px_rgba(192,192,192,0.3)]';
       case 3:
-        return 'from-orange-400/20 to-orange-500/20 border-orange-400/30';
+        return 'from-orange-400/30 to-orange-500/20 border-orange-400/50 shadow-[0_0_20px_rgba(251,146,60,0.3)]';
       default:
         return 'from-metaverse-purple/10 to-metaverse-pink/10 border-metaverse-purple/30';
     }
@@ -229,7 +228,7 @@ export default function RankingPage() {
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 max-w-4xl">
+      <div className="relative z-10 container mx-auto px-4 max-w-5xl">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -237,68 +236,69 @@ export default function RankingPage() {
           className="mb-8"
         >
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
+            {/* Left side - Back button, Title and Grade Selector */}
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => router.push('/play')}
                 className="p-2 glass rounded-full hover:bg-white/10 transition"
               >
                 <ArrowLeft className="w-5 h-5 text-white" />
               </button>
-              <div>
-                <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-                  <Trophy className="w-8 h-8 text-yellow-400" />
-                  อันดับคะแนน
-                </h1>
-                {/* Grade Selector */}
-                <div className="relative mt-2">
-                  <button
-                    onClick={() => setShowGradeDropdown(!showGradeDropdown)}
-                    className="flex items-center gap-2 text-white/80 hover:text-white transition glass px-3 py-1.5 rounded-lg"
-                  >
-                    <span>{getGradeDisplayName(selectedGrade)}</span>
-                    <ChevronDown className={`w-4 h-4 transition-transform ${showGradeDropdown ? 'rotate-180' : ''}`} />
-                  </button>
-                  
-                  {/* Grade Dropdown */}
-                  <AnimatePresence>
-                    {showGradeDropdown && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="absolute top-full mt-2 left-0 w-48 glass-dark rounded-xl border border-metaverse-purple/30 overflow-hidden z-50"
-                      >
-                        <div className="max-h-64 overflow-y-auto">
-                          {grades.map((grade) => (
-                            <button
-                              key={grade.value}
-                              onClick={() => handleGradeChange(grade.value)}
-                              className={`w-full px-4 py-2 text-left hover:bg-white/10 transition ${
-                                selectedGrade === grade.value 
-                                  ? 'bg-metaverse-purple/20 text-white' 
-                                  : 'text-white/70 hover:text-white'
-                              }`}
-                            >
-                              {grade.label}
-                              {grade.value === user?.grade && (
-                                <span className="text-xs text-metaverse-purple ml-2">(ชั้นของคุณ)</span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+              
+              <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center gap-2">
+                <Trophy className="w-6 h-6 md:w-8 md:h-8 text-yellow-400" />
+                อันดับคะแนน
+              </h1>
+              
+              {/* Grade Selector */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowGradeDropdown(!showGradeDropdown)}
+                  className="flex items-center gap-2 metaverse-button px-4 py-2 rounded-lg text-white font-medium"
+                >
+                  <span>{getGradeDisplayName(selectedGrade)}</span>
+                  <ChevronDown className={`w-4 h-4 transition-transform ${showGradeDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                
+                {/* Grade Dropdown */}
+                <AnimatePresence>
+                  {showGradeDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      className="absolute top-full mt-2 left-0 w-48 glass-dark rounded-xl border border-metaverse-purple/30 overflow-hidden z-50 shadow-xl"
+                    >
+                      <div className="max-h-64 overflow-y-auto">
+                        {grades.map((grade) => (
+                          <button
+                            key={grade.value}
+                            onClick={() => handleGradeChange(grade.value)}
+                            className={`w-full px-4 py-2.5 text-left hover:bg-white/10 transition flex items-center justify-between ${
+                              selectedGrade === grade.value 
+                                ? 'bg-metaverse-purple/20 text-white' 
+                                : 'text-white/70 hover:text-white'
+                            }`}
+                          >
+                            <span>{grade.label}</span>
+                            {grade.value === user?.grade && (
+                              <span className="text-xs text-metaverse-purple">(คุณ)</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
             
-            {/* User Rank - Only show if viewing own grade */}
+            {/* Right side - User Rank (Only show if viewing own grade) */}
             {userRank && selectedGrade === user?.grade && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="glass-dark rounded-2xl px-6 py-3 border border-metaverse-purple/30"
+                className="hidden md:block glass-dark rounded-2xl px-6 py-3 border border-metaverse-purple/30"
               >
                 <p className="text-sm text-white/60">อันดับของคุณ</p>
                 <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
@@ -308,20 +308,14 @@ export default function RankingPage() {
             )}
           </div>
 
-          {/* Info when viewing other grades */}
-          {selectedGrade !== user?.grade && (
+          {/* Mobile User Rank */}
+          {userRank && selectedGrade === user?.grade && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="glass bg-blue-500/10 rounded-lg p-3 border border-blue-500/30 text-sm"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="md:hidden glass-dark rounded-2xl px-4 py-2 border border-metaverse-purple/30 inline-block"
             >
-              <div className="flex items-center gap-2">
-                <Search className="w-4 h-4 text-blue-400" />
-                <span className="text-blue-400">
-                  กำลังดูอันดับของ {getGradeDisplayName(selectedGrade)} 
-                  (ชั้นของคุณคือ {getGradeDisplayName(user?.grade || '')})
-                </span>
-              </div>
+              <p className="text-xs text-white/60">อันดับของคุณ: <span className="font-bold text-metaverse-purple">#{userRank}</span></p>
             </motion.div>
           )}
         </motion.div>
@@ -331,31 +325,33 @@ export default function RankingPage() {
           <div className="flex">
             <button
               onClick={() => setRankingType('score')}
-              className={`flex-1 px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
+              className={`flex-1 px-4 md:px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
                 rankingType === 'score'
                   ? 'metaverse-button text-white'
                   : 'text-white/60 hover:text-white'
               }`}
             >
               <Star className="w-5 h-5" />
-              คะแนนรวม
+              <span className="hidden sm:inline">คะแนนรวม</span>
+              <span className="sm:hidden">คะแนน</span>
             </button>
             <button
               onClick={() => setRankingType('exp')}
-              className={`flex-1 px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
+              className={`flex-1 px-4 md:px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
                 rankingType === 'exp'
                   ? 'metaverse-button text-white'
                   : 'text-white/60 hover:text-white'
               }`}
             >
               <Zap className="w-5 h-5" />
-              EXP สูงสุด
+              <span className="hidden sm:inline">EXP สูงสุด</span>
+              <span className="sm:hidden">EXP</span>
             </button>
           </div>
         </div>
 
         {/* Loading State */}
-        {searchingGrade && (
+        {loadingRankings && (
           <div className="text-center py-12">
             <motion.div
               animate={{ rotate: 360 }}
@@ -364,131 +360,26 @@ export default function RankingPage() {
             >
               ⏳
             </motion.div>
-            <p className="text-white/60 mt-4">กำลังโหลดข้อมูล...</p>
+            <p className="text-white/60 mt-4">กำลังโหลดอันดับของ {getGradeDisplayName(selectedGrade)}...</p>
           </div>
         )}
 
-        {/* Rankings */}
-        {!searchingGrade && (
-          <>
-            {/* Top 3 Podium */}
-            {rankings.length >= 3 && (
-              <div className="grid grid-cols-3 gap-4 mb-8">
-                {/* 2nd Place */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="order-1 md:order-1"
-                >
-                  <div className={`glass-dark rounded-2xl p-4 border bg-gradient-to-br ${getRankColor(2)} text-center`}>
-                    <div className="mb-3">{getRankMedal(2)}</div>
-                    <AvatarDisplay
-                      avatarData={rankings[1].avatarData}
-                      basicAvatar={rankings[1].avatar}
-                      size="large"
-                      showEffects={true}
-                    />
-                    <h3 className="font-bold text-white mt-3 truncate">
-                      {rankings[1].displayName || rankings[1].username}
-                    </h3>
-                    {rankings[1].currentTitleBadge && (
-                      <p className="text-xs text-yellow-400 truncate">
-                        {rankings[1].currentTitleBadge}
-                      </p>
-                    )}
-                    <p className="text-2xl font-bold text-white mt-2">
-                      {rankingType === 'score' 
-                        ? rankings[1].totalScore.toLocaleString()
-                        : rankings[1].experience.toLocaleString()
-                      }
-                    </p>
-                    <p className="text-sm text-white/60">
-                      {rankingType === 'score' ? 'คะแนน' : 'EXP'}
-                    </p>
-                  </div>
-                </motion.div>
-
-                {/* 1st Place */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="order-2 md:order-2 transform md:-translate-y-4"
-                >
-                  <div className={`glass-dark rounded-2xl p-4 border bg-gradient-to-br ${getRankColor(1)} text-center relative overflow-hidden`}>
-                    <div className="absolute inset-0 bg-yellow-400/10 blur-xl"></div>
-                    <div className="relative">
-                      <div className="mb-3">{getRankMedal(1)}</div>
-                      <AvatarDisplay
-                        avatarData={rankings[0].avatarData}
-                        basicAvatar={rankings[0].avatar}
-                        size="large"
-                        showEffects={true}
-                      />
-                      <h3 className="font-bold text-white mt-3 truncate">
-                        {rankings[0].displayName || rankings[0].username}
-                      </h3>
-                      {rankings[0].currentTitleBadge && (
-                        <p className="text-xs text-yellow-400 truncate">
-                          {rankings[0].currentTitleBadge}
-                        </p>
-                      )}
-                      <p className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400 mt-2">
-                        {rankingType === 'score' 
-                          ? rankings[0].totalScore.toLocaleString()
-                          : rankings[0].experience.toLocaleString()
-                        }
-                      </p>
-                      <p className="text-sm text-white/60">
-                        {rankingType === 'score' ? 'คะแนน' : 'EXP'}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* 3rd Place */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="order-3 md:order-3"
-                >
-                  <div className={`glass-dark rounded-2xl p-4 border bg-gradient-to-br ${getRankColor(3)} text-center`}>
-                    <div className="mb-3">{getRankMedal(3)}</div>
-                    <AvatarDisplay
-                      avatarData={rankings[2].avatarData}
-                      basicAvatar={rankings[2].avatar}
-                      size="large"
-                      showEffects={true}
-                    />
-                    <h3 className="font-bold text-white mt-3 truncate">
-                      {rankings[2].displayName || rankings[2].username}
-                    </h3>
-                    {rankings[2].currentTitleBadge && (
-                      <p className="text-xs text-yellow-400 truncate">
-                        {rankings[2].currentTitleBadge}
-                      </p>
-                    )}
-                    <p className="text-2xl font-bold text-white mt-2">
-                      {rankingType === 'score' 
-                        ? rankings[2].totalScore.toLocaleString()
-                        : rankings[2].experience.toLocaleString()
-                      }
-                    </p>
-                    <p className="text-sm text-white/60">
-                      {rankingType === 'score' ? 'คะแนน' : 'EXP'}
-                    </p>
-                  </div>
-                </motion.div>
+        {/* Rankings List */}
+        {!loadingRankings && (
+          <div className="glass-dark rounded-3xl p-6 border border-metaverse-purple/30">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">
+                Top 20 - {getGradeDisplayName(selectedGrade)}
+              </h2>
+              <div className="text-sm text-white/60">
+                {rankingType === 'score' ? 'เรียงตามคะแนนรวม' : 'เรียงตาม EXP'}
               </div>
-            )}
+            </div>
 
-            {/* Rankings List */}
-            <div className="glass-dark rounded-3xl p-6 border border-metaverse-purple/30">
+            {rankings.length > 0 ? (
               <div className="space-y-3">
-                {rankings.slice(3).map((player, index) => {
-                  const actualRank = index + 4;
+                {rankings.map((player, index) => {
                   const isCurrentUser = player.id === user?.id;
                   
                   return (
@@ -497,18 +388,14 @@ export default function RankingPage() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
-                      className={`glass rounded-xl p-4 border ${
-                        isCurrentUser
-                          ? 'border-metaverse-purple bg-metaverse-purple/10'
-                          : 'border-metaverse-purple/20 hover:bg-white/5'
-                      } transition`}
+                      className={`glass rounded-xl p-4 border bg-gradient-to-r ${
+                        getRankColor(player.rank || index + 1)
+                      } ${isCurrentUser ? 'ring-2 ring-metaverse-purple' : ''} transition-all hover:scale-[1.02]`}
                     >
                       <div className="flex items-center gap-4">
                         {/* Rank */}
-                        <div className="w-12 text-center">
-                          <span className="text-xl font-bold text-white/60">
-                            #{actualRank}
-                          </span>
+                        <div className="w-16 text-center">
+                          {getRankMedal(player.rank || index + 1)}
                         </div>
                         
                         {/* Avatar */}
@@ -516,7 +403,7 @@ export default function RankingPage() {
                           avatarData={player.avatarData}
                           basicAvatar={player.avatar}
                           size="small"
-                          showEffects={false}
+                          showEffects={!!player.rank && player.rank <= 3}
                         />
                         
                         {/* Player Info */}
@@ -543,7 +430,7 @@ export default function RankingPage() {
                         
                         {/* Score/EXP */}
                         <div className="text-right">
-                          <p className="text-xl font-bold text-white">
+                          <p className="text-2xl font-bold text-white">
                             {rankingType === 'score' 
                               ? player.totalScore.toLocaleString()
                               : player.experience.toLocaleString()
@@ -558,43 +445,37 @@ export default function RankingPage() {
                   );
                 })}
               </div>
-              
-              {/* Empty State */}
-              {rankings.length === 0 && (
-                <div className="text-center py-12">
-                  <Users className="w-16 h-16 text-white/20 mx-auto mb-4" />
-                  <p className="text-white/40">ยังไม่มีข้อมูลอันดับสำหรับ {getGradeDisplayName(selectedGrade)}</p>
-                  <p className="text-sm text-white/30 mt-2">
-                    {selectedGrade !== user?.grade 
-                      ? 'อาจจะยังไม่มีผู้เล่นในระดับชั้นนี้' 
-                      : 'เริ่มเล่นเกมเพื่อขึ้นอันดับ!'
-                    }
-                  </p>
-                </div>
-              )}
+            ) : (
+              <div className="text-center py-12">
+                <Users className="w-16 h-16 text-white/20 mx-auto mb-4" />
+                <p className="text-white/40 text-lg">ยังไม่มีข้อมูลอันดับสำหรับ {getGradeDisplayName(selectedGrade)}</p>
+                <p className="text-sm text-white/30 mt-2">
+                  อาจจะยังไม่มีผู้เล่นในระดับชั้นนี้ หรือยังไม่มีคะแนน
+                </p>
+              </div>
+            )}
 
-              {/* Show message if user not in top 100 */}
-              {rankings.length > 0 && userRank && userRank > 100 && selectedGrade === user?.grade && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="mt-6 glass bg-metaverse-purple/10 rounded-xl p-4 border border-metaverse-purple/30"
-                >
-                  <div className="flex items-center gap-3">
-                    <Award className="w-5 h-5 text-metaverse-purple" />
-                    <div>
-                      <p className="text-white font-medium">
-                        คุณอยู่อันดับที่ #{userRank} ใน {getGradeDisplayName(selectedGrade)}
-                      </p>
-                      <p className="text-sm text-white/60">
-                        แสดงเฉพาะ 100 อันดับแรก - เล่นต่อเพื่อขึ้นอันดับ!
-                      </p>
-                    </div>
+            {/* Show message if user not in top 20 */}
+            {rankings.length > 0 && userRank && userRank > 20 && selectedGrade === user?.grade && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-6 glass bg-metaverse-purple/10 rounded-xl p-4 border border-metaverse-purple/30"
+              >
+                <div className="flex items-center gap-3">
+                  <Trophy className="w-5 h-5 text-metaverse-purple" />
+                  <div>
+                    <p className="text-white font-medium">
+                      คุณอยู่อันดับที่ #{userRank} ใน {getGradeDisplayName(selectedGrade)}
+                    </p>
+                    <p className="text-sm text-white/60">
+                      แสดงเฉพาะ 20 อันดับแรก - เล่นต่อเพื่อขึ้น Top 20!
+                    </p>
                   </div>
-                </motion.div>
-              )}
-            </div>
-          </>
+                </div>
+              </motion.div>
+            )}
+          </div>
         )}
 
         {/* Info Box */}
@@ -605,18 +486,15 @@ export default function RankingPage() {
           className="mt-6 glass-dark p-4 rounded-xl text-sm border border-metaverse-purple/20"
         >
           <div className="flex items-start gap-3">
-            <Award className="w-5 h-5 text-metaverse-purple mt-0.5" />
+            <Trophy className="w-5 h-5 text-metaverse-purple mt-0.5 flex-shrink-0" />
             <div>
-              <p className="text-white/80 font-medium mb-1">ระบบอันดับ</p>
-              <p className="text-white/60">
-                • อันดับจะอัพเดททุกครั้งที่เล่นเกม
-              </p>
-              <p className="text-white/60">
-                • แสดงผู้เล่น 100 อันดับแรกในแต่ละระดับชั้น
-              </p>
-              <p className="text-white/60">
-                • สามารถเลือกดูอันดับของระดับชั้นอื่นๆ ได้
-              </p>
+              <p className="text-white/80 font-medium mb-1">ระบบอันดับแยกตามระดับชั้น</p>
+              <ul className="text-white/60 space-y-1">
+                <li>• แต่ละระดับชั้นมีการจัดอันดับแยกกัน</li>
+                <li>• แสดง Top 20 ของแต่ละระดับชั้น</li>
+                <li>• อัพเดททันทีเมื่อเล่นเกม</li>
+                <li>• เลือกดูได้ทั้งคะแนนรวมและ EXP</li>
+              </ul>
             </div>
           </div>
         </motion.div>
