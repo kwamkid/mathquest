@@ -22,9 +22,11 @@ import {
   Home,
   RefreshCw,
   Sparkles,
-  Crown
+  Crown,
+  Rocket,
+  ChevronRight
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
+// import confetti from 'canvas-confetti';
 
 interface ExpBreakdown {
   label: string;
@@ -70,7 +72,8 @@ export default function SummaryPage() {
     
     // Trigger confetti for good scores
     if (percentage >= 85 || isHighScore) {
-      triggerConfetti();
+      // triggerConfetti();
+      console.log('Confetti would trigger here!');
     }
   }, []);
 
@@ -90,6 +93,11 @@ export default function SummaryPage() {
   };
 
   const triggerConfetti = () => {
+    // Placeholder for confetti effect
+    console.log('Confetti animation!');
+    
+    // Original confetti code - commented out for now
+    /*
     const count = 200;
     const defaults = {
       origin: { y: 0.7 }
@@ -125,6 +133,7 @@ export default function SummaryPage() {
       spread: 120,
       startVelocity: 45,
     });
+    */
   };
 
   // Format time
@@ -421,50 +430,129 @@ export default function SummaryPage() {
           )}
         </motion.div>
 
-        {/* Action Buttons */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.7 }}
-            onClick={() => router.push('/play')}
-            className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:bg-white/5 transition group"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <RefreshCw className="w-8 h-8 text-metaverse-purple mx-auto mb-2 group-hover:rotate-180 transition-transform duration-500" />
-            <p className="text-white font-medium">เล่นอีกครั้ง</p>
-          </motion.button>
+        {/* Action Buttons - Responsive Layout */}
+        {percentage >= 85 ? (
+          // Layout สำหรับคนที่ได้ >= 85%
+          <div className="space-y-4">
+            {/* ปุ่มเล่นต่อขนาดใหญ่ */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 1.5, type: "spring" }}
+            >
+              <motion.button
+                onClick={() => router.push('/play')}
+                className="w-full py-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold text-2xl rounded-2xl shadow-lg hover:shadow-xl relative overflow-hidden"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <motion.div
+                  className="absolute inset-0 bg-white/20"
+                  initial={{ x: '-100%' }}
+                  whileHover={{ x: '100%' }}
+                  transition={{ duration: 0.5 }}
+                />
+                <span className="relative z-10 flex items-center justify-center gap-3">
+                  <Rocket className="w-7 h-7" />
+                  {levelChange === 'increase' 
+                    ? `เข้าสู่ Level ${newLevel} เลย!`
+                    : 'เล่นต่อเลย!'
+                  }
+                  <motion.span
+                    animate={{ rotate: [0, 10, -10, 0] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    ⚡
+                  </motion.span>
+                </span>
+              </motion.button>
+            </motion.div>
 
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.8 }}
-            onClick={() => router.push('/ranking')}
-            className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:bg-white/5 transition group"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Trophy className="w-8 h-8 text-yellow-400 mx-auto mb-2 group-hover:bounce transition" />
-            <p className="text-white font-medium">ดูอันดับ</p>
-          </motion.button>
+            {/* ปุ่มย่อย 3 ปุ่ม */}
+            <div className="flex gap-3">
+              <motion.button
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.7 }}
+                onClick={() => router.push('/play')}
+                className="flex-1 py-3 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Home className="w-5 h-5 text-white/70 mx-auto" />
+              </motion.button>
 
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.9 }}
-            onClick={() => router.push('/rewards')}
-            className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:bg-white/5 transition group"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Gift className="w-8 h-8 text-metaverse-pink mx-auto mb-2 group-hover:wiggle transition" />
-            <p className="text-white font-medium">แลกรางวัล</p>
-            <p className="text-xs text-white/60 mt-1">
-              EXP: {user?.experience.toLocaleString()}
-            </p>
-          </motion.button>
-        </div>
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 1.8 }}
+                onClick={() => router.push('/ranking')}
+                className="flex-1 py-3 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Trophy className="w-5 h-5 text-yellow-400 mx-auto" />
+              </motion.button>
+
+              <motion.button
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 1.9 }}
+                onClick={() => router.push('/rewards')}
+                className="flex-1 py-3 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Gift className="w-5 h-5 text-metaverse-pink mx-auto" />
+              </motion.button>
+            </div>
+          </div>
+        ) : (
+          // Layout ปกติสำหรับคนที่ได้ < 85%
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.7 }}
+              onClick={() => router.push('/play')}
+              className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:bg-white/5 transition group"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <RefreshCw className="w-8 h-8 text-metaverse-purple mx-auto mb-2 group-hover:rotate-180 transition-transform duration-500" />
+              <p className="text-white font-medium">เล่นอีกครั้ง</p>
+            </motion.button>
+
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.8 }}
+              onClick={() => router.push('/ranking')}
+              className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:bg-white/5 transition group"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Trophy className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
+              <p className="text-white font-medium">ดูอันดับ</p>
+            </motion.button>
+
+            <motion.button
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1.9 }}
+              onClick={() => router.push('/rewards')}
+              className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:bg-white/5 transition group"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Gift className="w-8 h-8 text-metaverse-pink mx-auto mb-2" />
+              <p className="text-white font-medium">แลกรางวัล</p>
+              <p className="text-xs text-white/60 mt-1">
+                EXP: {user?.experience.toLocaleString()}
+              </p>
+            </motion.button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, Trophy, Zap, X, Gift, Info, Sparkles, Crown } from 'lucide-react';
+import { Settings, LogOut, Trophy, Zap, X, Gift, Info, Crown } from 'lucide-react';
 import SoundToggle from './SoundToggle';
 import { getQuestionCount } from '@/lib/game/config';
 import AvatarDisplay from '@/components/avatar/AvatarDisplay';
@@ -14,9 +14,10 @@ import Link from 'next/link';
 
 interface GameHeaderProps {
   user: User;
+  hideActions?: boolean; // เพิ่ม prop สำหรับซ่อน action buttons
 }
 
-export default function GameHeader({ user }: GameHeaderProps) {
+export default function GameHeader({ user, hideActions = false }: GameHeaderProps) {
   const router = useRouter();
   const [showExpModal, setShowExpModal] = useState(false);
 
@@ -67,16 +68,27 @@ export default function GameHeader({ user }: GameHeaderProps) {
             {/* Row 1: User Info + Actions */}
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
-                <Link href="/my-avatar" className="group">
-                  <motion.div whileHover={{ scale: 1.1 }}>
+                {hideActions ? (
+                  <div className="cursor-not-allowed opacity-60">
                     <AvatarDisplay
                       avatarData={user.avatarData}
                       basicAvatar={user.avatar}
                       size="small"
                       showEffects={false}
                     />
-                  </motion.div>
-                </Link>
+                  </div>
+                ) : (
+                  <Link href="/my-avatar" className="group">
+                    <motion.div whileHover={{ scale: 1.1 }}>
+                      <AvatarDisplay
+                        avatarData={user.avatarData}
+                        basicAvatar={user.avatar}
+                        size="small"
+                        showEffects={false}
+                      />
+                    </motion.div>
+                  </Link>
+                )}
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-base text-white">
@@ -102,38 +114,34 @@ export default function GameHeader({ user }: GameHeaderProps) {
                 </div>
               </div>
               
-              {/* Actions */}
-              <div className="flex items-center gap-1">
-                <Link
-                  href="/rewards"
-                  className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
-                >
-                  <Gift className="w-4 h-4" />
-                </Link>
-                <Link
-                  href="/my-avatar"
-                  className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
-                >
-                  <Sparkles className="w-4 h-4" />
-                </Link>
-                <SoundToggle />
-                <motion.button
-                  onClick={() => router.push('/profile')}
-                  className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Settings className="w-4 h-4" />
-                </motion.button>
-                <motion.button
-                  onClick={handleSignOut}
-                  className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <LogOut className="w-4 h-4" />
-                </motion.button>
-              </div>
+              {/* Actions - ซ่อนเมื่อ hideActions = true */}
+              {!hideActions && (
+                <div className="flex items-center gap-1">
+                  <Link
+                    href="/rewards"
+                    className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                  >
+                    <Gift className="w-4 h-4" />
+                  </Link>
+                  <SoundToggle />
+                  <motion.button
+                    onClick={() => router.push('/profile')}
+                    className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Settings className="w-4 h-4" />
+                  </motion.button>
+                  <motion.button
+                    onClick={handleSignOut}
+                    className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </motion.button>
+                </div>
+              )}
             </div>
             
             {/* Row 2: Stats */}
@@ -153,7 +161,7 @@ export default function GameHeader({ user }: GameHeaderProps) {
                 className="flex-1 glass-dark px-3 py-2 rounded-lg border border-yellow-400/30 relative cursor-pointer bg-gradient-to-br from-yellow-400/5 to-orange-400/5"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setShowExpModal(true)}
+                onClick={() => !hideActions && setShowExpModal(true)}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-white/60">EXP</span>
@@ -161,33 +169,37 @@ export default function GameHeader({ user }: GameHeaderProps) {
                     <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                       {user.experience.toLocaleString()}
                     </p>
-                    <motion.div
-                      animate={{ 
-                        rotate: [0, -10, 10, -10, 0],
-                      }}
-                      transition={{ 
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    >
-                      <Info className="w-4 h-4 text-yellow-400" />
-                    </motion.div>
+                    {!hideActions && (
+                      <motion.div
+                        animate={{ 
+                          rotate: [0, -10, 10, -10, 0],
+                        }}
+                        transition={{ 
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        <Info className="w-4 h-4 text-yellow-400" />
+                      </motion.div>
+                    )}
                   </div>
                 </div>
-                <motion.div
-                  className="absolute -top-1 -right-1 bg-yellow-400 text-metaverse-black rounded-full px-1.5 py-0.5 text-[10px] font-bold shadow-lg"
-                  animate={{ 
-                    scale: [1, 1.1, 1],
-                  }}
-                  transition={{ 
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                >
-                  กดดู
-                </motion.div>
+                {!hideActions && (
+                  <motion.div
+                    className="absolute -top-1 -right-1 bg-yellow-400 text-metaverse-black rounded-full px-1.5 py-0.5 text-[10px] font-bold shadow-lg"
+                    animate={{ 
+                      scale: [1, 1.1, 1],
+                    }}
+                    transition={{ 
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    กดดู
+                  </motion.div>
+                )}
               </motion.div>
             </div>
           </div>
@@ -196,8 +208,8 @@ export default function GameHeader({ user }: GameHeaderProps) {
           <div className="hidden md:flex items-center justify-between">
             {/* User Info */}
             <div className="flex items-center gap-4">
-              <Link href="/my-avatar" className="group">
-                <motion.div whileHover={{ scale: 1.1 }}>
+              {hideActions ? (
+                <div className="cursor-not-allowed opacity-60">
                   <AvatarDisplay
                     avatarData={user.avatarData}
                     basicAvatar={user.avatar}
@@ -206,8 +218,21 @@ export default function GameHeader({ user }: GameHeaderProps) {
                     showTitle={true}
                     titleBadge={user.currentTitleBadge}
                   />
-                </motion.div>
-              </Link>
+                </div>
+              ) : (
+                <Link href="/my-avatar" className="group">
+                  <motion.div whileHover={{ scale: 1.1 }}>
+                    <AvatarDisplay
+                      avatarData={user.avatarData}
+                      basicAvatar={user.avatar}
+                      size="medium"
+                      showEffects={true}
+                      showTitle={true}
+                      titleBadge={user.currentTitleBadge}
+                    />
+                  </motion.div>
+                </Link>
+              )}
               <div>
                 <h3 className="font-bold text-lg text-white">
                   {user.displayName || user.username}
@@ -244,74 +269,71 @@ export default function GameHeader({ user }: GameHeaderProps) {
                   className="text-center glass-dark px-4 py-2 rounded-xl border border-yellow-400/30 relative cursor-pointer bg-gradient-to-br from-yellow-400/5 to-orange-400/5"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowExpModal(true)}
+                  onClick={() => !hideActions && setShowExpModal(true)}
                 >
                   <div className="flex items-center justify-center gap-2">
                     <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                       {user.experience}
                     </p>
-                    <motion.div
-                      animate={{ 
-                        rotate: [0, -10, 10, -10, 0],
-                      }}
-                      transition={{ 
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    >
-                      <Info className="w-5 h-5 text-yellow-400" />
-                    </motion.div>
+                    {!hideActions && (
+                      <motion.div
+                        animate={{ 
+                          rotate: [0, -10, 10, -10, 0],
+                        }}
+                        transition={{ 
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        <Info className="w-5 h-5 text-yellow-400" />
+                      </motion.div>
+                    )}
                   </div>
                   <p className="text-xs text-white/60">EXP</p>
                 </motion.div>
               </div>
 
-              {/* Divider */}
-              <div className="w-px h-8 bg-white/20" />
+              {/* Actions - ซ่อนเมื่อ hideActions = true */}
+              {!hideActions && (
+                <>
+                  {/* Divider */}
+                  <div className="w-px h-8 bg-white/20" />
 
-              {/* Actions */}
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/rewards"
-                  className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white group relative"
-                >
-                  <Gift className="w-5 h-5" />
-                  <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-white/0 group-hover:text-white/80 transition whitespace-nowrap">
-                    Reward Shop
-                  </span>
-                </Link>
-                
-                <Link
-                  href="/my-avatar"
-                  className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white group relative"
-                >
-                  <Sparkles className="w-5 h-5" />
-                  <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-white/0 group-hover:text-white/80 transition whitespace-nowrap">
-                    My Avatar
-                  </span>
-                </Link>
-                
-                <SoundToggle />
-                
-                <motion.button
-                  onClick={() => router.push('/profile')}
-                  className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Settings className="w-5 h-5" />
-                </motion.button>
-                
-                <motion.button
-                  onClick={handleSignOut}
-                  className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <LogOut className="w-5 h-5" />
-                </motion.button>
-              </div>
+                  {/* Actions */}
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/rewards"
+                      className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white group relative"
+                    >
+                      <Gift className="w-5 h-5" />
+                      <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-white/0 group-hover:text-white/80 transition whitespace-nowrap">
+                        Reward Shop
+                      </span>
+                    </Link>
+                    
+                    <SoundToggle />
+                    
+                    <motion.button
+                      onClick={() => router.push('/profile')}
+                      className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Settings className="w-5 h-5" />
+                    </motion.button>
+                    
+                    <motion.button
+                      onClick={handleSignOut}
+                      className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <LogOut className="w-5 h-5" />
+                    </motion.button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -319,7 +341,7 @@ export default function GameHeader({ user }: GameHeaderProps) {
 
       {/* EXP Modal */}
       <AnimatePresence>
-        {showExpModal && (
+        {showExpModal && !hideActions && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

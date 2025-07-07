@@ -397,7 +397,7 @@ export default function PlayPage() {
         ))}
       </div>
 
-      {user && <GameHeader user={{ ...user, totalScore: tempTotalScore }} />}
+      {user && <GameHeader user={{ ...user, totalScore: tempTotalScore }} hideActions={gameState === 'playing'} />}
       
       <div className="relative z-10 container mx-auto px-4 py-8 max-w-6xl">
         <AnimatePresence mode="wait">
@@ -516,7 +516,7 @@ export default function PlayPage() {
                       <Trophy className="w-8 h-8 text-yellow-400" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-2">อันดับคะแนน</h3>
+                      <h3 className="text-xl font-bold text-white mb-2">Level Ranking</h3>
                       <p className="text-white/60 text-sm mb-3">ดูอันดับคะแนนในระดับชั้นของคุณ</p>
                       <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
                         <span>ดูอันดับ</span>
@@ -541,7 +541,7 @@ export default function PlayPage() {
                       <Star className="w-8 h-8 text-metaverse-purple" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-2">คะแนนสูงสุด</h3>
+                      <h3 className="text-xl font-bold text-white mb-2">Our History</h3>
                       <p className="text-white/60 text-sm mb-3">
                         {user?.levelScores && Object.keys(user.levelScores).length > 0 
                           ? `เล่นแล้ว ${Object.keys(user.levelScores).length} Level`
