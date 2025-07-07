@@ -4,10 +4,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { getCurrentUser, updateUserProfile } from '@/lib/firebase/auth';
 import { User } from '@/types';
-import { User as UserIcon, School, GraduationCap, Save, ArrowLeft, AlertCircle, Edit, TrendingUp, Pi } from 'lucide-react';
-import AvatarSelection from '@/components/AvatarSelection';
+import { User as UserIcon, School, GraduationCap, Save, ArrowLeft, AlertCircle, Edit, TrendingUp, Pi, Sparkles, Gift, Trophy, Zap } from 'lucide-react';
+import AvatarDisplay from '@/components/avatar/AvatarDisplay';
 import LevelProgressDisplay from '@/components/game/LevelProgressDisplay';
 
 const grades = [
@@ -33,7 +34,6 @@ export default function ProfilePage() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showAvatarSelection, setShowAvatarSelection] = useState(false);
   const [showGradeWarning, setShowGradeWarning] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'progress'>('profile');
   
@@ -41,7 +41,6 @@ export default function ProfilePage() {
     displayName: '',
     school: '',
     grade: '',
-    avatar: '',
   });
   
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,7 +63,6 @@ export default function ProfilePage() {
         displayName: userData.displayName || '',
         school: userData.school,
         grade: userData.grade,
-        avatar: userData.avatar,
       });
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -117,7 +115,6 @@ export default function ProfilePage() {
         displayName: formData.displayName || undefined,
         school: formData.school,
         grade: formData.grade,
-        avatar: formData.avatar,
       });
       
       setSuccessMessage('บันทึกข้อมูลสำเร็จ!');
@@ -134,20 +131,6 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
     }
-  };
-
-  // Get avatar emoji
-  const getAvatarEmoji = (avatarId: string): string => {
-    const avatarMap: Record<string, string> = {
-      'knight': '🤴', 'warrior': '🦸‍♂️', 'warrioress': '🦸‍♀️', 'ninja': '🥷',
-      'wizard': '🧙‍♂️', 'witch': '🧙‍♀️', 'superhero': '🦹‍♂️', 'superheroine': '🦹‍♀️',
-      'vampire': '🧛‍♂️', 'vampiress': '🧛‍♀️', 'dragon': '🐉', 'unicorn': '🦄',
-      'fox': '🦊', 'lion': '🦁', 'tiger': '🐯', 'wolf': '🐺', 'bear': '🐻',
-      'panda': '🐼', 'monkey': '🐵', 'owl': '🦉', 'fairy': '🧚‍♀️', 'fairy-man': '🧚‍♂️',
-      'mage': '🧙', 'genie': '🧞', 'mermaid': '🧜‍♀️', 'merman': '🧜‍♂️',
-      'robot': '🤖', 'alien': '👽', 'ghost': '👻', 'zombie': '🧟'
-    };
-    return avatarMap[avatarId] || '👤';
   };
 
   if (loading) {
@@ -211,17 +194,34 @@ export default function ProfilePage() {
           {/* User Info Header (Always visible) */}
           <div className="p-8 pb-6 border-b border-metaverse-purple/20">
             <div className="flex items-center gap-6 mb-6">
-              <motion.div
-                className="text-6xl"
-                whileHover={{ scale: 1.1, rotate: 10 }}
-              >
-                {getAvatarEmoji(user.avatar)}
-              </motion.div>
+              <Link href="/my-avatar" className="group">
+                <motion.div
+                  whileHover={{ scale: 1.1 }}
+                  className="relative"
+                >
+                  <AvatarDisplay
+                    avatarData={user.avatarData}
+                    basicAvatar={user.avatar}
+                    size="large"
+                    showEffects={true}
+                    showTitle={true}
+                    titleBadge={user.currentTitleBadge}
+                  />
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition rounded-full flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-white" />
+                  </div>
+                </motion.div>
+              </Link>
               <div className="flex-1">
                 <h2 className="text-2xl font-bold text-white mb-1">
                   {user.displayName || user.username}
                 </h2>
                 <p className="text-white/60">@{user.username}</p>
+                {user.currentTitleBadge && (
+                  <span className="inline-block mt-2 px-3 py-1 rounded-full bg-yellow-400/20 text-yellow-400 text-sm font-medium border border-yellow-400/30">
+                    {user.currentTitleBadge}
+                  </span>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-sm text-white/60">สมัครเมื่อ</p>
@@ -237,22 +237,59 @@ export default function ProfilePage() {
 
             {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="glass rounded-xl p-3 text-center border border-metaverse-purple/20">
+              <motion.div 
+                className="glass rounded-xl p-3 text-center border border-metaverse-purple/20"
+                whileHover={{ scale: 1.05 }}
+              >
                 <p className="text-2xl font-bold text-metaverse-purple">{user.level}</p>
                 <p className="text-sm text-white/60">Level</p>
-              </div>
-              <div className="glass rounded-xl p-3 text-center border border-metaverse-purple/20">
+              </motion.div>
+              <motion.div 
+                className="glass rounded-xl p-3 text-center border border-metaverse-purple/20"
+                whileHover={{ scale: 1.05 }}
+              >
                 <p className="text-2xl font-bold text-metaverse-pink">{user.totalScore.toLocaleString()}</p>
                 <p className="text-sm text-white/60">คะแนนรวม</p>
-              </div>
-              <div className="glass rounded-xl p-3 text-center border border-metaverse-purple/20">
-                <p className="text-2xl font-bold text-yellow-400">{user.experience}</p>
+              </motion.div>
+              <motion.div 
+                className="glass rounded-xl p-3 text-center border border-metaverse-purple/20"
+                whileHover={{ scale: 1.05 }}
+              >
+                <p className="text-2xl font-bold text-yellow-400">{user.experience.toLocaleString()}</p>
                 <p className="text-sm text-white/60">EXP</p>
-              </div>
-              <div className="glass rounded-xl p-3 text-center border border-metaverse-purple/20">
-                <p className="text-2xl font-bold text-orange-400">{user.dailyStreak}</p>
+              </motion.div>
+              <motion.div 
+                className="glass rounded-xl p-3 text-center border border-metaverse-purple/20"
+                whileHover={{ scale: 1.05 }}
+              >
+                <p className="text-2xl font-bold text-orange-400">{user.playStreak || 0}</p>
                 <p className="text-sm text-white/60">วันต่อเนื่อง</p>
-              </div>
+              </motion.div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex gap-3 mt-6">
+              <Link
+                href="/my-avatar"
+                className="flex-1 glass rounded-xl p-3 hover:bg-white/10 transition border border-metaverse-purple/30 flex items-center justify-center gap-2 text-white/80 hover:text-white"
+              >
+                <Sparkles className="w-5 h-5" />
+                จัดการ Avatar
+              </Link>
+              <Link
+                href="/rewards"
+                className="flex-1 glass rounded-xl p-3 hover:bg-white/10 transition border border-metaverse-purple/30 flex items-center justify-center gap-2 text-white/80 hover:text-white"
+              >
+                <Gift className="w-5 h-5" />
+                Reward Shop
+              </Link>
+              <Link
+                href="/highscores"
+                className="flex-1 glass rounded-xl p-3 hover:bg-white/10 transition border border-metaverse-purple/30 flex items-center justify-center gap-2 text-white/80 hover:text-white"
+              >
+                <Trophy className="w-5 h-5" />
+                คะแนนสูงสุด
+              </Link>
             </div>
           </div>
 
@@ -308,35 +345,6 @@ export default function ProfilePage() {
                 exit={{ opacity: 0, y: -20 }}
                 className="p-8"
               >
-                {/* Avatar Selection Modal */}
-                {showAvatarSelection && (
-                  <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="glass-dark rounded-3xl p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto border border-metaverse-purple/30"
-                    >
-                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-2xl font-bold text-white">เลือกตัวละครใหม่</h3>
-                        <button
-                          onClick={() => setShowAvatarSelection(false)}
-                          className="text-white/60 hover:text-white text-2xl"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      
-                      <AvatarSelection
-                        selectedAvatar={formData.avatar}
-                        onSelectAvatar={(avatarId) => {
-                          setFormData(prev => ({ ...prev, avatar: avatarId }));
-                          setShowAvatarSelection(false);
-                        }}
-                      />
-                    </motion.div>
-                  </div>
-                )}
-
                 {/* Form */}
                 <form onSubmit={handleSubmit}>
                   {/* Success Message */}
@@ -351,24 +359,6 @@ export default function ProfilePage() {
                   )}
 
                   <div className="space-y-6">
-                    {/* Avatar */}
-                    <div>
-                      <label className="block text-white/80 font-medium mb-2">
-                        ตัวละคร
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setShowAvatarSelection(true)}
-                        className="flex items-center gap-4 p-4 glass rounded-xl hover:bg-white/5 transition w-full text-left border border-metaverse-purple/30"
-                      >
-                        <span className="text-5xl">{getAvatarEmoji(formData.avatar)}</span>
-                        <div>
-                          <p className="text-white font-medium">คลิกเพื่อเปลี่ยนตัวละคร</p>
-                          <p className="text-sm text-white/60">เลือกจาก 30 ตัวละคร</p>
-                        </div>
-                      </button>
-                    </div>
-
                     {/* Display Name */}
                     <div>
                       <label className="block text-white/80 font-medium mb-2">

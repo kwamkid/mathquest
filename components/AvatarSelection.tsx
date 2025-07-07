@@ -3,58 +3,7 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Sparkles, Shield, Zap } from 'lucide-react';
-
-// Avatar categories with emojis
-const avatarCategories = {
-  warriors: {
-    title: 'นักรบ',
-    icon: <Shield className="w-5 h-5" />,
-    avatars: [
-      { id: 'knight', name: 'อัศวิน', emoji: '🤴' },
-      { id: 'warrior', name: 'นักรบ', emoji: '🦸‍♂️' },
-      { id: 'warrioress', name: 'นักรบหญิง', emoji: '🦸‍♀️' },
-      { id: 'ninja', name: 'นินจา', emoji: '🥷' },
-      { id: 'wizard', name: 'พ่อมด', emoji: '🧙‍♂️' },
-      { id: 'witch', name: 'แม่มด', emoji: '🧙‍♀️' },
-      { id: 'superhero', name: 'ซูเปอร์ฮีโร่', emoji: '🦹‍♂️' },
-      { id: 'superheroine', name: 'ซูเปอร์ฮีโร่หญิง', emoji: '🦹‍♀️' },
-      { id: 'vampire', name: 'แวมไพร์', emoji: '🧛‍♂️' },
-      { id: 'vampiress', name: 'แวมไพร์หญิง', emoji: '🧛‍♀️' }
-    ]
-  },
-  creatures: {
-    title: 'สัตว์มหัศจรรย์',
-    icon: <Sparkles className="w-5 h-5" />,
-    avatars: [
-      { id: 'dragon', name: 'มังกร', emoji: '🐉' },
-      { id: 'unicorn', name: 'ยูนิคอร์น', emoji: '🦄' },
-      { id: 'fox', name: 'สุนัขจิ้งจอก', emoji: '🦊' },
-      { id: 'lion', name: 'สิงโต', emoji: '🦁' },
-      { id: 'tiger', name: 'เสือ', emoji: '🐯' },
-      { id: 'wolf', name: 'หมาป่า', emoji: '🐺' },
-      { id: 'bear', name: 'หมี', emoji: '🐻' },
-      { id: 'panda', name: 'แพนด้า', emoji: '🐼' },
-      { id: 'monkey', name: 'ลิง', emoji: '🐵' },
-      { id: 'owl', name: 'นกฮูก', emoji: '🦉' }
-    ]
-  },
-  mystical: {
-    title: 'ผู้วิเศษ',
-    icon: <Zap className="w-5 h-5" />,
-    avatars: [
-      { id: 'fairy', name: 'นางฟ้า', emoji: '🧚‍♀️' },
-      { id: 'fairy-man', name: 'นางฟ้าชาย', emoji: '🧚‍♂️' },
-      { id: 'mage', name: 'จอมเวทย์', emoji: '🧙' },
-      { id: 'genie', name: 'ยักษ์จินนี่', emoji: '🧞' },
-      { id: 'mermaid', name: 'นางเงือก', emoji: '🧜‍♀️' },
-      { id: 'merman', name: 'เงือกชาย', emoji: '🧜‍♂️' },
-      { id: 'robot', name: 'หุ่นยนต์', emoji: '🤖' },
-      { id: 'alien', name: 'เอเลี่ยน', emoji: '👽' },
-      { id: 'ghost', name: 'ผี', emoji: '👻' },
-      { id: 'zombie', name: 'ซอมบี้', emoji: '🧟' }
-    ]
-  }
-};
+import { basicAvatars } from '@/lib/data/avatars';
 
 interface AvatarSelectionProps {
   selectedAvatar: string | null;
@@ -66,14 +15,22 @@ export default function AvatarSelection({ selectedAvatar, onSelectAvatar }: Avat
 
   // Get selected avatar details
   const getSelectedAvatarDetails = () => {
-    for (const category of Object.values(avatarCategories)) {
-      const avatar = category.avatars.find(a => a.id === selectedAvatar);
-      if (avatar) return avatar;
-    }
-    return null;
+    return basicAvatars.find(a => a.id === selectedAvatar);
   };
 
   const selectedAvatarDetails = getSelectedAvatarDetails();
+
+  // Filter avatars by category
+  const getAvatarsByCategory = (category: string) => {
+    return basicAvatars.filter(a => a.category === category);
+  };
+
+  // Category data
+  const categories = [
+    { id: 'warriors', title: 'นักรบ', icon: <Shield className="w-5 h-5" /> },
+    { id: 'creatures', title: 'สัตว์มหัศจรรย์', icon: <Sparkles className="w-5 h-5" /> },
+    { id: 'mystical', title: 'ผู้วิเศษ', icon: <Zap className="w-5 h-5" /> }
+  ];
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -83,12 +40,12 @@ export default function AvatarSelection({ selectedAvatar, onSelectAvatar }: Avat
 
       {/* Category Tabs */}
       <div className="flex flex-wrap justify-center gap-2 mb-8">
-        {Object.entries(avatarCategories).map(([key, category]) => (
+        {categories.map(category => (
           <motion.button
-            key={key}
-            onClick={() => setSelectedCategory(key)}
+            key={category.id}
+            onClick={() => setSelectedCategory(category.id)}
             className={`px-6 py-3 rounded-full font-semibold text-lg transition-all flex items-center gap-2 ${
-              selectedCategory === key
+              selectedCategory === category.id
                 ? 'metaverse-button text-white shadow-lg'
                 : 'glass text-white/70 hover:text-white hover:bg-white/10 border border-metaverse-purple/30'
             }`}
@@ -109,7 +66,7 @@ export default function AvatarSelection({ selectedAvatar, onSelectAvatar }: Avat
         transition={{ duration: 0.3 }}
         className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8"
       >
-        {avatarCategories[selectedCategory as keyof typeof avatarCategories].avatars.map((avatar) => (
+        {getAvatarsByCategory(selectedCategory).map((avatar) => (
           <motion.button
             key={avatar.id}
             onClick={() => onSelectAvatar(avatar.id)}

@@ -6,9 +6,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, Trophy, Zap, X, Gift, Info } from 'lucide-react';
+import { Settings, LogOut, Trophy, Zap, X, Gift, Info, Sparkles, Crown } from 'lucide-react';
 import SoundToggle from './SoundToggle';
 import { getQuestionCount } from '@/lib/game/config';
+import AvatarDisplay from '@/components/avatar/AvatarDisplay';
+import Link from 'next/link';
 
 interface GameHeaderProps {
   user: User;
@@ -45,47 +47,6 @@ export default function GameHeader({ user }: GameHeaderProps) {
     return gradeMap[grade] || grade;
   };
 
-  // Get avatar emoji from avatar id
-  const getAvatarEmoji = (avatarId: string): string => {
-    const avatarMap: Record<string, string> = {
-      // Warriors
-      'knight': '🤴',
-      'warrior': '🦸‍♂️',
-      'warrioress': '🦸‍♀️',
-      'ninja': '🥷',
-      'wizard': '🧙‍♂️',
-      'witch': '🧙‍♀️',
-      'superhero': '🦹‍♂️',
-      'superheroine': '🦹‍♀️',
-      'vampire': '🧛‍♂️',
-      'vampiress': '🧛‍♀️',
-      // Creatures
-      'dragon': '🐉',
-      'unicorn': '🦄',
-      'fox': '🦊',
-      'lion': '🦁',
-      'tiger': '🐯',
-      'wolf': '🐺',
-      'bear': '🐻',
-      'panda': '🐼',
-      'monkey': '🐵',
-      'owl': '🦉',
-      // Mystical
-      'fairy': '🧚‍♀️',
-      'fairy-man': '🧚‍♂️',
-      'mage': '🧙',
-      'genie': '🧞',
-      'mermaid': '🧜‍♀️',
-      'merman': '🧜‍♂️',
-      'robot': '🤖',
-      'alien': '👽',
-      'ghost': '👻',
-      'zombie': '🧟'
-    };
-    
-    return avatarMap[avatarId] || '👤';
-  };
-
   // คำนวณจำนวน level ที่ผ่านแล้ว (คะแนน > 85%)
   const getPassedLevels = (): number => {
     if (!user.levelScores) return 0;
@@ -106,17 +67,31 @@ export default function GameHeader({ user }: GameHeaderProps) {
             {/* Row 1: User Info + Actions */}
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
-                <motion.div
-                  className="text-3xl filter drop-shadow-lg"
-                  whileHover={{ scale: 1.1, rotate: 10 }}
-                >
-                  {getAvatarEmoji(user.avatar)}
-                </motion.div>
+                <Link href="/my-avatar" className="group">
+                  <motion.div whileHover={{ scale: 1.1 }}>
+                    <AvatarDisplay
+                      avatarData={user.avatarData}
+                      basicAvatar={user.avatar}
+                      size="small"
+                      showEffects={false}
+                    />
+                  </motion.div>
+                </Link>
                 <div>
-                  <h3 className="font-bold text-base text-white">
-                    {user.displayName || user.username}
-                  </h3>
-                  <div className="flex items-center gap-2 text-xs text-white/70">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-base text-white">
+                      {user.displayName || user.username}
+                    </h3>
+                  </div>
+                  {user.currentTitleBadge && (
+                    <div className="mt-1">
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400 border border-yellow-400/30">
+                        <Crown className="w-3 h-3" />
+                        {user.currentTitleBadge}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 text-xs text-white/70 mt-1">
                     <span>{getGradeDisplayName(user.grade)}</span>
                     <span className="text-metaverse-purple font-semibold">Lv.{user.level}</span>
                     <span className="flex items-center gap-1">
@@ -129,6 +104,18 @@ export default function GameHeader({ user }: GameHeaderProps) {
               
               {/* Actions */}
               <div className="flex items-center gap-1">
+                <Link
+                  href="/rewards"
+                  className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                >
+                  <Gift className="w-4 h-4" />
+                </Link>
+                <Link
+                  href="/my-avatar"
+                  className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                >
+                  <Sparkles className="w-4 h-4" />
+                </Link>
                 <SoundToggle />
                 <motion.button
                   onClick={() => router.push('/profile')}
@@ -209,12 +196,18 @@ export default function GameHeader({ user }: GameHeaderProps) {
           <div className="hidden md:flex items-center justify-between">
             {/* User Info */}
             <div className="flex items-center gap-4">
-              <motion.div
-                className="text-4xl filter drop-shadow-lg"
-                whileHover={{ scale: 1.1, rotate: 10 }}
-              >
-                {getAvatarEmoji(user.avatar)}
-              </motion.div>
+              <Link href="/my-avatar" className="group">
+                <motion.div whileHover={{ scale: 1.1 }}>
+                  <AvatarDisplay
+                    avatarData={user.avatarData}
+                    basicAvatar={user.avatar}
+                    size="medium"
+                    showEffects={true}
+                    showTitle={true}
+                    titleBadge={user.currentTitleBadge}
+                  />
+                </motion.div>
+              </Link>
               <div>
                 <h3 className="font-bold text-lg text-white">
                   {user.displayName || user.username}
@@ -279,6 +272,26 @@ export default function GameHeader({ user }: GameHeaderProps) {
 
               {/* Actions */}
               <div className="flex items-center gap-2">
+                <Link
+                  href="/rewards"
+                  className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white group relative"
+                >
+                  <Gift className="w-5 h-5" />
+                  <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-white/0 group-hover:text-white/80 transition whitespace-nowrap">
+                    Reward Shop
+                  </span>
+                </Link>
+                
+                <Link
+                  href="/my-avatar"
+                  className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white group relative"
+                >
+                  <Sparkles className="w-5 h-5" />
+                  <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-white/0 group-hover:text-white/80 transition whitespace-nowrap">
+                    My Avatar
+                  </span>
+                </Link>
+                
                 <SoundToggle />
                 
                 <motion.button
@@ -351,6 +364,12 @@ export default function GameHeader({ user }: GameHeaderProps) {
                   </div>
                   <Zap className="w-12 h-12 text-metaverse-purple/30" />
                 </div>
+                <Link
+                  href="/rewards"
+                  className="mt-3 block text-center py-2 metaverse-button rounded-lg text-white font-medium"
+                >
+                  ไปที่ Reward Shop
+                </Link>
               </div>
 
               {/* Play Streak Info */}
@@ -407,53 +426,23 @@ export default function GameHeader({ user }: GameHeaderProps) {
                 </div>
               </div>
 
-              {/* EXP Table */}
-              <div className="space-y-3 mb-6">
-                <h4 className="text-lg font-semibold text-white mb-3">ตาราง EXP:</h4>
-                <div className="glass rounded-xl overflow-hidden border border-metaverse-purple/20">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-metaverse-purple/20">
-                        <th className="text-left p-3 text-white/80">ความสำเร็จ</th>
-                        <th className="text-right p-3 text-white/80">โบนัส EXP</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-metaverse-purple/10">
-                        <td className="p-3 text-white/70">Perfect (100%)</td>
-                        <td className="text-right p-3 text-yellow-400 font-bold">+100</td>
-                      </tr>
-                      <tr className="border-t border-metaverse-purple/10">
-                        <td className="p-3 text-white/70">Excellent (95%+)</td>
-                        <td className="text-right p-3 text-green-400 font-bold">+80</td>
-                      </tr>
-                      <tr className="border-t border-metaverse-purple/10">
-                        <td className="p-3 text-white/70">Very Good (90%+)</td>
-                        <td className="text-right p-3 text-green-400 font-bold">+60</td>
-                      </tr>
-                      <tr className="border-t border-metaverse-purple/10">
-                        <td className="p-3 text-white/70">Good (85%+)</td>
-                        <td className="text-right p-3 text-blue-400 font-bold">+40</td>
-                      </tr>
-                      <tr className="border-t border-metaverse-purple/10">
-                        <td className="p-3 text-white/70">เล่นครั้งแรกของวัน</td>
-                        <td className="text-right p-3 text-orange-400 font-bold">+50</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Future use */}
+              {/* EXP Usage */}
               <div className="glass bg-gradient-to-r from-metaverse-purple/20 to-metaverse-pink/20 rounded-xl p-4 border border-metaverse-purple/30">
                 <div className="flex items-start gap-3">
                   <Gift className="w-6 h-6 text-metaverse-purple mt-0.5" />
                   <div>
-                    <p className="font-semibold text-white mb-1">นำ EXP ไปใช้ในอนาคต</p>
-                    <p className="text-sm text-white/70">
-                      สะสม EXP เพื่อแลกรางวัลพิเศษ เช่น ธีมใหม่, ตัวละครพิเศษ, 
-                      หรือไอเทมช่วยเล่นในอนาคต!
+                    <p className="font-semibold text-white mb-1">ใช้ EXP แลกรางวัล</p>
+                    <p className="text-sm text-white/70 mb-2">
+                      นำ EXP ไปแลก Avatars พิเศษ, เครื่องประดับ, Title Badges, 
+                      Boost Items หรือของรางวัลจริง!
                     </p>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">🦸 Premium Avatars</span>
+                      <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">👑 Accessories</span>
+                      <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">🏆 Title Badges</span>
+                      <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">⚡ EXP Boosts</span>
+                      <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">📦 ของจริง</span>
+                    </div>
                   </div>
                 </div>
               </div>

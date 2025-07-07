@@ -1,93 +1,116 @@
-// app/(game)/ranking/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { getCurrentUser } from '@/lib/firebase/auth';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { getCurrentUser } from '@/lib/firebase/auth';
 import { User } from '@/types';
-import { Trophy, Medal, Crown, ArrowLeft, Pi } from 'lucide-react';
+import AvatarDisplay from '@/components/avatar/AvatarDisplay';
+import { 
+  Trophy, 
+  Medal, 
+  Crown, 
+  ArrowLeft, 
+  TrendingUp,
+  Users,
+  Star,
+  Filter,
+  Award
+} from 'lucide-react';
 
 interface RankingUser {
   id: string;
   username: string;
   displayName?: string;
   avatar: string;
-  grade: string;
-  level: number;
+  avatarData?: any;
+  currentTitleBadge?: string;
   totalScore: number;
+  level: number;
+  experience: number;
   rank?: number;
 }
 
 export default function RankingPage() {
   const router = useRouter();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [rankings, setRankings] = useState<RankingUser[]>([]);
+  const [userRank, setUserRank] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedGrade, setSelectedGrade] = useState<string>('all');
+  const [selectedGrade, setSelectedGrade] = useState<string>('');
+  const [rankingType, setRankingType] = useState<'score' | 'exp'>('score');
 
   useEffect(() => {
-    loadData();
-  }, []);
+    loadUserAndRankings();
+  }, [selectedGrade, rankingType]);
 
-  useEffect(() => {
-    if (currentUser) {
-      loadRankings(selectedGrade === 'all' ? null : selectedGrade);
-    }
-  }, [selectedGrade, currentUser]);
-
-  const loadData = async () => {
+  const loadUserAndRankings = async () => {
     try {
-      const user = await getCurrentUser();
-      if (!user) {
+      const userData = await getCurrentUser();
+      if (!userData) {
         router.push('/login');
         return;
       }
-      setCurrentUser(user);
-      setSelectedGrade(user.grade); // Default to user's grade
+      
+      setUser(userData);
+      setSelectedGrade(userData.grade);
+      
+      // Load rankings for user's grade
+      await loadRankings(userData.grade, userData.id);
     } catch (error) {
-      console.error('Error loading user:', error);
-      router.push('/login');
-    }
-  };
-
-  const loadRankings = async (grade: string | null) => {
-    try {
-      let q;
-      if (grade) {
-        q = query(
-          collection(db, 'users'),
-          where('grade', '==', grade),
-          where('isActive', '==', true),
-          orderBy('totalScore', 'desc'),
-          limit(100)
-        );
-      } else {
-        q = query(
-          collection(db, 'users'),
-          where('isActive', '==', true),
-          orderBy('totalScore', 'desc'),
-          limit(100)
-        );
-      }
-
-      const snapshot = await getDocs(q);
-      const users = snapshot.docs.map((doc, index) => ({
-        id: doc.id,
-        ...doc.data(),
-        rank: index + 1
-      } as RankingUser));
-
-      setRankings(users);
-    } catch (error) {
-      console.error('Error loading rankings:', error);
+      console.error('Error loading data:', error);
     } finally {
       setLoading(false);
     }
   };
 
+  const loadRankings = async (grade: string, userId: string) => {
+    try {
+      // Query users in the same grade
+      const usersQuery = query(
+        collection(db, 'users'),
+        where('grade', '==', grade),
+        where('isActive', '==', true),
+        orderBy(rankingType === 'score' ? 'totalScore' : 'experience', 'desc'),
+        limit(100)
+      );
+      
+      const snapshot = await getDocs(usersQuery);
+      const users: RankingUser[] = [];
+      let currentUserRank = null;
+      
+      snapshot.docs.forEach((doc, index) => {
+        const data = doc.data();
+        const rankUser: RankingUser = {
+          id: doc.id,
+          username: data.username,
+          displayName: data.displayName,
+          avatar: data.avatar,
+          avatarData: data.avatarData,
+          currentTitleBadge: data.currentTitleBadge,
+          totalScore: data.totalScore || 0,
+          level: data.level || 1,
+          experience: data.experience || 0,
+          rank: index + 1
+        };
+        
+        users.push(rankUser);
+        
+        if (doc.id === userId) {
+          currentUserRank = index + 1;
+        }
+      });
+      
+      setRankings(users);
+      setUserRank(currentUserRank);
+    } catch (error) {
+      console.error('Error loading rankings:', error);
+    }
+  };
+
+  // Get grade display name
   const getGradeDisplayName = (grade: string): string => {
     const gradeMap: Record<string, string> = {
       K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
@@ -99,57 +122,51 @@ export default function RankingPage() {
     return gradeMap[grade] || grade;
   };
 
-  const getAvatarEmoji = (avatarId: string): string => {
-    const avatarMap: Record<string, string> = {
-      'knight': '🤴', 'warrior': '🦸‍♂️', 'warrioress': '🦸‍♀️', 'ninja': '🥷',
-      'wizard': '🧙‍♂️', 'witch': '🧙‍♀️', 'superhero': '🦹‍♂️', 'superheroine': '🦹‍♀️',
-      'vampire': '🧛‍♂️', 'vampiress': '🧛‍♀️', 'dragon': '🐉', 'unicorn': '🦄',
-      'fox': '🦊', 'lion': '🦁', 'tiger': '🐯', 'wolf': '🐺', 'bear': '🐻',
-      'panda': '🐼', 'monkey': '🐵', 'owl': '🦉', 'fairy': '🧚‍♀️', 'fairy-man': '🧚‍♂️',
-      'mage': '🧙', 'genie': '🧞', 'mermaid': '🧜‍♀️', 'merman': '🧜‍♂️',
-      'robot': '🤖', 'alien': '👽', 'ghost': '👻', 'zombie': '🧟'
-    };
-    return avatarMap[avatarId] || '👤';
-  };
-
-  const getRankIcon = (rank: number) => {
+  // Get rank medal
+  const getRankMedal = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Crown className="w-6 h-6 text-yellow-400" />;
+        return <Crown className="w-8 h-8 text-yellow-400 filter drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]" />;
       case 2:
-        return <Medal className="w-6 h-6 text-gray-400" />;
+        return <Medal className="w-8 h-8 text-gray-300 filter drop-shadow-[0_0_10px_rgba(192,192,192,0.5)]" />;
       case 3:
-        return <Medal className="w-6 h-6 text-orange-400" />;
+        return <Medal className="w-8 h-8 text-orange-400 filter drop-shadow-[0_0_10px_rgba(251,146,60,0.5)]" />;
       default:
-        return <span className="text-lg font-bold text-white/60">#{rank}</span>;
+        return <span className="text-2xl font-bold text-white/60">#{rank}</span>;
     }
   };
 
-  // แก้ไขส่วน loading
-    if (loading) {
-    return (
-        <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
-        <div className="absolute inset-0 bg-metaverse-gradient opacity-30"></div>
-        <motion.div
-            animate={{ 
-            rotate: [0, -10, 10, -10, 0],
-            scale: [1, 1.1, 0.9, 1.1, 1],
-            }}
-            transition={{ 
-            duration: 2, 
-            repeat: Infinity,
-            ease: "easeInOut"
-            }}
-            className="relative z-10"
-        >
-            <Pi className="w-24 h-24 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
-        </motion.div>
-        </div>
-    );
+  // Get rank colors
+  const getRankColor = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return 'from-yellow-400/20 to-orange-400/20 border-yellow-400/30';
+      case 2:
+        return 'from-gray-300/20 to-gray-400/20 border-gray-300/30';
+      case 3:
+        return 'from-orange-400/20 to-orange-500/20 border-orange-400/30';
+      default:
+        return 'from-metaverse-purple/10 to-metaverse-pink/10 border-metaverse-purple/30';
     }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="text-6xl"
+        >
+          🏆
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-metaverse-black py-8">
+      {/* Background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
@@ -160,123 +177,282 @@ export default function RankingPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-8"
+          className="mb-8"
         >
-          <button
-            onClick={() => router.push('/play')}
-            className="flex items-center gap-2 text-white/60 hover:text-white transition"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            กลับ
-          </button>
-          
-          <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-            <Trophy className="w-8 h-8 text-yellow-400" />
-            อันดับคะแนน
-          </h1>
-          
-          <div className="w-20" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.push('/play')}
+                className="p-2 glass rounded-full hover:bg-white/10 transition"
+              >
+                <ArrowLeft className="w-5 h-5 text-white" />
+              </button>
+              <div>
+                <h1 className="text-3xl font-bold text-white flex items-center gap-2">
+                  <Trophy className="w-8 h-8 text-yellow-400" />
+                  อันดับคะแนน
+                </h1>
+                <p className="text-white/60">{getGradeDisplayName(selectedGrade)}</p>
+              </div>
+            </div>
+            
+            {/* User Rank */}
+            {userRank && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="glass-dark rounded-2xl px-6 py-3 border border-metaverse-purple/30"
+              >
+                <p className="text-sm text-white/60">อันดับของคุณ</p>
+                <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
+                  #{userRank}
+                </p>
+              </motion.div>
+            )}
+          </div>
         </motion.div>
 
-        {/* Grade Filter */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="glass-dark rounded-xl p-4 mb-6 border border-metaverse-purple/30"
-        >
-          <select
-            value={selectedGrade}
-            onChange={(e) => setSelectedGrade(e.target.value)}
-            className="w-full px-4 py-2 bg-white/10 border border-metaverse-purple/30 rounded-lg text-white focus:outline-none focus:border-metaverse-pink"
-          >
-            <option value="all" className="bg-metaverse-black">ทุกระดับชั้น</option>
-            <option value={currentUser?.grade || ''} className="bg-metaverse-black">
-              ชั้นของฉัน ({getGradeDisplayName(currentUser?.grade || '')})
-            </option>
-            <optgroup label="อนุบาล" className="bg-metaverse-black">
-              <option value="K1" className="bg-metaverse-black">อนุบาล 1</option>
-              <option value="K2" className="bg-metaverse-black">อนุบาล 2</option>
-              <option value="K3" className="bg-metaverse-black">อนุบาล 3</option>
-            </optgroup>
-            <optgroup label="ประถม" className="bg-metaverse-black">
-              <option value="P1" className="bg-metaverse-black">ประถม 1</option>
-              <option value="P2" className="bg-metaverse-black">ประถม 2</option>
-              <option value="P3" className="bg-metaverse-black">ประถม 3</option>
-              <option value="P4" className="bg-metaverse-black">ประถม 4</option>
-              <option value="P5" className="bg-metaverse-black">ประถม 5</option>
-              <option value="P6" className="bg-metaverse-black">ประถม 6</option>
-            </optgroup>
-            <optgroup label="มัธยม" className="bg-metaverse-black">
-              <option value="M1" className="bg-metaverse-black">มัธยม 1</option>
-              <option value="M2" className="bg-metaverse-black">มัธยม 2</option>
-              <option value="M3" className="bg-metaverse-black">มัธยม 3</option>
-              <option value="M4" className="bg-metaverse-black">มัธยม 4</option>
-              <option value="M5" className="bg-metaverse-black">มัธยม 5</option>
-              <option value="M6" className="bg-metaverse-black">มัธยม 6</option>
-            </optgroup>
-          </select>
-        </motion.div>
+        {/* Filter Tabs */}
+        <div className="glass-dark rounded-2xl p-1 mb-6 border border-metaverse-purple/30">
+          <div className="flex">
+            <button
+              onClick={() => setRankingType('score')}
+              className={`flex-1 px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
+                rankingType === 'score'
+                  ? 'metaverse-button text-white'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              <Star className="w-5 h-5" />
+              คะแนนรวม
+            </button>
+            <button
+              onClick={() => setRankingType('exp')}
+              className={`flex-1 px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
+                rankingType === 'exp'
+                  ? 'metaverse-button text-white'
+                  : 'text-white/60 hover:text-white'
+              }`}
+            >
+              <TrendingUp className="w-5 h-5" />
+              EXP สูงสุด
+            </button>
+          </div>
+        </div>
+
+        {/* Top 3 Podium */}
+        {rankings.length >= 3 && (
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            {/* 2nd Place */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="order-1 md:order-1"
+            >
+              <div className={`glass-dark rounded-2xl p-4 border bg-gradient-to-br ${getRankColor(2)} text-center`}>
+                <div className="mb-3">{getRankMedal(2)}</div>
+                <AvatarDisplay
+                  avatarData={rankings[1].avatarData}
+                  basicAvatar={rankings[1].avatar}
+                  size="large"
+                  showEffects={true}
+                />
+                <h3 className="font-bold text-white mt-3 truncate">
+                  {rankings[1].displayName || rankings[1].username}
+                </h3>
+                {rankings[1].currentTitleBadge && (
+                  <p className="text-xs text-yellow-400 truncate">
+                    {rankings[1].currentTitleBadge}
+                  </p>
+                )}
+                <p className="text-2xl font-bold text-white mt-2">
+                  {rankingType === 'score' 
+                    ? rankings[1].totalScore.toLocaleString()
+                    : rankings[1].experience.toLocaleString()
+                  }
+                </p>
+                <p className="text-sm text-white/60">
+                  {rankingType === 'score' ? 'คะแนน' : 'EXP'}
+                </p>
+              </div>
+            </motion.div>
+
+            {/* 1st Place */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="order-2 md:order-2 transform md:-translate-y-4"
+            >
+              <div className={`glass-dark rounded-2xl p-4 border bg-gradient-to-br ${getRankColor(1)} text-center relative overflow-hidden`}>
+                <div className="absolute inset-0 bg-yellow-400/10 blur-xl"></div>
+                <div className="relative">
+                  <div className="mb-3">{getRankMedal(1)}</div>
+                  <AvatarDisplay
+                    avatarData={rankings[0].avatarData}
+                    basicAvatar={rankings[0].avatar}
+                    size="large"
+                    showEffects={true}
+                  />
+                  <h3 className="font-bold text-white mt-3 truncate">
+                    {rankings[0].displayName || rankings[0].username}
+                  </h3>
+                  {rankings[0].currentTitleBadge && (
+                    <p className="text-xs text-yellow-400 truncate">
+                      {rankings[0].currentTitleBadge}
+                    </p>
+                  )}
+                  <p className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400 mt-2">
+                    {rankingType === 'score' 
+                      ? rankings[0].totalScore.toLocaleString()
+                      : rankings[0].experience.toLocaleString()
+                    }
+                  </p>
+                  <p className="text-sm text-white/60">
+                    {rankingType === 'score' ? 'คะแนน' : 'EXP'}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* 3rd Place */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="order-3 md:order-3"
+            >
+              <div className={`glass-dark rounded-2xl p-4 border bg-gradient-to-br ${getRankColor(3)} text-center`}>
+                <div className="mb-3">{getRankMedal(3)}</div>
+                <AvatarDisplay
+                  avatarData={rankings[2].avatarData}
+                  basicAvatar={rankings[2].avatar}
+                  size="large"
+                  showEffects={true}
+                />
+                <h3 className="font-bold text-white mt-3 truncate">
+                  {rankings[2].displayName || rankings[2].username}
+                </h3>
+                {rankings[2].currentTitleBadge && (
+                  <p className="text-xs text-yellow-400 truncate">
+                    {rankings[2].currentTitleBadge}
+                  </p>
+                )}
+                <p className="text-2xl font-bold text-white mt-2">
+                  {rankingType === 'score' 
+                    ? rankings[2].totalScore.toLocaleString()
+                    : rankings[2].experience.toLocaleString()
+                  }
+                </p>
+                <p className="text-sm text-white/60">
+                  {rankingType === 'score' ? 'คะแนน' : 'EXP'}
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
 
         {/* Rankings List */}
-        <div className="space-y-3">
-          {rankings.length === 0 ? (
-            <div className="glass-dark rounded-xl p-8 text-center border border-metaverse-purple/30">
-              <p className="text-white/60">ยังไม่มีข้อมูลอันดับ</p>
-            </div>
-          ) : (
-            rankings.map((user, index) => (
-              <motion.div
-                key={user.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: Math.min(index * 0.05, 0.5) }}
-                className={`glass-dark rounded-xl p-4 border ${
-                  user.id === currentUser?.id
-                    ? 'border-metaverse-purple bg-metaverse-purple/10'
-                    : 'border-metaverse-purple/20'
-                } ${
-                  user.rank === 1 ? 'bg-yellow-400/5' :
-                  user.rank === 2 ? 'bg-gray-400/5' :
-                  user.rank === 3 ? 'bg-orange-400/5' : ''
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  {/* Rank */}
-                  <div className="w-12 text-center">
-                    {getRankIcon(user.rank || index + 1)}
-                  </div>
-
-                  {/* Avatar */}
-                  <div className="text-3xl">
-                    {getAvatarEmoji(user.avatar)}
-                  </div>
-
-                  {/* User Info */}
-                  <div className="flex-1">
-                    <p className="font-semibold text-white">
-                      {user.displayName || user.username}
-                      {user.id === currentUser?.id && (
-                        <span className="ml-2 text-xs text-metaverse-purple">(คุณ)</span>
+        <div className="glass-dark rounded-3xl p-6 border border-metaverse-purple/30">
+          <div className="space-y-3">
+            {rankings.slice(3).map((player, index) => {
+              const actualRank = index + 4;
+              const isCurrentUser = player.id === user?.id;
+              
+              return (
+                <motion.div
+                  key={player.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={`glass rounded-xl p-4 border ${
+                    isCurrentUser
+                      ? 'border-metaverse-purple bg-metaverse-purple/10'
+                      : 'border-metaverse-purple/20 hover:bg-white/5'
+                  } transition`}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Rank */}
+                    <div className="w-12 text-center">
+                      <span className="text-xl font-bold text-white/60">
+                        #{actualRank}
+                      </span>
+                    </div>
+                    
+                    {/* Avatar */}
+                    <AvatarDisplay
+                      avatarData={player.avatarData}
+                      basicAvatar={player.avatar}
+                      size="small"
+                      showEffects={false}
+                    />
+                    
+                    {/* Player Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-white truncate">
+                          {player.displayName || player.username}
+                        </h3>
+                        {isCurrentUser && (
+                          <span className="text-xs px-2 py-0.5 bg-metaverse-purple/30 text-metaverse-purple rounded-full">
+                            คุณ
+                          </span>
+                        )}
+                      </div>
+                      {player.currentTitleBadge && (
+                        <p className="text-xs text-yellow-400 truncate">
+                          {player.currentTitleBadge}
+                        </p>
                       )}
-                    </p>
-                    <p className="text-sm text-white/60">
-                      {getGradeDisplayName(user.grade)} • Level {user.level}
-                    </p>
+                      <p className="text-sm text-white/60">
+                        Level {player.level}
+                      </p>
+                    </div>
+                    
+                    {/* Score/EXP */}
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-white">
+                        {rankingType === 'score' 
+                          ? player.totalScore.toLocaleString()
+                          : player.experience.toLocaleString()
+                        }
+                      </p>
+                      <p className="text-xs text-white/50">
+                        {rankingType === 'score' ? 'คะแนน' : 'EXP'}
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Score */}
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
-                      {user.totalScore.toLocaleString()}
-                    </p>
-                    <p className="text-xs text-white/60">คะแนน</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))
+                </motion.div>
+              );
+            })}
+          </div>
+          
+          {rankings.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="w-16 h-16 text-white/20 mx-auto mb-4" />
+              <p className="text-white/40">ยังไม่มีข้อมูลอันดับ</p>
+            </div>
           )}
         </div>
+
+        {/* Info Box */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-6 glass-dark p-4 rounded-xl text-sm border border-metaverse-purple/20"
+        >
+          <div className="flex items-start gap-3">
+            <Award className="w-5 h-5 text-metaverse-purple mt-0.5" />
+            <div>
+              <p className="text-white/80 font-medium mb-1">ระบบอันดับ</p>
+              <p className="text-white/60">
+                อันดับจะอัพเดททุกครั้งที่เล่นเกม แสดงผู้เล่น 100 อันดับแรกในระดับชั้นเดียวกัน
+              </p>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   );

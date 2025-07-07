@@ -1,11 +1,14 @@
 // types/index.ts
 
+import { UserAvatarData } from './avatar';
+
 export interface User {
   id: string;
   username: string;
   displayName?: string;
   email?: string;
-  avatar: string;
+  avatar: string;  // เก็บ basic avatar ID (emoji) สำหรับ backward compatibility
+  avatarData?: UserAvatarData;  // ระบบ avatar ใหม่
   school: string;
   grade: Grade;
   level: number;
@@ -19,6 +22,9 @@ export interface User {
   levelScores?: Record<string, LevelScore>; // เพิ่มฟิลด์นี้
   playStreak?: number; // จำนวนวันที่เล่นต่อเนื่อง
   lastPlayedAt?: string; // วันที่เล่นล่าสุด
+  currentTitleBadge?: string;  // ฉายาที่เลือกใช้
+  ownedTitleBadges?: string[]; // ฉายาที่มี
+  badges?: string[];      // เหรียญตราที่ได้รับ
 }
 
 export enum Grade {

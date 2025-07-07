@@ -5,14 +5,33 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/firebase/auth';
 import { updateUserGameData, calculateScoreDifference, updatePlayStreak, calculateExpGained } from '@/lib/firebase/game';
+import { getActiveBoosts } from '@/lib/firebase/rewards';
 import { User, Question } from '@/types';
+import { ActiveBoost } from '@/types/avatar';
 import QuestionDisplay from '@/components/game/QuestionDisplay';
 import GameHeader from '@/components/game/GameHeader';
 import GameProgress from '@/components/game/GameProgress';
+import AvatarDisplay from '@/components/avatar/AvatarDisplay';
 import { generateQuestion } from '@/lib/game/questionGenerator';
 import { getQuestionCount, calculateLevelChange, getLevelConfig } from '@/lib/game/config';
 import { useSound } from '@/lib/game/soundManager';
-import { Sparkles, Rocket, Trophy, TrendingDown, TrendingUp, X, AlertTriangle, Star, Settings, ChevronRight, Pi } from 'lucide-react';
+import { 
+  Sparkles, 
+  Rocket, 
+  Trophy, 
+  TrendingDown, 
+  TrendingUp, 
+  X, 
+  AlertTriangle, 
+  Star, 
+  Settings, 
+  ChevronRight, 
+  Pi,
+  Zap,
+  Clock,
+  Gift
+} from 'lucide-react';
+import Link from 'next/link';
 
 export default function PlayPage() {
   const router = useRouter();
@@ -27,7 +46,7 @@ export default function PlayPage() {
   const [questionNumber, setQuestionNumber] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [score, setScore] = useState(0);
-  const [tempTotalScore, setTempTotalScore] = useState(0); // คะแนนรวมชั่วคราว
+  const [tempTotalScore, setTempTotalScore] = useState(0);
   const [highScoreInfo, setHighScoreInfo] = useState<{ isNew: boolean; oldScore: number; scoreDiff: number } | null>(null);
   const [answers, setAnswers] = useState<Array<{
     question: Question;
@@ -36,6 +55,10 @@ export default function PlayPage() {
     timeSpent: number;
   }>>([]);
   const [startTime, setStartTime] = useState<number>(0);
+  
+  // Boost state
+  const [activeBoosts, setActiveBoosts] = useState<ActiveBoost[]>([]);
+  const [currentBoostMultiplier, setCurrentBoostMultiplier] = useState(1);
   
   // Sound hook
   const { playSound } = useSound();
@@ -49,10 +72,18 @@ export default function PlayPage() {
         return;
       }
       setUser(userData);
-      // ใช้ getQuestionCount จาก config
       setTotalQuestions(getQuestionCount(userData.grade));
-      // Set คะแนนรวมเริ่มต้น
       setTempTotalScore(userData.totalScore);
+      
+      // Check for active boosts
+      const boosts = await getActiveBoosts(userData.id);
+      setActiveBoosts(boosts);
+      
+      // Calculate boost multiplier
+      if (boosts.length > 0) {
+        const maxMultiplier = Math.max(...boosts.map(b => b.multiplier));
+        setCurrentBoostMultiplier(maxMultiplier);
+      }
     } catch (error) {
       console.error('Auth error:', error);
       router.push('/login');
@@ -72,9 +103,8 @@ export default function PlayPage() {
       if (forceLevel) {
         const level = parseInt(forceLevel);
         if (!isNaN(level) && level >= 1 && level <= 100) {
-          // Update user level temporarily for this session
           setUser({ ...user, level });
-          localStorage.removeItem('forceLevel'); // Clear after use
+          localStorage.removeItem('forceLevel');
         }
       }
     }
@@ -115,7 +145,7 @@ export default function PlayPage() {
     setQuestionNumber(1);
     setScore(0);
     setAnswers([]);
-    setGameStartTime(Date.now()); // บันทึกเวลาเริ่มเกม
+    setGameStartTime(Date.now());
     generateNewQuestion();
   };
 
@@ -123,7 +153,6 @@ export default function PlayPage() {
   const generateNewQuestion = () => {
     if (!user) return;
     
-    // Check if playing specific level
     const forceLevel = localStorage.getItem('forceLevel');
     const levelToPlay = forceLevel ? parseInt(forceLevel) : user.level;
     
@@ -139,10 +168,8 @@ export default function PlayPage() {
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
     const isCorrect = userAnswer === currentQuestion.answer;
     
-    // Play sound effect
     playSound(isCorrect ? 'correct' : 'incorrect');
     
-    // Save answer
     const newAnswers = [...answers, {
       question: currentQuestion,
       userAnswer,
@@ -151,24 +178,18 @@ export default function PlayPage() {
     }];
     setAnswers(newAnswers);
     
-    // Update score
     if (isCorrect) {
       setScore(score + 1);
     }
     
-    // Check if this was the last question
     if (questionNumber === totalQuestions) {
-      // This is the last question - show processing animation
       setGameState('processing');
       
-      // End game after delay
       setTimeout(() => {
-        // Use the updated score
         const finalScore = isCorrect ? score + 1 : score;
         endGame(finalScore);
       }, 2000);
     } else {
-      // Not the last question - continue to next
       setQuestionNumber(questionNumber + 1);
       generateNewQuestion();
     }
@@ -176,12 +197,10 @@ export default function PlayPage() {
 
   // End game
   const endGame = async (finalScore?: number) => {
-    // ใช้คะแนนที่ส่งมา หรือใช้จาก state
     const actualScore = finalScore !== undefined ? finalScore : score;
     const percentage = Math.round((actualScore / totalQuestions) * 100);
     const levelChange = calculateLevelChange(percentage);
     
-    // Play appropriate sound
     if (levelChange === 'increase') {
       playSound('levelUp');
     } else if (levelChange === 'decrease') {
@@ -190,27 +209,22 @@ export default function PlayPage() {
       playSound('gameEnd');
     }
     
-    // Save game session to Firebase
     if (user) {
       try {
-        // Update play streak first
         const { playStreak, isFirstToday } = await updatePlayStreak(user.id);
         
-        // คำนวณความแตกต่างของคะแนน (ระบบ high score)
         const { scoreDiff, isNewHighScore, oldHighScore } = await calculateScoreDifference(
           user.id,
           user.level,
           actualScore
         );
         
-        // เก็บข้อมูล high score
         setHighScoreInfo({
           isNew: isNewHighScore,
           oldScore: oldHighScore,
           scoreDiff: scoreDiff
         });
         
-        // คำนวณ level ใหม่
         let newLevel = user.level;
         if (levelChange === 'increase' && user.level < 100) {
           newLevel = user.level + 1;
@@ -218,10 +232,9 @@ export default function PlayPage() {
           newLevel = user.level - 1;
         }
         
-        // Get play count for this level
         const playCount = (user.levelScores?.[user.level.toString()]?.playCount || 0) + 1;
         
-        // Calculate EXP with new system
+        // Calculate EXP with boost
         const expCalc = calculateExpGained(
           actualScore,
           totalQuestions,
@@ -232,10 +245,11 @@ export default function PlayPage() {
           playCount
         );
         
-        // คำนวณคะแนนรวมที่ถูกต้อง (เพิ่มเฉพาะส่วนต่าง)
+        // Apply boost multiplier
+        const boostedExp = Math.floor(expCalc.totalExp * currentBoostMultiplier);
+        
         const newTotalScore = user.totalScore + scoreDiff;
         
-        // อัปเดต level scores
         const levelScores = user.levelScores || {};
         const levelKey = user.level.toString();
         levelScores[levelKey] = {
@@ -245,33 +259,28 @@ export default function PlayPage() {
           playCount: playCount
         };
         
-        // อัปเดต user data
         await updateUserGameData(user.id, {
           level: newLevel,
           totalScore: newTotalScore,
-          experience: user.experience + expCalc.totalExp,
+          experience: user.experience + boostedExp,
           lastPlayedAt: new Date().toISOString(),
           levelScores: levelScores,
           playStreak: playStreak
         });
         
-        // อัปเดต local state
         setUser({
           ...user,
           level: newLevel,
           totalScore: newTotalScore,
-          experience: user.experience + expCalc.totalExp,
+          experience: user.experience + boostedExp,
           levelScores: levelScores,
           playStreak: playStreak
         });
         
-        // อัปเดต temp score ให้ตรงกับที่บันทึก
         setTempTotalScore(newTotalScore);
         
-        // คำนวณเวลาที่ใช้
         const timeSpent = Math.floor((Date.now() - gameStartTime) / 1000);
         
-        // Redirect ไปหน้า summary พร้อมข้อมูล
         const params = new URLSearchParams({
           score: actualScore.toString(),
           total: totalQuestions.toString(),
@@ -279,15 +288,15 @@ export default function PlayPage() {
           levelChange: levelChange,
           newLevel: newLevel.toString(),
           oldLevel: user.level.toString(),
-          exp: expCalc.totalExp.toString(),
+          exp: boostedExp.toString(),
           highScore: isNewHighScore.toString(),
           oldHighScore: oldHighScore.toString(),
           scoreDiff: scoreDiff.toString(),
           time: timeSpent.toString(),
-          // เพิ่มข้อมูล EXP breakdown
           expBreakdown: JSON.stringify(expCalc.breakdown),
           playStreak: playStreak.toString(),
           isFirstToday: isFirstToday.toString(),
+          boostMultiplier: currentBoostMultiplier.toString()
         });
         
         router.push(`/summary?${params.toString()}`);
@@ -303,7 +312,7 @@ export default function PlayPage() {
     return Math.round((score / totalQuestions) * 100);
   };
 
-  // Get level change message using config
+  // Get level change message
   const getLevelChangeMessage = () => {
     const percentage = getScorePercentage();
     const levelChange = calculateLevelChange(percentage);
@@ -400,22 +409,57 @@ export default function PlayPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
+              {/* Active Boost Notification */}
+              {activeBoosts.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="glass bg-gradient-to-r from-yellow-400/20 to-orange-400/20 rounded-2xl p-4 mb-6 border border-yellow-400/30"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-yellow-400/20 rounded-xl">
+                        <Zap className="w-6 h-6 text-yellow-400" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-white">Boost Active!</p>
+                        <p className="text-sm text-white/80">
+                          EXP x{currentBoostMultiplier} สำหรับเกมนี้
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-white/60">
+                      <Clock className="w-4 h-4" />
+                      <span>เหลือเวลา {Math.floor((new Date(activeBoosts[0].expiresAt).getTime() - Date.now()) / 60000)} นาที</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Main Game Card */}
               <div className="glass-dark rounded-3xl shadow-2xl p-12 border border-metaverse-purple/30 mb-8">
-                <motion.div
-                  animate={{ 
-                    rotate: [0, 5, -5, 0],
-                    scale: [1, 1.05, 1],
-                  }}
-                  transition={{ 
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                  className="inline-block mb-6"
-                >
-                  <Sparkles className="w-20 h-20 text-metaverse-purple filter drop-shadow-[0_0_30px_rgba(147,51,234,0.5)]" />
-                </motion.div>
+                {/* Avatar Display */}
+                <div className="flex justify-center mb-6">
+                  <motion.div
+                    animate={{ 
+                      scale: [1, 1.05, 1],
+                    }}
+                    transition={{ 
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  >
+                    <AvatarDisplay
+                      avatarData={user?.avatarData}
+                      basicAvatar={user?.avatar}
+                      size="xlarge"
+                      showEffects={true}
+                      showTitle={true}
+                      titleBadge={user?.currentTitleBadge}
+                    />
+                  </motion.div>
+                </div>
                 
                 <h1 className="text-4xl font-bold text-white mb-4 text-center">
                   พร้อมเริ่มการผจญภัยหรือยัง?
@@ -456,7 +500,7 @@ export default function PlayPage() {
               </div>
 
               {/* Quick Menu Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {/* Ranking Card */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
@@ -512,25 +556,52 @@ export default function PlayPage() {
                   </div>
                 </motion.div>
 
-                {/* Profile Card */}
+                {/* My Avatar Card */}
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  onClick={() => router.push('/profile')}
+                  onClick={() => router.push('/my-avatar')}
                   className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <div className="flex items-start gap-4">
-                    <div className="p-3 bg-gradient-to-br from-metaverse-red/20 to-metaverse-darkRed/20 rounded-xl group-hover:scale-110 transition">
-                      <Settings className="w-8 h-8 text-metaverse-red" />
+                    <div className="p-3 bg-gradient-to-br from-metaverse-purple/20 to-metaverse-pink/20 rounded-xl group-hover:scale-110 transition">
+                      <Sparkles className="w-8 h-8 text-metaverse-purple" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-2">โปรไฟล์</h3>
-                      <p className="text-white/60 text-sm mb-3">แก้ไขข้อมูลส่วนตัวและดูความก้าวหน้า</p>
+                      <h3 className="text-xl font-bold text-white mb-2">My Avatar</h3>
+                      <p className="text-white/60 text-sm mb-3">จัดการตัวละครและเครื่องประดับ</p>
                       <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
-                        <span>จัดการโปรไฟล์</span>
+                        <span>จัดการ</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Reward Shop Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  onClick={() => router.push('/rewards')}
+                  className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-gradient-to-br from-yellow-400/20 to-orange-400/20 rounded-xl group-hover:scale-110 transition">
+                      <Gift className="w-8 h-8 text-yellow-400" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-2">Reward Shop</h3>
+                      <p className="text-white/60 text-sm mb-3">
+                        EXP: {user?.experience.toLocaleString()}
+                      </p>
+                      <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
+                        <span>แลกรางวัล</span>
                         <ChevronRight className="w-4 h-4" />
                       </div>
                     </div>
@@ -682,13 +753,9 @@ export default function PlayPage() {
               <motion.button
                 onClick={() => {
                   playSound('click');
-                  // รีเซ็ตคะแนนรวมชั่วคราว
                   setTempTotalScore(user?.totalScore || 0);
-                  // Clear any forced level
                   localStorage.removeItem('forceLevel');
-                  // กลับหน้าหลัก
                   router.push('/play');
-                  // รีเซ็ต state
                   setGameState('ready');
                   setScore(0);
                   setQuestionNumber(0);
