@@ -5,7 +5,17 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pi, LayoutDashboard, Ticket, Users, ChartBar, Menu, X as XIcon } from 'lucide-react';
+import { 
+  Pi, 
+  LayoutDashboard, 
+  Ticket, 
+  Users, 
+  ChartBar, 
+  Menu, 
+  Package, 
+  Gift, 
+  X as XIcon 
+} from 'lucide-react';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -49,6 +59,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { href: '/admin/dashboard', label: 'Dashboard', icon: 'LayoutDashboard' },
     { href: '/admin/codes', label: 'Registration Codes', icon: 'Ticket' },
     { href: '/admin/students', label: 'นักเรียน', icon: 'Users' },
+    { href: '/admin/rewards', label: 'จัดการรางวัล', icon: 'Gift' },
+    { href: '/admin/orders', label: 'คำสั่งซื้อ', icon: 'Package' },
     { href: '/admin/reports', label: 'รายงาน', icon: 'ChartBar' },
   ];
 
@@ -134,6 +146,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       {item.icon === 'LayoutDashboard' && <LayoutDashboard className="w-5 h-5" />}
                       {item.icon === 'Ticket' && <Ticket className="w-5 h-5" />}
                       {item.icon === 'Users' && <Users className="w-5 h-5" />}
+                      {item.icon === 'Gift' && <Gift className="w-5 h-5" />}
+                      {item.icon === 'Package' && <Package className="w-5 h-5" />}
                       {item.icon === 'ChartBar' && <ChartBar className="w-5 h-5" />}
                       <span className="font-medium">{item.label}</span>
                     </Link>
@@ -179,7 +193,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                       onClick={() => setIsSidebarOpen(false)}
                       className="text-white/60 hover:text-white"
                     >
-                      ✕
+                      <XIcon className="w-5 h-5" />
                     </button>
                   </div>
                 </div>
@@ -203,6 +217,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                             {item.icon === 'LayoutDashboard' && <LayoutDashboard className="w-5 h-5" />}
                             {item.icon === 'Ticket' && <Ticket className="w-5 h-5" />}
                             {item.icon === 'Users' && <Users className="w-5 h-5" />}
+                            {item.icon === 'Gift' && <Gift className="w-5 h-5" />}
+                            {item.icon === 'Package' && <Package className="w-5 h-5" />}
                             {item.icon === 'ChartBar' && <ChartBar className="w-5 h-5" />}
                             <span className="font-medium">{item.label}</span>
                           </Link>

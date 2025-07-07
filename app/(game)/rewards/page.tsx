@@ -7,7 +7,9 @@ import { useRouter } from 'next/navigation';
 import { getCurrentUser } from '@/lib/firebase/auth';
 import { getActiveRewards, purchaseReward } from '@/lib/firebase/rewards';
 import { User } from '@/types';
-import { Reward, RewardType } from '@/types/avatar';
+import { Reward, RewardType, ShippingAddress } from '@/types/avatar';
+import { useDialog } from '@/components/ui/Dialog';
+import ShippingAddressForm from '@/components/rewards/ShippingAddressForm';
 import { 
   Gift, 
   Sparkles, 
@@ -23,7 +25,9 @@ import {
   Lock,
   Clock,
   TrendingUp,
-  Award
+  Award,
+  FileText,
+  Loader2
 } from 'lucide-react';
 import AvatarDisplay from '@/components/avatar/AvatarDisplay';
 
@@ -48,6 +52,12 @@ export default function RewardShopPage() {
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [purchasing, setPurchasing] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showShippingModal, setShowShippingModal] = useState(false);
+  const [shippingAddress, setShippingAddress] = useState<ShippingAddress | null>(null);
+  
+  // Dialogs
+  const successDialog = useDialog({ type: 'success' });
+  const errorDialog = useDialog({ type: 'error' });
 
   // Load user and rewards
   useEffect(() => {
@@ -99,11 +109,23 @@ export default function RewardShopPage() {
     
     // Check if can afford
     if (user.experience < reward.price) {
-      alert(`EXP ไม่พอ! คุณมี ${user.experience} EXP แต่ต้องการ ${reward.price} EXP`);
+      errorDialog.showDialog(`EXP ไม่พอ! คุณมี ${user.experience} EXP แต่ต้องการ ${reward.price} EXP`);
       return;
     }
 
     setSelectedReward(reward);
+    
+    // Check if physical reward needs shipping address
+    if (reward.type === RewardType.PHYSICAL) {
+      setShowShippingModal(true);
+    } else {
+      setShowPurchaseModal(true);
+    }
+  };
+
+  const handleShippingSubmit = (address: ShippingAddress) => {
+    setShippingAddress(address);
+    setShowShippingModal(false);
     setShowPurchaseModal(true);
   };
 
@@ -112,7 +134,11 @@ export default function RewardShopPage() {
 
     setPurchasing(true);
     try {
-      const result = await purchaseReward(user.id, selectedReward.id);
+      const result = await purchaseReward(
+        user.id, 
+        selectedReward.id,
+        selectedReward.type === RewardType.PHYSICAL ? shippingAddress || undefined : undefined
+      );
       
       if (result.success) {
         // Update user EXP
@@ -122,18 +148,26 @@ export default function RewardShopPage() {
         });
         
         // Show success message
-        alert(result.message);
+        successDialog.showDialog(result.message);
         setShowPurchaseModal(false);
+        setShippingAddress(null);
         
         // Reload rewards (in case stock changed)
         const updatedRewards = await getActiveRewards(undefined, user.level);
         setRewards(updatedRewards);
+        
+        // Navigate to history if physical reward
+        if (selectedReward.type === RewardType.PHYSICAL) {
+          setTimeout(() => {
+            router.push('/rewards/history');
+          }, 2000);
+        }
       } else {
-        alert(result.message);
+        errorDialog.showDialog(result.message);
       }
     } catch (error) {
       console.error('Purchase error:', error);
-      alert('เกิดข้อผิดพลาดในการแลกรางวัล');
+      errorDialog.showDialog('เกิดข้อผิดพลาดในการแลกรางวัล');
     } finally {
       setPurchasing(false);
     }
@@ -179,6 +213,10 @@ export default function RewardShopPage() {
 
   return (
     <div className="min-h-screen bg-metaverse-black py-8">
+      {/* Dialogs */}
+      <successDialog.Dialog />
+      <errorDialog.Dialog />
+      
       {/* Background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
@@ -209,21 +247,33 @@ export default function RewardShopPage() {
               </div>
             </div>
             
-            {/* User EXP */}
-            <motion.div
-              className="glass-dark rounded-2xl px-6 py-3 border border-yellow-400/30"
-              whileHover={{ scale: 1.05 }}
-            >
-              <div className="flex items-center gap-3">
-                <Zap className="w-6 h-6 text-yellow-400" />
-                <div>
-                  <p className="text-sm text-white/60">EXP ของคุณ</p>
-                  <p className="text-2xl font-bold text-yellow-400">
-                    {user?.experience.toLocaleString()}
-                  </p>
+            {/* User EXP & History Button */}
+            <div className="flex items-center gap-4">
+              <motion.button
+                onClick={() => router.push('/rewards/history')}
+                className="px-4 py-2 glass rounded-xl text-white font-medium hover:bg-white/10 transition flex items-center gap-2"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <FileText className="w-5 h-5" />
+                <span className="hidden sm:inline">ประวัติการแลก</span>
+              </motion.button>
+              
+              <motion.div
+                className="glass-dark rounded-2xl px-6 py-3 border border-yellow-400/30"
+                whileHover={{ scale: 1.05 }}
+              >
+                <div className="flex items-center gap-3">
+                  <Zap className="w-6 h-6 text-yellow-400" />
+                  <div>
+                    <p className="text-sm text-white/60">EXP ของคุณ</p>
+                    <p className="text-2xl font-bold text-yellow-400">
+                      {user?.experience.toLocaleString()}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </div>
         </motion.div>
 
@@ -374,6 +424,33 @@ export default function RewardShopPage() {
         )}
       </div>
 
+      {/* Shipping Address Modal */}
+      <AnimatePresence>
+        {showShippingModal && selectedReward && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={() => setShowShippingModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="glass-dark rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-metaverse-purple/30"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ShippingAddressForm
+                onSubmit={handleShippingSubmit}
+                onCancel={() => setShowShippingModal(false)}
+                loading={false}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Purchase Confirmation Modal */}
       <AnimatePresence>
         {showPurchaseModal && selectedReward && (
@@ -421,6 +498,22 @@ export default function RewardShopPage() {
                 </div>
               </div>
               
+              {/* Shipping Address Preview */}
+              {selectedReward.type === RewardType.PHYSICAL && shippingAddress && (
+                <div className="glass rounded-xl p-4 mb-6">
+                  <h5 className="text-sm font-medium text-white/60 mb-2">จัดส่งไปที่:</h5>
+                  <p className="text-white">{shippingAddress.fullName}</p>
+                  <p className="text-white/80 text-sm">
+                    {shippingAddress.addressLine1}
+                    {shippingAddress.addressLine2 && ` ${shippingAddress.addressLine2}`}
+                  </p>
+                  <p className="text-white/80 text-sm">
+                    {shippingAddress.subDistrict} {shippingAddress.district} {shippingAddress.province} {shippingAddress.postalCode}
+                  </p>
+                  <p className="text-white/80 text-sm">โทร: {shippingAddress.phone}</p>
+                </div>
+              )}
+              
               {/* Actions */}
               <div className="flex gap-4">
                 <motion.button
@@ -442,12 +535,7 @@ export default function RewardShopPage() {
                 >
                   {purchasing ? (
                     <>
-                      <motion.span
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      >
-                        ⏳
-                      </motion.span>
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       กำลังดำเนินการ...
                     </>
                   ) : (
