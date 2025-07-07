@@ -1,32 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState, Suspense } from 'react';
+import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCurrentUser } from '@/lib/firebase/auth';
 import { User } from '@/types';
 import AvatarDisplay from '@/components/avatar/AvatarDisplay';
-import Link from 'next/link';
 import { 
   Trophy, 
-  Star, 
   TrendingUp, 
   TrendingDown, 
   Zap, 
   Clock, 
-  Target,
   Award,
   Gift,
-  CheckCircle,
-  XCircle,
   Home,
   RefreshCw,
-  Sparkles,
   Crown,
   Rocket,
-  ChevronRight
 } from 'lucide-react';
-// import confetti from 'canvas-confetti';
 
 interface ExpBreakdown {
   label: string;
@@ -34,7 +26,8 @@ interface ExpBreakdown {
   description: string;
 }
 
-export default function SummaryPage() {
+// Separate component for content that uses useSearchParams
+function SummaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<User | null>(null);
@@ -49,7 +42,6 @@ export default function SummaryPage() {
   const oldLevel = parseInt(searchParams.get('oldLevel') || '1');
   const exp = parseInt(searchParams.get('exp') || '0');
   const isHighScore = searchParams.get('highScore') === 'true';
-  const oldHighScore = parseInt(searchParams.get('oldHighScore') || '0');
   const scoreDiff = parseInt(searchParams.get('scoreDiff') || '0');
   const timeSpent = parseInt(searchParams.get('time') || '0');
   const playStreak = parseInt(searchParams.get('playStreak') || '0');
@@ -69,12 +61,6 @@ export default function SummaryPage() {
 
   useEffect(() => {
     loadUser();
-    
-    // Trigger confetti for good scores
-    if (percentage >= 85 || isHighScore) {
-      // triggerConfetti();
-      console.log('Confetti would trigger here!');
-    }
   }, []);
 
   const loadUser = async () => {
@@ -90,50 +76,6 @@ export default function SummaryPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const triggerConfetti = () => {
-    // Placeholder for confetti effect
-    console.log('Confetti animation!');
-    
-    // Original confetti code - commented out for now
-    /*
-    const count = 200;
-    const defaults = {
-      origin: { y: 0.7 }
-    };
-
-    function fire(particleRatio: number, opts: any) {
-      confetti({
-        ...defaults,
-        ...opts,
-        particleCount: Math.floor(count * particleRatio)
-      });
-    }
-
-    fire(0.25, {
-      spread: 26,
-      startVelocity: 55,
-    });
-    fire(0.2, {
-      spread: 60,
-    });
-    fire(0.35, {
-      spread: 100,
-      decay: 0.91,
-      scalar: 0.8
-    });
-    fire(0.1, {
-      spread: 120,
-      startVelocity: 25,
-      decay: 0.92,
-      scalar: 1.2
-    });
-    fire(0.1, {
-      spread: 120,
-      startVelocity: 45,
-    });
-    */
   };
 
   // Format time
@@ -555,5 +497,24 @@ export default function SummaryPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function SummaryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="text-6xl"
+        >
+          ⏳
+        </motion.div>
+      </div>
+    }>
+      <SummaryContent />
+    </Suspense>
   );
 }

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser, updateUserProfile } from '@/lib/firebase/auth';
 import { User } from '@/types';
-import { User as UserIcon, School, GraduationCap, Save, ArrowLeft, AlertCircle, Edit, TrendingUp, Pi, Sparkles, Gift, Trophy, Zap } from 'lucide-react';
+import { User as UserIcon, School, GraduationCap, Save, ArrowLeft, AlertCircle, Edit, TrendingUp, Pi, Sparkles, Gift, Trophy, Zap, AlertTriangle, X } from 'lucide-react';
 import AvatarDisplay from '@/components/avatar/AvatarDisplay';
 import LevelProgressDisplay from '@/components/game/LevelProgressDisplay';
 
@@ -36,6 +36,9 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [showGradeWarning, setShowGradeWarning] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'progress'>('profile');
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [pendingGrade, setPendingGrade] = useState('');
   
   const [formData, setFormData] = useState({
     displayName: '',
@@ -74,16 +77,42 @@ export default function ProfilePage() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
     
     // Clear error
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
     
-    // Show warning if changing grade
+    // Special handling for grade change
     if (name === 'grade' && user && value !== user.grade) {
+      // Don't update form immediately, show confirmation modal
+      setPendingGrade(value);
+      setShowConfirmModal(true);
+      setConfirmText('');
+      return;
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleGradeConfirm = () => {
+    if (confirmText.toUpperCase() === 'CONFIRM') {
+      setFormData(prev => ({ ...prev, grade: pendingGrade }));
       setShowGradeWarning(true);
+      setShowConfirmModal(false);
+      setConfirmText('');
+      setPendingGrade('');
+    }
+  };
+
+  const handleGradeCancel = () => {
+    setShowConfirmModal(false);
+    setConfirmText('');
+    setPendingGrade('');
+    // Reset select to current value
+    const selectElement = document.querySelector('select[name="grade"]') as HTMLSelectElement;
+    if (selectElement) {
+      selectElement.value = formData.grade;
     }
   };
 
@@ -111,11 +140,24 @@ export default function ProfilePage() {
     setSuccessMessage('');
     
     try {
-      await updateUserProfile(user.id, {
+      // Check if grade changed
+      const gradeChanged = formData.grade !== user.grade;
+      
+      // Prepare update data
+      const updateData: any = {
         displayName: formData.displayName || undefined,
         school: formData.school,
         grade: formData.grade,
-      });
+      };
+      
+      // If grade changed, reset EXP and level
+      if (gradeChanged) {
+        updateData.experience = 0;
+        updateData.level = 1;
+        updateData.levelScores = {};
+      }
+      
+      await updateUserProfile(user.id, updateData);
       
       setSuccessMessage('บันทึกข้อมูลสำเร็จ!');
       setShowGradeWarning(false);
@@ -133,27 +175,32 @@ export default function ProfilePage() {
     }
   };
 
+  const getGradeLabel = (gradeValue: string) => {
+    const grade = grades.find(g => g.value === gradeValue);
+    return grade ? grade.label : gradeValue;
+  };
+
   if (loading) {
     return (
-        <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
+      <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-30"></div>
         <motion.div
-            animate={{ 
+          animate={{ 
             rotate: [0, -10, 10, -10, 0],
             scale: [1, 1.1, 0.9, 1.1, 1],
-            }}
-            transition={{ 
+          }}
+          transition={{ 
             duration: 2, 
             repeat: Infinity,
             ease: "easeInOut"
-            }}
-            className="relative z-10"
+          }}
+          className="relative z-10"
         >
-            <Pi className="w-24 h-24 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
+          <Pi className="w-24 h-24 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
         </motion.div>
-        </div>
+      </div>
     );
-    }
+  }
 
   if (!user) return null;
 
@@ -441,10 +488,15 @@ export default function ProfilePage() {
                             <AlertCircle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
                             <div>
                               <p className="text-sm text-orange-400 font-medium">
-                                ⚠️ การเปลี่ยนระดับชั้นจะรีเซ็ต Level เป็น 1
+                                ⚠️ การเปลี่ยนระดับชั้นจะรีเซ็ต:
                               </p>
-                              <p className="text-xs text-orange-400/80 mt-1">
-                                คะแนนสะสมจะยังคงอยู่ แต่ระดับความยากของโจทย์จะเปลี่ยนตามชั้นเรียนใหม่
+                              <ul className="text-xs text-orange-400/80 mt-1 list-disc list-inside">
+                                <li>Level กลับเป็น 1</li>
+                                <li><strong className="text-red-400">EXP กลับเป็น 0</strong></li>
+                                <li>ประวัติการเล่นของระดับชั้นเดิมจะถูกล้าง</li>
+                              </ul>
+                              <p className="text-xs text-orange-400/60 mt-1">
+                                (คะแนนรวมจะยังคงอยู่)
                               </p>
                             </div>
                           </div>
@@ -528,6 +580,132 @@ export default function ProfilePage() {
           </p>
         </motion.div>
       </div>
+
+      {/* Grade Change Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={handleGradeCancel}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="glass-dark rounded-3xl p-8 max-w-md w-full border border-red-500/30"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Warning Icon */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", delay: 0.1 }}
+                className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6"
+              >
+                <AlertTriangle className="w-10 h-10 text-red-400" />
+              </motion.div>
+
+              {/* Title */}
+              <h3 className="text-2xl font-bold text-white text-center mb-4">
+                ⚠️ คำเตือน: ยืนยันการเปลี่ยนระดับชั้น
+              </h3>
+
+              {/* Current to New Grade */}
+              <div className="glass bg-red-500/10 rounded-xl p-4 mb-6 border border-red-500/30">
+                <div className="flex items-center justify-center gap-4 text-xl font-bold">
+                  <span className="text-white">{getGradeLabel(user.grade)}</span>
+                  <span className="text-red-400">→</span>
+                  <span className="text-red-400">{getGradeLabel(pendingGrade)}</span>
+                </div>
+              </div>
+
+              {/* Warning Details */}
+              <div className="space-y-3 mb-6">
+                <div className="glass bg-orange-500/10 rounded-xl p-4 border border-orange-500/30">
+                  <p className="text-orange-400 font-semibold mb-2">
+                    การเปลี่ยนระดับชั้นจะส่งผลให้:
+                  </p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-start gap-2">
+                      <span className="text-orange-400 mt-0.5">•</span>
+                      <span className="text-white/80">Level กลับไปเป็น <strong className="text-yellow-400">1</strong></span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-red-400 mt-0.5">•</span>
+                      <span className="text-white/80">
+                        <strong className="text-red-400">EXP ทั้งหมดจะถูกรีเซ็ตเป็น 0</strong>
+                        <br />
+                        <span className="text-white/60 text-xs">
+                          (จาก {user.experience.toLocaleString()} EXP → 0 EXP)
+                        </span>
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-orange-400 mt-0.5">•</span>
+                      <span className="text-white/80">ประวัติการเล่นของระดับชั้นเดิมจะถูกล้าง</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-green-400 mt-0.5">✓</span>
+                      <span className="text-white/80">คะแนนรวมยังคงเหมือนเดิม</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Confirm Input */}
+              <div className="mb-6">
+                <p className="text-white/80 text-center mb-3">
+                  พิมพ์ <strong className="text-red-400">&quot;CONFIRM&quot;</strong> เพื่อยืนยันการเปลี่ยนระดับชั้น
+                </p>
+                <input
+                  type="text"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder="พิมพ์ CONFIRM"
+                  className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-red-500/50 rounded-xl focus:outline-none focus:border-red-400 text-white placeholder-white/40 text-center text-lg font-bold"
+                  autoFocus
+                />
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-4">
+                <motion.button
+                  onClick={handleGradeCancel}
+                  className="flex-1 py-3 glass border border-metaverse-purple/50 text-white font-bold rounded-xl hover:bg-white/10 transition"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <X className="w-5 h-5 inline mr-2" />
+                  ยกเลิก
+                </motion.button>
+                
+                <motion.button
+                  onClick={handleGradeConfirm}
+                  disabled={confirmText.toUpperCase() !== 'CONFIRM'}
+                  className={`flex-1 py-3 font-bold rounded-xl transition ${
+                    confirmText.toUpperCase() === 'CONFIRM'
+                      ? 'bg-red-500/20 border border-red-500/50 text-red-400 hover:bg-red-500/30'
+                      : 'glass opacity-50 cursor-not-allowed text-white/50'
+                  }`}
+                  whileHover={confirmText.toUpperCase() === 'CONFIRM' ? { scale: 1.02 } : {}}
+                  whileTap={confirmText.toUpperCase() === 'CONFIRM' ? { scale: 0.98 } : {}}
+                >
+                  <AlertTriangle className="w-5 h-5 inline mr-2" />
+                  ยืนยันเปลี่ยนระดับชั้น
+                </motion.button>
+              </div>
+
+              {/* Additional Warning */}
+              <p className="text-xs text-red-400/60 text-center mt-4">
+                * การกระทำนี้ไม่สามารถย้อนกลับได้
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
