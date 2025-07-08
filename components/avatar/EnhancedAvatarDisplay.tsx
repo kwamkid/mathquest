@@ -26,6 +26,7 @@ interface EnhancedAvatarDisplayProps {
   titleColor?: string;
   className?: string;
   onClick?: () => void;
+  debug?: boolean; // Add debug prop
 }
 
 export default function EnhancedAvatarDisplay({
@@ -39,7 +40,8 @@ export default function EnhancedAvatarDisplay({
   titleBadge,
   titleColor = '#FFD700',
   className = '',
-  onClick
+  onClick,
+  debug = false // Default false
 }: EnhancedAvatarDisplayProps) {
   // Load avatar and accessory URLs
   const { avatarUrl, accessoryUrls, loading } = useAvatarData(userId, avatarData, basicAvatar);
@@ -84,6 +86,15 @@ export default function EnhancedAvatarDisplay({
       className={`relative inline-block ${className} ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
     >
+      {/* Debug info */}
+      {debug && (
+        <div className="absolute -top-20 left-0 bg-black/80 text-white text-xs p-2 rounded z-50">
+          <div>Container: {containerSize.width}x{containerSize.height}</div>
+          <div>Has Hat: {hasHat ? 'Yes' : 'No'}</div>
+          <div>Should Expand: {shouldExpand ? 'Yes' : 'No'}</div>
+        </div>
+      )}
+      
       {/* Title Badge */}
       {showTitle && titleBadge && (
         <motion.div
@@ -105,8 +116,19 @@ export default function EnhancedAvatarDisplay({
         </motion.div>
       )}
       
-      {/* Avatar Container */}
-      <div className="relative flex items-center justify-center" style={containerStyle}>
+      {/* Avatar Container with border for debug */}
+      <div 
+        className={`relative flex items-center justify-center ${debug ? 'border-2 border-red-500' : ''}`} 
+        style={containerStyle}
+      >
+        {/* Center guides for debug */}
+        {debug && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/2 left-0 right-0 h-px bg-blue-500"></div>
+            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-blue-500"></div>
+          </div>
+        )}
+        
         {/* Glow Effect */}
         {showEffects && (
           <>
@@ -149,12 +171,13 @@ export default function EnhancedAvatarDisplay({
             url={accessoryUrls.background}
             avatarId={avatarId}
             containerSize={containerSize}
+            debug={debug}
           />
         )}
         
         {/* Avatar Layer */}
         <motion.div
-          className="relative z-10"
+          className={`relative z-10 ${debug ? 'border border-green-500' : ''}`}
           animate={showEffects ? {
             scale: [avatarScale, avatarScale * 1.05, avatarScale],
           } : {}}
@@ -180,7 +203,6 @@ export default function EnhancedAvatarDisplay({
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   console.error('Failed to load avatar:', avatarUrl);
-                  // Could fall back to basic avatar here
                 }}
               />
               
@@ -213,6 +235,7 @@ export default function EnhancedAvatarDisplay({
                 url={accessoryUrls.necklace}
                 avatarId={avatarId}
                 containerSize={containerSize}
+                debug={debug}
               />
             )}
             
@@ -223,6 +246,7 @@ export default function EnhancedAvatarDisplay({
                 url={accessoryUrls.glasses}
                 avatarId={avatarId}
                 containerSize={containerSize}
+                debug={debug}
               />
             )}
             
@@ -233,6 +257,7 @@ export default function EnhancedAvatarDisplay({
                 url={accessoryUrls.mask}
                 avatarId={avatarId}
                 containerSize={containerSize}
+                debug={debug}
               />
             )}
             
@@ -243,6 +268,7 @@ export default function EnhancedAvatarDisplay({
                 url={accessoryUrls.hat}
                 avatarId={avatarId}
                 containerSize={containerSize}
+                debug={debug}
               />
             )}
             
@@ -256,6 +282,7 @@ export default function EnhancedAvatarDisplay({
                   avatarId={avatarId}
                   containerSize={containerSize}
                   side="left"
+                  debug={debug}
                 />
                 {/* Right earring */}
                 <AccessoryLayer
@@ -264,6 +291,7 @@ export default function EnhancedAvatarDisplay({
                   avatarId={avatarId}
                   containerSize={containerSize}
                   side="right"
+                  debug={debug}
                 />
               </>
             )}
@@ -293,9 +321,10 @@ interface AccessoryLayerProps {
   avatarId: string;
   containerSize: { width: number; height: number };
   side?: 'left' | 'right'; // For earrings
+  debug?: boolean;
 }
 
-function AccessoryLayer({ type, url, avatarId, containerSize, side }: AccessoryLayerProps) {
+function AccessoryLayer({ type, url, avatarId, containerSize, side, debug }: AccessoryLayerProps) {
   const position = calculateAccessoryPosition(type, avatarId, containerSize);
   const animation = getAccessoryAnimation(type);
   
@@ -330,56 +359,51 @@ function AccessoryLayer({ type, url, avatarId, containerSize, side }: AccessoryL
   }
   
   return (
-    <motion.div
-      className="absolute pointer-events-none"
-      style={{
-        left: position.left,
-        top: position.top,
-        transform: position.transform,
-        zIndex: 20 + (type === AccessoryType.BACKGROUND ? -15 : 0)
-      }}
-      animate={animation ? animationKeyframes : {}}
-      transition={animation ? {
-        duration: parseFloat(animation.split(' ')[1]) || 3,
-        repeat: Infinity,
-        ease: "easeInOut"
-      } : {}}
-    >
-      <img 
-        src={url} 
-        alt={`${type} accessory`}
-        className="w-full h-full object-contain"
+    <>
+      <motion.div
+        className={`absolute pointer-events-none ${debug ? 'border border-yellow-500' : ''}`}
         style={{
-          maxWidth: `${containerSize.width * 0.8}px`,
-          maxHeight: `${containerSize.height * 0.8}px`
+          left: position.left,
+          top: position.top,
+          transform: position.transform,
+          transformOrigin: 'center center', // Add explicit transform origin
+          zIndex: 20 + (type === AccessoryType.BACKGROUND ? -15 : 0)
         }}
-        onError={(e) => {
-          console.error(`Failed to load ${type}:`, url);
-        }}
-      />
-    </motion.div>
+        animate={animation ? animationKeyframes : {}}
+        transition={animation ? {
+          duration: parseFloat(animation.split(' ')[1]) || 3,
+          repeat: Infinity,
+          ease: "easeInOut"
+        } : {}}
+      >
+        <img 
+          src={url} 
+          alt={`${type} accessory`}
+          className="w-full h-full object-contain"
+          style={{
+            maxWidth: `${containerSize.width * 0.8}px`,
+            maxHeight: `${containerSize.height * 0.8}px`
+          }}
+          onError={(e) => {
+            console.error(`Failed to load ${type}:`, url);
+          }}
+        />
+      </motion.div>
+      
+      {/* Debug info for this accessory */}
+      {debug && (
+        <div 
+          className="absolute bg-yellow-500/80 text-black text-[10px] p-1 rounded pointer-events-none"
+          style={{
+            left: position.left,
+            top: position.top,
+            transform: `${position.transform} translateY(-30px)`,
+            zIndex: 100
+          }}
+        >
+          {type}: {position.left}, {position.top}
+        </div>
+      )}
+    </>
   );
 }
-
-// CSS animations (add to globals.css)
-const animationStyles = `
-@keyframes float {
-  0%, 100% { transform: translateY(-5px); }
-  50% { transform: translateY(5px); }
-}
-
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
-}
-
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-`;

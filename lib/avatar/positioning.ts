@@ -26,7 +26,7 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
     zIndex: ACCESSORY_LAYERS.hat,
     defaultPosition: { 
       x: 0, 
-      y: 0,  // วางเหนือหัว
+      y: -35,  // ขยับขึ้นบน 35px จาก anchor point (top-center)
       scale: 1.2 
     },
     anchorPoint: 'top-center',
@@ -38,9 +38,9 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
     // ตำแหน่งพิเศษสำหรับ avatar บางตัว
     positionOverrides: {
       'ninja': { x: 0, y: -25, scale: 1.1 },      // นินจาหัวเล็กกว่า
-      'wizard': { x: 0, y: -35, scale: 1.3 },     // พ่อมดหมวกสูง
-      'dragon': { x: 0, y: -40, scale: 1.4 },     // มังกรหัวใหญ่
-      'unicorn': { x: 0, y: -35, scale: 1.25 }    // ยูนิคอร์นมีเขา
+      'wizard': { x: 0, y: -40, scale: 1.3 },     // พ่อมดหมวกสูง
+      'dragon': { x: 0, y: -45, scale: 1.4 },     // มังกรหัวใหญ่
+      'unicorn': { x: 0, y: -40, scale: 1.25 }    // ยูนิคอร์นมีเขา
     }
   },
   
@@ -48,8 +48,8 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
     zIndex: ACCESSORY_LAYERS.glasses,
     defaultPosition: { 
       x: 0, 
-      y: 8,   // ระดับตา
-      scale: 1.2
+      y: -5,   // ระดับตา (ขึ้นมาจากกลาง avatar นิดหน่อย)
+      scale: 1.0
     },
     anchorPoint: 'center',
     affectsContainerSize: false,
@@ -64,7 +64,7 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
     zIndex: ACCESSORY_LAYERS.mask,
     defaultPosition: { 
       x: 0, 
-      y: 0,    // กลางหน้า
+      y: 0,    // กลางหน้าพอดี
       scale: 1.0 
     },
     anchorPoint: 'center',
@@ -82,8 +82,8 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
   [AccessoryType.EARRING]: {
     zIndex: ACCESSORY_LAYERS.earring,
     defaultPosition: { 
-      x: 25,   // ด้านข้างหู (อาจต้อง render 2 อัน)
-      y: 0, 
+      x: 35,   // ด้านข้างหู (ห่างจากกลาง 35px)
+      y: -5,   // ระดับหูประมาณกลางๆ
       scale: 0.7 
     },
     anchorPoint: 'center',
@@ -98,14 +98,14 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
     zIndex: ACCESSORY_LAYERS.necklace,
     defaultPosition: { 
       x: 0, 
-      y: 20,   // ใต้คอ
+      y: 30,   // ใต้คอ (ลงมาจากกลาง avatar)
       scale: 0.8 
     },
-    anchorPoint: 'top-center',
+    anchorPoint: 'center',  // เปลี่ยนเป็น center แทน top-center
     affectsContainerSize: false,
     positionOverrides: {
-      'vampire': { x: 0, y: 25, scale: 0.85 },    // แวมไพร์คอยาว
-      'genie': { x: 0, y: 15, scale: 0.75 }       // ยักษ์จินนี่ตัวใหญ่
+      'vampire': { x: 0, y: 35, scale: 0.85 },    // แวมไพร์คอยาว
+      'genie': { x: 0, y: 25, scale: 0.75 }       // ยักษ์จินนี่ตัวใหญ่
     }
   },
   

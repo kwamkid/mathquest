@@ -17,6 +17,9 @@ import {
   X as XIcon 
 } from 'lucide-react';
 
+import { Wand2  } from 'lucide-react';
+
+
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
@@ -62,7 +65,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { href: '/admin/rewards', label: 'จัดการรางวัล', icon: 'Gift' },
     { href: '/admin/orders', label: 'คำสั่งซื้อ', icon: 'Package' },
     { href: '/admin/reports', label: 'รายงาน', icon: 'ChartBar' },
-      { href: '/admin/accessory-position', label: 'ปรับตำแหน่ง Accessories', icon: 'Wand2' },
+    { href: '/admin/accessory-position', label: 'จัดตำแหน่ง', icon: '"Wand2"' },
 
   ];
 
