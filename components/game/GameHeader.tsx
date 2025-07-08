@@ -1,7 +1,7 @@
 // components/game/GameHeader.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
@@ -11,6 +11,8 @@ import SoundToggle from './SoundToggle';
 import { getQuestionCount } from '@/lib/game/config';
 import AvatarDisplay from '@/components/avatar/AvatarDisplay';
 import Link from 'next/link';
+import { getPremiumAvatarData } from '@/lib/data/items';
+import { getReward } from '@/lib/firebase/rewards';
 
 interface GameHeaderProps {
   user: User;
@@ -20,6 +22,27 @@ interface GameHeaderProps {
 export default function GameHeader({ user, hideActions = false }: GameHeaderProps) {
   const router = useRouter();
   const [showExpModal, setShowExpModal] = useState(false);
+  const [premiumAvatarUrl, setPremiumAvatarUrl] = useState<string | undefined>(undefined);
+
+  // Get premium avatar URL if using premium avatar
+  useMemo(async () => {
+    if (user.avatarData?.currentAvatar?.type === 'premium' && user.avatarData.currentAvatar.id) {
+      const avatarId = user.avatarData.currentAvatar.id;
+      
+      // Try local database first
+      const localData = getPremiumAvatarData(avatarId);
+      if (localData?.svgUrl) {
+        setPremiumAvatarUrl(localData.svgUrl);
+        return;
+      }
+      
+      // Fallback to reward data
+      const rewardData = await getReward(avatarId);
+      if (rewardData?.imageUrl) {
+        setPremiumAvatarUrl(rewardData.imageUrl);
+      }
+    }
+  }, [user.avatarData]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -59,6 +82,19 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
     }).length;
   };
 
+  // Get title color from user's current title badge
+  const getTitleColor = (titleId: string): string => {
+    const colors: Record<string, string> = {
+      'title-legend': '#FFD700',
+      'title-champion': '#FF6B6B',
+      'title-math-master': '#9333EA',
+      'title-speed-demon': '#3B82F6',
+      'title-perfect-scorer': '#10B981',
+      'title-dedication-hero': '#F59E0B'
+    };
+    return colors[titleId] || '#FFD700';
+  };
+
   return (
     <>
       <header className="glass-dark border-b border-metaverse-purple/30 sticky top-0 z-40">
@@ -73,6 +109,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                     <AvatarDisplay
                       avatarData={user.avatarData}
                       basicAvatar={user.avatar}
+                      premiumAvatarUrl={premiumAvatarUrl}
                       size="small"
                       showEffects={false}
                     />
@@ -83,6 +120,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                       <AvatarDisplay
                         avatarData={user.avatarData}
                         basicAvatar={user.avatar}
+                        premiumAvatarUrl={premiumAvatarUrl}
                         size="small"
                         showEffects={false}
                       />
@@ -97,9 +135,16 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                   </div>
                   {user.currentTitleBadge && (
                     <div className="mt-1">
-                      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400 border border-yellow-400/30">
+                      <span 
+                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border"
+                        style={{
+                          backgroundColor: `${getTitleColor(user.currentTitleBadge)}20`,
+                          color: getTitleColor(user.currentTitleBadge),
+                          borderColor: `${getTitleColor(user.currentTitleBadge)}30`
+                        }}
+                      >
                         <Crown className="w-3 h-3" />
-                        {user.currentTitleBadge}
+                        {user.currentTitleBadge.replace(/title-/g, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                       </span>
                     </div>
                   )}
@@ -213,10 +258,12 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                   <AvatarDisplay
                     avatarData={user.avatarData}
                     basicAvatar={user.avatar}
+                    premiumAvatarUrl={premiumAvatarUrl}
                     size="medium"
                     showEffects={true}
                     showTitle={true}
                     titleBadge={user.currentTitleBadge}
+                    titleColor={user.currentTitleBadge ? getTitleColor(user.currentTitleBadge) : undefined}
                   />
                 </div>
               ) : (
@@ -225,10 +272,12 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                     <AvatarDisplay
                       avatarData={user.avatarData}
                       basicAvatar={user.avatar}
+                      premiumAvatarUrl={premiumAvatarUrl}
                       size="medium"
                       showEffects={true}
                       showTitle={true}
                       titleBadge={user.currentTitleBadge}
+                      titleColor={user.currentTitleBadge ? getTitleColor(user.currentTitleBadge) : undefined}
                     />
                   </motion.div>
                 </Link>

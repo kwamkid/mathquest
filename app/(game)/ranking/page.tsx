@@ -8,6 +8,8 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import AvatarDisplay from '@/components/avatar/AvatarDisplay';
+import { getPremiumAvatarData } from '@/lib/data/items';
+import { getReward } from '@/lib/firebase/rewards';
 import { 
   Trophy, 
   Medal, 
@@ -31,6 +33,7 @@ interface RankingUser {
   experience: number;
   rank?: number;
   grade: string;
+  premiumAvatarUrl?: string; // Add this field
 }
 
 const grades = [
@@ -73,6 +76,33 @@ export default function RankingPage() {
     }
   }, [selectedGrade, rankingType, user]);
 
+  // Helper function to get premium avatar URL
+  const getPremiumAvatarUrl = async (avatarData: any): Promise<string | undefined> => {
+    if (!avatarData?.currentAvatar || avatarData.currentAvatar.type !== 'premium') {
+      return undefined;
+    }
+
+    const avatarId = avatarData.currentAvatar.id;
+    
+    // Try local database first
+    const localData = getPremiumAvatarData(avatarId);
+    if (localData?.svgUrl) {
+      return localData.svgUrl;
+    }
+    
+    // Fallback to reward data
+    try {
+      const rewardData = await getReward(avatarId);
+      if (rewardData?.imageUrl) {
+        return rewardData.imageUrl;
+      }
+    } catch (error) {
+      console.error('Error loading avatar URL:', error);
+    }
+    
+    return undefined;
+  };
+
   const loadRankings = async (grade: string, userId: string) => {
     setLoadingRankings(true);
     try {
@@ -95,8 +125,11 @@ export default function RankingPage() {
       let currentUserRank = null;
       let currentUserInList = false;
       
-      snapshot.docs.forEach((doc, index) => {
+      // Process users and load premium avatar URLs
+      const userPromises = snapshot.docs.map(async (doc, index) => {
         const data = doc.data();
+        const premiumAvatarUrl = await getPremiumAvatarUrl(data.avatarData);
+        
         const rankUser: RankingUser = {
           id: doc.id,
           username: data.username || 'Unknown',
@@ -108,16 +141,23 @@ export default function RankingPage() {
           level: data.level || 1,
           experience: data.experience || 0,
           rank: index + 1,
-          grade: data.grade
+          grade: data.grade,
+          premiumAvatarUrl
         };
-        
-        users.push(rankUser);
         
         if (doc.id === userId) {
           currentUserRank = index + 1;
           currentUserInList = true;
         }
+        
+        return rankUser;
       });
+      
+      // Wait for all avatar URLs to load
+      const loadedUsers = await Promise.all(userPromises);
+      
+      // Sort by rank
+      loadedUsers.sort((a, b) => (a.rank || 0) - (b.rank || 0));
       
       // ถ้า user ไม่อยู่ใน top 20 และดูระดับชั้นตัวเอง ให้คำนวณอันดับจริง
       if (!currentUserInList && grade === user?.grade && userId) {
@@ -137,7 +177,7 @@ export default function RankingPage() {
         }
       }
       
-      setRankings(users);
+      setRankings(loadedUsers);
       setUserRank(currentUserRank);
     } catch (error) {
       console.error('Error loading rankings:', error);
@@ -187,6 +227,19 @@ export default function RankingPage() {
       default:
         return 'from-metaverse-purple/10 to-metaverse-pink/10 border-metaverse-purple/30';
     }
+  };
+
+  // Get title color
+  const getTitleColor = (titleId: string): string => {
+    const colors: Record<string, string> = {
+      'title-legend': '#FFD700',
+      'title-champion': '#FF6B6B',
+      'title-math-master': '#9333EA',
+      'title-speed-demon': '#3B82F6',
+      'title-perfect-scorer': '#10B981',
+      'title-dedication-hero': '#F59E0B'
+    };
+    return colors[titleId] || '#FFD700';
   };
 
   if (!user) return null;
@@ -355,10 +408,11 @@ export default function RankingPage() {
                         {getRankMedal(player.rank || index + 1)}
                       </div>
                       
-                      {/* Avatar */}
+                      {/* Avatar - Now with premium support */}
                       <AvatarDisplay
                         avatarData={player.avatarData}
                         basicAvatar={player.avatar}
+                        premiumAvatarUrl={player.premiumAvatarUrl}
                         size="small"
                         showEffects={!!player.rank && player.rank <= 3}
                       />
@@ -376,8 +430,11 @@ export default function RankingPage() {
                           )}
                         </div>
                         {player.currentTitleBadge && (
-                          <p className="text-xs text-yellow-400 truncate">
-                            {player.currentTitleBadge}
+                          <p 
+                            className="text-xs truncate"
+                            style={{ color: getTitleColor(player.currentTitleBadge) }}
+                          >
+                            {player.currentTitleBadge.replace(/title-/g, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           </p>
                         )}
                         <p className="text-xs md:text-sm text-white/60">

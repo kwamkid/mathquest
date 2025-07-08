@@ -144,3 +144,22 @@ input:-webkit-autofill:active {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(147, 51, 234, 0.3);
 }
+
+/* Add to globals.css or create a component class */
+
+.grid-pattern {
+  background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 49px,
+      rgba(255, 255, 255, 0.05) 49px,
+      rgba(255, 255, 255, 0.05) 50px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 49px,
+      rgba(255, 255, 255, 0.05) 49px,
+      rgba(255, 255, 255, 0.05) 50px
+    );
+}

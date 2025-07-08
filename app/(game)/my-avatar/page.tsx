@@ -16,22 +16,30 @@ import {
   Badge,
   AccessoryType
 } from '@/types/avatar';
-import AvatarPreview from '@/components/avatar/AvatarPreview';
-import AvatarDisplay from '@/components/avatar/AvatarDisplay';
+
+// Import tab components
+import AvatarCustomizationTab from '@/components/avatar/tabs/AvatarCustomizationTab';
+import TitleBadgesTab from '@/components/avatar/tabs/TitleBadgesTab';
+import BadgesTab from '@/components/avatar/tabs/BadgesTab';
+
+// Import item database
+import { 
+  getPremiumAvatarData, 
+  getAccessoryData, 
+  getTitleBadgeData 
+} from '@/lib/data/items';
+
 import { 
   ArrowLeft, 
   Save, 
   Sparkles, 
   Crown,
   Award,
-  Shield,
-  Star,
   Check,
   RefreshCw,
   Palette,
   X
 } from 'lucide-react';
-import { basicAvatars } from '@/lib/data/avatars';
 
 export default function MyAvatarPage() {
   const router = useRouter();
@@ -139,10 +147,6 @@ export default function MyAvatarPage() {
           }
         });
         
-        console.log('Avatar IDs from redemptions:', avatarIds);
-        console.log('Accessory IDs from redemptions:', accessoryIds);
-        console.log('Title Badge IDs from redemptions:', titleBadgeIds);
-        
         // Update avatarData with found items
         if (avatarIds.length > 0) {
           avatarData.unlockedPremiumAvatars = [...new Set([...avatarData.unlockedPremiumAvatars, ...avatarIds])];
@@ -165,40 +169,50 @@ export default function MyAvatarPage() {
         titleBadgeIds = inventory.titleBadges;
       }
       
-      // Load premium avatars from inventory with actual reward data
+      // Load premium avatars using local data first, then fallback to reward data
       const loadedPremiumAvatars: PremiumAvatar[] = [];
       
       console.log('Processing premium avatars:', avatarData.unlockedPremiumAvatars);
       
       for (const avatarId of avatarData.unlockedPremiumAvatars) {
-        console.log('Getting reward data for avatar:', avatarId);
+        console.log('Getting data for avatar:', avatarId);
         
-        // Try to get reward data for image URL
+        // First try local database
+        const localData = getPremiumAvatarData(avatarId);
+        
+        // Also try to get reward data for actual image URL
         const rewardData = await getReward(avatarId);
         console.log('Reward data for', avatarId, ':', rewardData);
         
-        if (rewardData) {
+        if (localData) {
+          console.log('Found in local database:', localData);
+          // Use reward imageUrl if available, otherwise use local svgUrl
+          const avatarWithCorrectUrl = {
+            ...localData,
+            svgUrl: rewardData?.imageUrl || localData.svgUrl
+          };
+          loadedPremiumAvatars.push(avatarWithCorrectUrl);
+        } else if (rewardData) {
           const avatarObj = {
             id: avatarId,
             name: rewardData.name,
             description: rewardData.description,
-            svgUrl: rewardData.imageUrl || '', // Use actual image URL from reward
+            svgUrl: rewardData.imageUrl || '',
             price: 0, // Already owned
-            rarity: getPremiumAvatarRarity(avatarId),
+            rarity: 'rare' as const,
             category: 'special' as const
           };
-          console.log('Created avatar object:', avatarObj);
           loadedPremiumAvatars.push(avatarObj);
         } else {
-          // Fallback if no reward data found
-          console.log('No reward data found for:', avatarId);
+          // Final fallback
+          console.log('No data found for:', avatarId);
           loadedPremiumAvatars.push({
             id: avatarId,
-            name: getPremiumAvatarName(avatarId),
-            svgUrl: '', // Will show placeholder
+            name: avatarId.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            svgUrl: '',
             price: 0,
-            rarity: getPremiumAvatarRarity(avatarId),
-            category: 'special' as const
+            rarity: 'rare',
+            category: 'special'
           });
         }
       }
@@ -206,65 +220,60 @@ export default function MyAvatarPage() {
       setPremiumAvatars(loadedPremiumAvatars);
       console.log('Final loaded premium avatars:', loadedPremiumAvatars);
       
-      // Load accessories from inventory with actual reward data
+      // Load accessories using local data first
       const loadedAccessories: AvatarAccessory[] = [];
       
       for (const accessoryId of avatarData.unlockedAccessories) {
-        // Try to get reward data for image URL
-        const rewardData = await getReward(accessoryId);
-        const type = getAccessoryType(accessoryId);
-        
-        if (rewardData) {
-          loadedAccessories.push({
-            id: accessoryId,
-            name: rewardData.name,
-            description: rewardData.description,
-            type: type,
-            svgUrl: rewardData.imageUrl || '', // Use actual image URL from reward
-            price: 0, // Already owned
-            rarity: getAccessoryRarity(accessoryId)
-          });
+        // First try local database
+        const localData = getAccessoryData(accessoryId);
+        if (localData) {
+          loadedAccessories.push(localData);
         } else {
-          // Fallback if no reward data found
-          loadedAccessories.push({
-            id: accessoryId,
-            name: getAccessoryName(accessoryId),
-            type: type,
-            svgUrl: '', // Will show placeholder
-            price: 0,
-            rarity: getAccessoryRarity(accessoryId)
-          });
+          // Fallback to reward data
+          const rewardData = await getReward(accessoryId);
+          
+          if (rewardData) {
+            // Determine type from ID
+            const type = getAccessoryType(accessoryId);
+            
+            loadedAccessories.push({
+              id: accessoryId,
+              name: rewardData.name,
+              description: rewardData.description,
+              type: type,
+              svgUrl: rewardData.imageUrl || '',
+              price: 0,
+              rarity: 'common'
+            });
+          }
         }
       }
       
       setAccessories(loadedAccessories);
       console.log('Loaded accessories:', loadedAccessories);
       
-      // Load title badges
+      // Load title badges using local data first
       const loadedTitles: TitleBadge[] = [];
       const allTitleIds = [...new Set([...(inventory?.titleBadges || []), ...titleBadgeIds])];
       
       for (const titleId of allTitleIds) {
-        // Try to get reward data
-        const rewardData = await getReward(titleId);
-        
-        if (rewardData) {
-          loadedTitles.push({
-            id: titleId,
-            name: rewardData.name,
-            description: rewardData.description || 'ได้รับจากการแลกรางวัล',
-            rarity: getTitleRarity(titleId),
-            color: getTitleColor(titleId)
-          });
+        // First try local database
+        const localData = getTitleBadgeData(titleId);
+        if (localData) {
+          loadedTitles.push(localData);
         } else {
-          // Fallback
-          loadedTitles.push({
-            id: titleId,
-            name: getTitleName(titleId),
-            description: 'ได้รับจากการแลกรางวัล',
-            rarity: getTitleRarity(titleId),
-            color: getTitleColor(titleId)
-          });
+          // Fallback to reward data
+          const rewardData = await getReward(titleId);
+          
+          if (rewardData) {
+            loadedTitles.push({
+              id: titleId,
+              name: rewardData.name,
+              description: rewardData.description || 'ได้รับจากการแลกรางวัล',
+              rarity: 'rare',
+              color: '#6B7280'
+            });
+          }
         }
       }
       
@@ -286,33 +295,8 @@ export default function MyAvatarPage() {
     }
   };
 
-  // Helper functions for names and properties
-  const getPremiumAvatarName = (id: string): string => {
-    const names: Record<string, string> = {
-      'avatar-cyber-warrior': 'Cyber Warrior',
-      'avatar-dragon-knight': 'Dragon Knight',
-      'avatar-space-explorer': 'Space Explorer',
-      'avatar-mystic-mage': 'Mystic Mage',
-      'avatar-shadow-ninja': 'Shadow Ninja',
-      'avatar-phoenix-guardian': 'Phoenix Guardian',
-    };
-    return names[id] || id.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const getPremiumAvatarRarity = (id: string): 'common' | 'rare' | 'epic' | 'legendary' => {
-    const rarities: Record<string, 'common' | 'rare' | 'epic' | 'legendary'> = {
-      'avatar-cyber-warrior': 'rare',
-      'avatar-dragon-knight': 'epic',
-      'avatar-space-explorer': 'rare',
-      'avatar-mystic-mage': 'epic',
-      'avatar-shadow-ninja': 'legendary',
-      'avatar-phoenix-guardian': 'legendary'
-    };
-    return rarities[id] || 'rare';
-  };
-
+  // Helper function to determine accessory type
   const getAccessoryType = (id: string): AccessoryType => {
-    // Determine type from ID pattern
     if (id.includes('hat') || id.includes('crown') || id.includes('cap')) return AccessoryType.HAT;
     if (id.includes('glass') || id.includes('sunglass')) return AccessoryType.GLASSES;
     if (id.includes('mask')) return AccessoryType.MASK;
@@ -330,64 +314,6 @@ export default function MyAvatarPage() {
     
     // Default to hat if can't determine
     return AccessoryType.HAT;
-  };
-
-  const getAccessoryName = (id: string): string => {
-    const names: Record<string, string> = {
-      'acc-hat-crown': 'Golden Crown',
-      'acc-hat-wizard': 'Wizard Hat',
-      'acc-glasses-cool': 'Cool Sunglasses',
-      'acc-glasses-smart': 'Smart Glasses',
-      'acc-mask-hero': 'Hero Mask',
-      'acc-necklace-gold': 'Gold Chain'
-    };
-    return names[id] || id.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const getAccessoryRarity = (id: string): 'common' | 'rare' | 'epic' | 'legendary' => {
-    if (id.includes('gold') || id.includes('crown')) return 'epic';
-    if (id.includes('hero') || id.includes('wizard')) return 'rare';
-    return 'common';
-  };
-
-  const getTitleName = (id: string): string => {
-    const titles: Record<string, string> = {
-      'title-math-master': 'เซียนเลข',
-      'title-speed-demon': 'เร็วสายฟ้า',
-      'title-perfect-scorer': 'นักแม่นยำ',
-      'title-dedication-hero': 'ผู้มุ่งมั่น',
-      'title-legend': 'ตำนาน',
-      'title-champion': 'แชมป์'
-    };
-    return titles[id] || id.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const getTitleRarity = (id: string): 'common' | 'rare' | 'epic' | 'legendary' => {
-    if (id.includes('legend') || id.includes('champion')) return 'legendary';
-    if (id.includes('math-master') || id.includes('perfect-scorer')) return 'epic';
-    return 'rare';
-  };
-
-  const getTitleColor = (id: string): string => {
-    const colors: Record<string, string> = {
-      'title-legend': '#FFD700',
-      'title-champion': '#FF6B6B',
-      'title-math-master': '#9333EA',
-      'title-speed-demon': '#3B82F6',
-      'title-perfect-scorer': '#10B981',
-      'title-dedication-hero': '#F59E0B'
-    };
-    return colors[id] || '#6B7280';
-  };
-
-  const getRarityStars = (rarity: string): number => {
-    switch (rarity) {
-      case 'common': return 1;
-      case 'rare': return 2;
-      case 'epic': return 3;
-      case 'legendary': return 4;
-      default: return 1;
-    }
   };
 
   // Handle avatar changes
@@ -433,6 +359,12 @@ export default function MyAvatarPage() {
     };
     
     setTempAvatarData(newData);
+    setHasChanges(true);
+  };
+
+  // Handle title change
+  const handleTitleChange = (titleId: string | null) => {
+    setSelectedTitle(titleId);
     setHasChanges(true);
   };
 
@@ -508,7 +440,7 @@ export default function MyAvatarPage() {
       {/* Background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
-        <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+        <div className="absolute inset-0 grid-pattern opacity-10"></div>
       </div>
 
       <div className="relative z-10 flex-1 flex flex-col p-4 max-w-6xl mx-auto w-full">
@@ -638,168 +570,30 @@ export default function MyAvatarPage() {
           </div>
         </div>
 
-        {/* Debug Info - Remove in production */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="text-xs text-white/50 mb-2">
-            Premium Avatars: {premiumAvatars.length} | 
-            Accessories: {accessories.length} | 
-            Unlocked: {tempAvatarData.unlockedPremiumAvatars.length}
-          </div>
-        )}
-
         {/* Content - Scrollable */}
         <div className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
             {activeTab === 'avatar' && (
-              <motion.div
-                key="avatar"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="h-full"
-              >
-                <AvatarPreview
-                  currentAvatarData={tempAvatarData}
-                  onAvatarChange={handleAvatarChange}
-                  onAccessoryChange={handleAccessoryChange}
-                  availableAvatars={{
-                    basic: basicAvatars,
-                    premium: premiumAvatars
-                  }}
-                  availableAccessories={accessories}
-                  userExp={user?.experience || 0}
-                />
-              </motion.div>
+              <AvatarCustomizationTab
+                avatarData={tempAvatarData}
+                premiumAvatars={premiumAvatars}
+                accessories={accessories}
+                userExp={user?.experience || 0}
+                onAvatarChange={handleAvatarChange}
+                onAccessoryChange={handleAccessoryChange}
+              />
             )}
             
             {activeTab === 'title' && (
-              <motion.div
-                key="title"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="h-full glass-dark rounded-2xl p-4 md:p-6 border border-metaverse-purple/30 overflow-y-auto"
-              >
-                <h3 className="text-lg md:text-xl font-bold text-white mb-4">Title Badges</h3>
-                
-                {/* Current Title */}
-                <div className="mb-4">
-                  <p className="text-white/60 mb-2 text-sm">ฉายาปัจจุบัน:</p>
-                  <div className="glass rounded-lg p-3 border border-metaverse-purple/30">
-                    {selectedTitle ? (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Crown className="w-5 h-5 text-yellow-400" />
-                          <span 
-                            className="text-base md:text-lg font-bold"
-                            style={{ color: getTitleColor(selectedTitle) }}
-                          >
-                            {getTitleName(selectedTitle)}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedTitle(null);
-                            setHasChanges(true);
-                          }}
-                          className="text-red-400 hover:text-red-300 text-xs"
-                        >
-                          ถอดฉายา
-                        </button>
-                      </div>
-                    ) : (
-                      <p className="text-white/40 text-center text-sm">ไม่ได้ใส่ฉายา</p>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Available Titles */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {titleBadges.map(title => (
-                    <motion.button
-                      key={title.id}
-                      onClick={() => {
-                        setSelectedTitle(title.id);
-                        setHasChanges(true);
-                      }}
-                      className={`glass rounded-lg p-3 border transition-all text-left ${
-                        selectedTitle === title.id
-                          ? 'border-yellow-400/50 bg-yellow-400/10'
-                          : 'border-metaverse-purple/30 hover:bg-white/5'
-                      }`}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 
-                            className="text-base font-bold mb-0.5"
-                            style={{ color: title.color || '#FFD700' }}
-                          >
-                            {title.name}
-                          </h4>
-                          <p className="text-xs text-white/60">{title.description}</p>
-                          <div className="flex items-center gap-0.5 mt-1">
-                            {Array.from({ length: getRarityStars(title.rarity) }).map((_, i) => (
-                              <Star key={i} className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                            ))}
-                          </div>
-                        </div>
-                        {selectedTitle === title.id && (
-                          <Check className="w-4 h-4 text-green-400" />
-                        )}
-                      </div>
-                    </motion.button>
-                  ))}
-                </div>
-                
-                {titleBadges.length === 0 && (
-                  <div className="text-center py-8">
-                    <Crown className="w-12 h-12 text-white/20 mx-auto mb-3" />
-                    <p className="text-white/40">ยังไม่มี Title Badge</p>
-                    <p className="text-xs text-white/30 mt-1">แลกรางวัลเพื่อปลดล็อค Title Badge พิเศษ!</p>
-                  </div>
-                )}
-              </motion.div>
+              <TitleBadgesTab
+                titleBadges={titleBadges}
+                selectedTitle={selectedTitle}
+                onTitleChange={handleTitleChange}
+              />
             )}
             
             {activeTab === 'badges' && (
-              <motion.div
-                key="badges"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.2 }}
-                className="h-full glass-dark rounded-2xl p-4 md:p-6 border border-metaverse-purple/30 overflow-y-auto"
-              >
-                <h3 className="text-lg md:text-xl font-bold text-white mb-4">Achievement Badges</h3>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  {badges.map(badge => (
-                    <motion.div
-                      key={badge.id}
-                      className="glass rounded-lg p-3 border border-metaverse-purple/30 text-center"
-                      whileHover={{ scale: 1.05 }}
-                    >
-                      <div className="w-12 h-12 mx-auto mb-2 bg-metaverse-purple/20 rounded-full flex items-center justify-center">
-                        <Shield className="w-6 h-6 text-metaverse-purple" />
-                      </div>
-                      <h4 className="font-bold text-white mb-0.5 text-sm">{badge.name}</h4>
-                      <p className="text-xs text-white/60">{badge.description}</p>
-                    </motion.div>
-                  ))}
-                </div>
-                
-                {badges.length === 0 && (
-                  <div className="text-center py-8">
-                    <Award className="w-12 h-12 text-white/20 mx-auto mb-3" />
-                    <p className="text-white/40">ยังไม่มี Badge</p>
-                    <p className="text-xs text-white/30 mt-1">ทำภารกิจต่างๆ เพื่อรับ Badge!</p>
-                  </div>
-                )}
-              </motion.div>
+              <BadgesTab badges={badges} />
             )}
           </AnimatePresence>
         </div>
