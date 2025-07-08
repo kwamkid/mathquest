@@ -21,14 +21,15 @@ export const ACCESSORY_LAYERS = {
 
 // Default positioning for each accessory type
 export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
+    
   [AccessoryType.HAT]: {
     zIndex: ACCESSORY_LAYERS.hat,
     defaultPosition: { 
       x: 0, 
-      y: -30,  // วางเหนือหัว
+      y: 0,  // วางเหนือหัว
       scale: 1.2 
     },
-    anchorPoint: 'bottom-center',
+    anchorPoint: 'top-center',
     affectsContainerSize: true,
     animation: {
       type: 'float',

@@ -62,6 +62,8 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     { href: '/admin/rewards', label: 'จัดการรางวัล', icon: 'Gift' },
     { href: '/admin/orders', label: 'คำสั่งซื้อ', icon: 'Package' },
     { href: '/admin/reports', label: 'รายงาน', icon: 'ChartBar' },
+      { href: '/admin/accessory-position', label: 'ปรับตำแหน่ง Accessories', icon: 'Wand2' },
+
   ];
 
   if (loading) {

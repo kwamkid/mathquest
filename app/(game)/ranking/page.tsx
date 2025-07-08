@@ -363,9 +363,11 @@ export default function RankingPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className={`glass rounded-lg p-3 border bg-gradient-to-r ${
-                      getRankColor(player.rank || index + 1)
-                    } ${isCurrentUser ? 'ring-2 ring-metaverse-purple' : ''} transition-all hover:scale-[1.01]`}
+                    className={`rounded-lg p-3 border transition-all hover:scale-[1.01] ${
+                      isCurrentUser 
+                        ? 'bg-metaverse-purple/25 border-metaverse-purple shadow-lg shadow-metaverse-purple/30' 
+                        : `glass bg-gradient-to-r ${getRankColor(player.rank || index + 1)}`
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       {/* Rank */}
@@ -373,14 +375,14 @@ export default function RankingPage() {
                         {getRankMedal(player.rank || index + 1)}
                       </div>
                       
-                      {/* Avatar Container - Fixed Height */}
-                      <div className="flex-shrink-0 flex items-center justify-center" style={{ height: '48px', width: '48px' }}>
+                      {/* Avatar - Use medium size like desktop GameHeader */}
+                      <div className="flex-shrink-0">
                         <EnhancedAvatarDisplay
                           userId={player.id}
                           avatarData={player.avatarData}
                           basicAvatar={player.avatar}
-                          size="small"
-                          showEffects={!!player.rank && player.rank <= 3}
+                          size="medium"
+                          showEffects={false}
                           showAccessories={true}
                         />
                       </div>
@@ -392,7 +394,7 @@ export default function RankingPage() {
                             {player.displayName || player.username}
                           </h3>
                           {isCurrentUser && (
-                            <span className="text-xs px-1.5 py-0.5 bg-metaverse-purple/30 text-metaverse-purple rounded-full">
+                            <span className="text-xs px-2 py-1 bg-white/20 text-white rounded-full font-medium">
                               คุณ
                             </span>
                           )}
