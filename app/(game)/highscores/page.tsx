@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/lib/firebase/auth';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { User, LevelScore } from '@/types';
 import { ArrowLeft, Trophy, Star, TrendingUp, Calendar, Target, Zap, Pi } from 'lucide-react';
 import { getQuestionCount, getLevelConfig } from '@/lib/game/config';
@@ -15,37 +15,21 @@ interface ScoreWithDescription extends LevelScore {
 
 export default function HighScoresPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   const [scores, setScores] = useState<ScoreWithDescription[]>([]);
 
   useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async () => {
-    try {
-      const userData = await getCurrentUser();
-      if (!userData) {
-        router.push('/login');
-        return;
-      }
-      
-      setUser(userData);
-      
-      // Process scores for current grade only
-      if (userData.levelScores) {
-        processScores(userData.levelScores, userData.grade);
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      router.push('/login');
-    } finally {
-      setLoading(false);
+    if (user) {
+      processScores(user.levelScores, user.grade);
     }
-  };
+  }, [user]);
 
-  const processScores = (levelScores: Record<string, LevelScore>, currentGrade: string) => {
+  const processScores = (levelScores: Record<string, LevelScore> | undefined, currentGrade: string) => {
+    if (!levelScores) {
+      setScores([]);
+      return;
+    }
+
     // Get scores and add descriptions
     const processedScores: ScoreWithDescription[] = Object.entries(levelScores)
       .map(([levelKey, score]) => {
@@ -86,83 +70,63 @@ export default function HighScoresPage() {
     return Math.round((totalScore / totalPossible) * 100) + '%';
   };
 
-  if (loading) {
-    return (
-        <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
-        <div className="absolute inset-0 bg-metaverse-gradient opacity-30"></div>
-        <motion.div
-            animate={{ 
-            rotate: [0, -10, 10, -10, 0],
-            scale: [1, 1.1, 0.9, 1.1, 1],
-            }}
-            transition={{ 
-            duration: 2, 
-            repeat: Infinity,
-            ease: "easeInOut"
-            }}
-            className="relative z-10"
-        >
-            <Pi className="w-24 h-24 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
-        </motion.div>
-        </div>
-    );
-    }
-
   if (!user) return null;
 
   const questionsPerLevel = getQuestionCount(user.grade);
 
   return (
-    <div className="min-h-screen bg-metaverse-black py-8">
+    <div className="min-h-screen max-h-screen bg-metaverse-black flex flex-col overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 max-w-6xl">
-        {/* Header */}
+      <div className="relative z-10 flex-1 flex flex-col p-4 max-w-6xl mx-auto w-full">
+        {/* Header - Compact */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-8"
+          className="flex items-center justify-between mb-3"
         >
           <button
             onClick={() => router.push('/play')}
             className="flex items-center gap-2 text-white/60 hover:text-white transition"
           >
             <ArrowLeft className="w-5 h-5" />
-            กลับ
+            <span className="hidden sm:inline">กลับ</span>
           </button>
           
-          <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-            <Trophy className="w-8 h-8 text-yellow-400" />
+          <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+            <Trophy className="w-6 h-6 md:w-8 md:h-8 text-yellow-400" />
             คะแนนสูงสุดของฉัน
           </h1>
           
-          <div className="w-20" />
+          <div className="w-12 sm:w-20" />
         </motion.div>
 
-        {/* Current Grade & Level Highlight */}
+        {/* Current Grade & Level Highlight - Compact */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.15 }}
-          className="glass-dark rounded-2xl p-6 mb-8 border-2 border-metaverse-purple bg-gradient-to-br from-metaverse-purple/10 to-metaverse-pink/10"
+          className="glass-dark rounded-2xl p-4 mb-4 border-2 border-metaverse-purple bg-gradient-to-br from-metaverse-purple/10 to-metaverse-pink/10"
         >
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-gradient-to-br from-metaverse-purple to-metaverse-pink rounded-xl">
-                <TrendingUp className="w-10 h-10 text-white" />
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 md:p-3 bg-gradient-to-br from-metaverse-purple to-metaverse-pink rounded-xl">
+                <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-white mb-1">
-                  ระดับชั้นปัจจุบัน: <span className="text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">{getGradeDisplayName(user.grade)}</span>
+                <h2 className="text-lg md:text-xl font-bold text-white mb-0.5">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
+                    {getGradeDisplayName(user.grade)}
+                  </span>
                 </h2>
-                <p className="text-lg text-white/80">
+                <p className="text-sm md:text-base text-white/80">
                   กำลังเล่น <span className="font-bold text-metaverse-purple">Level {user.level}</span>
                   {user.levelScores && user.levelScores[user.level.toString()] && (
-                    <span className="text-white/60">
+                    <span className="text-white/60 hidden sm:inline">
                       {' '}• คะแนนสูงสุด: {user.levelScores[user.level.toString()].highScore}/{questionsPerLevel}
                     </span>
                   )}
@@ -171,74 +135,76 @@ export default function HighScoresPage() {
             </div>
             {user.levelScores && user.levelScores[user.level.toString()] && (
               <div className="text-right">
-                <p className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
+                <p className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                   {Math.round((user.levelScores[user.level.toString()].highScore / questionsPerLevel) * 100)}%
                 </p>
-                <p className="text-sm text-white/60">ความสำเร็จ</p>
+                <p className="text-xs text-white/60">ความสำเร็จ</p>
               </div>
             )}
           </div>
         </motion.div>
 
-        {/* Summary Stats */}
+        {/* Summary Stats - Compact Grid */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
+          className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4"
         >
-          <div className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 text-center">
-            <Star className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">
+          <div className="glass-dark rounded-lg p-3 border border-metaverse-purple/30 text-center">
+            <Star className="w-6 h-6 md:w-8 md:h-8 text-yellow-400 mx-auto mb-1" />
+            <p className="text-lg md:text-2xl font-bold text-white">
               {scores.length}
             </p>
-            <p className="text-sm text-white/60">Level ที่เล่นแล้ว</p>
+            <p className="text-xs text-white/60">Level ที่เล่น</p>
           </div>
           
-          <div className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 text-center">
-            <Trophy className="w-8 h-8 text-metaverse-purple mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">
+          <div className="glass-dark rounded-lg p-3 border border-metaverse-purple/30 text-center">
+            <Trophy className="w-6 h-6 md:w-8 md:h-8 text-metaverse-purple mx-auto mb-1" />
+            <p className="text-lg md:text-2xl font-bold text-white">
               {calculateTotalHighScore()}
             </p>
-            <p className="text-sm text-white/60">คะแนนรวมทั้งหมด</p>
+            <p className="text-xs text-white/60">คะแนนรวม</p>
           </div>
           
-          <div className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 text-center">
-            <Target className="w-8 h-8 text-metaverse-pink mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">
+          <div className="glass-dark rounded-lg p-3 border border-metaverse-purple/30 text-center">
+            <Target className="w-6 h-6 md:w-8 md:h-8 text-metaverse-pink mx-auto mb-1" />
+            <p className="text-lg md:text-2xl font-bold text-white">
               {calculateAveragePercentage()}
             </p>
-            <p className="text-sm text-white/60">เปอร์เซ็นต์เฉลี่ย</p>
+            <p className="text-xs text-white/60">เฉลี่ย</p>
           </div>
           
-          <div className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 text-center">
-            <Zap className="w-8 h-8 text-orange-400 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-white">
+          <div className="glass-dark rounded-lg p-3 border border-metaverse-purple/30 text-center">
+            <Zap className="w-6 h-6 md:w-8 md:h-8 text-orange-400 mx-auto mb-1" />
+            <p className="text-lg md:text-2xl font-bold text-white">
               Level {user.level}
             </p>
-            <p className="text-sm text-white/60">ระดับปัจจุบัน</p>
+            <p className="text-xs text-white/60">ปัจจุบัน</p>
           </div>
         </motion.div>
 
-        {/* Scores List */}
+        {/* Scores List - Scrollable */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30"
+          className="flex-1 glass-dark rounded-2xl p-4 border border-metaverse-purple/30 overflow-hidden flex flex-col"
         >
-          <h3 className="text-xl font-bold text-white mb-4">
+          <h3 className="text-lg md:text-xl font-bold text-white mb-3">
             {getGradeDisplayName(user.grade)} - Level ที่เล่นแล้ว
           </h3>
           
           {scores.length === 0 ? (
-            <div className="text-center py-12">
-              <Trophy className="w-16 h-16 text-white/30 mx-auto mb-4" />
-              <p className="text-xl text-white/60">ยังไม่มีประวัติการเล่น</p>
-              <p className="text-sm text-white/40 mt-2">เริ่มเล่นเกมเพื่อบันทึกคะแนนสูงสุดของคุณ</p>
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center py-8">
+                <Trophy className="w-12 h-12 md:w-16 md:h-16 text-white/30 mx-auto mb-3" />
+                <p className="text-lg md:text-xl text-white/60">ยังไม่มีประวัติการเล่น</p>
+                <p className="text-xs md:text-sm text-white/40 mt-2">เริ่มเล่นเกมเพื่อบันทึกคะแนนสูงสุดของคุณ</p>
+              </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="flex-1 overflow-y-auto space-y-2 pr-2">
               {scores.map((score, index) => {
                 const percentage = Math.round((score.highScore / questionsPerLevel) * 100);
                 const isCurrentLevel = user.level === score.level;
@@ -249,53 +215,54 @@ export default function HighScoresPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.3 + index * 0.05 }}
-                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                    className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
                       isCurrentLevel
                         ? 'glass bg-gradient-to-r from-metaverse-purple/10 to-metaverse-pink/10 border-metaverse-purple'
                         : 'glass-dark border-metaverse-purple/20 hover:border-metaverse-purple/40'
                     }`}
                   >
                     {/* Level Number */}
-                    <div className={`text-center min-w-[60px] ${isCurrentLevel ? 'text-metaverse-purple' : 'text-white/60'}`}>
-                      <p className="text-2xl font-bold">
+                    <div className={`text-center min-w-[40px] ${isCurrentLevel ? 'text-metaverse-purple' : 'text-white/60'}`}>
+                      <p className="text-lg md:text-xl font-bold">
                         {score.level}
                       </p>
                       <p className="text-xs">Level</p>
                     </div>
                     
                     {/* Divider */}
-                    <div className={`w-px h-12 ${isCurrentLevel ? 'bg-metaverse-purple/50' : 'bg-white/20'}`} />
+                    <div className={`w-px h-10 ${isCurrentLevel ? 'bg-metaverse-purple/50' : 'bg-white/20'}`} />
                     
                     {/* Info */}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="font-medium text-white">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <p className="font-medium text-white text-sm md:text-base truncate">
                           {score.description}
                         </p>
                         {isCurrentLevel && (
-                          <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-metaverse-purple to-metaverse-pink text-white rounded-full">
+                          <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-metaverse-purple to-metaverse-pink text-white rounded-full whitespace-nowrap">
                             กำลังเล่น
                           </span>
                         )}
                         {percentage === 100 && (
-                          <Star className="w-4 h-4 text-yellow-400" />
+                          <Star className="w-3 h-3 md:w-4 md:h-4 text-yellow-400" />
                         )}
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-white/60">
+                      <div className="flex items-center gap-3 text-xs text-white/60">
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {new Date(score.lastPlayed).toLocaleDateString('th-TH')}
+                          <span className="hidden sm:inline">{new Date(score.lastPlayed).toLocaleDateString('th-TH')}</span>
+                          <span className="sm:hidden">{new Date(score.lastPlayed).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</span>
                         </span>
-                        <span>เล่นไป {score.playCount} ครั้ง</span>
+                        <span>เล่น {score.playCount} ครั้ง</span>
                       </div>
                     </div>
                     
                     {/* Score */}
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-white">
+                      <p className="text-lg md:text-xl font-bold text-white">
                         {score.highScore}/{questionsPerLevel}
                       </p>
-                      <p className={`text-sm font-medium ${
+                      <p className={`text-xs font-medium ${
                         percentage >= 85 ? 'text-green-400' :
                         percentage >= 50 ? 'text-yellow-400' :
                         'text-red-400'
@@ -310,12 +277,12 @@ export default function HighScoresPage() {
           )}
         </motion.div>
 
-        {/* Tips */}
+        {/* Tips - Only on desktop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="mt-6 glass-dark p-4 rounded-xl text-sm border border-metaverse-purple/20"
+          className="hidden md:block mt-3 glass-dark p-3 rounded-xl text-xs border border-metaverse-purple/20"
         >
           <p className="text-white/60">
             <span className="font-semibold text-metaverse-purple">💡 เคล็ดลับ:</span> กลับมาเล่น level เดิมเพื่อทำคะแนนให้ดีขึ้น 

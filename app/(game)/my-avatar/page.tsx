@@ -4,11 +4,10 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/lib/firebase/auth';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { getUserInventory } from '@/lib/firebase/rewards';
 import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { User } from '@/types';
 import { 
   UserAvatarData, 
   PremiumAvatar, 
@@ -36,8 +35,7 @@ import { basicAvatars } from '@/lib/data/avatars';
 
 export default function MyAvatarPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, refreshUser } = useAuth();
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'avatar' | 'title' | 'badges'>('avatar');
   
@@ -61,26 +59,23 @@ export default function MyAvatarPage() {
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    loadUserData();
-  }, []);
+    if (user) {
+      loadUserAvatarData();
+    }
+  }, [user]);
 
-  const loadUserData = async () => {
+  const loadUserAvatarData = async () => {
+    if (!user) return;
+
     try {
-      const userData = await getCurrentUser();
-      if (!userData) {
-        router.push('/login');
-        return;
-      }
-      
-      setUser(userData);
-      setSelectedTitle(userData.currentTitleBadge || null);
+      setSelectedTitle(user.currentTitleBadge || null);
       
       // Initialize avatar data if not exists
-      if (!userData.avatarData) {
+      if (!user.avatarData) {
         const defaultAvatarData: UserAvatarData = {
           currentAvatar: {
             type: 'basic',
-            id: userData.avatar || 'knight',
+            id: user.avatar || 'knight',
             accessories: {
               hat: undefined,
               glasses: undefined,
@@ -96,22 +91,19 @@ export default function MyAvatarPage() {
         setCurrentAvatarData(defaultAvatarData);
         setTempAvatarData(defaultAvatarData);
       } else {
-        setCurrentAvatarData(userData.avatarData);
-        setTempAvatarData(JSON.parse(JSON.stringify(userData.avatarData)));
+        setCurrentAvatarData(user.avatarData);
+        setTempAvatarData(JSON.parse(JSON.stringify(user.avatarData)));
       }
       
       // Load inventory
-      const inventory = await getUserInventory(userData.id);
+      const inventory = await getUserInventory(user.id);
       if (inventory) {
         // In real app, load actual items from rewards collection
         // For now, mock data
         loadMockInventoryItems(inventory);
       }
-      
     } catch (error) {
-      console.error('Error loading user data:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error loading avatar data:', error);
     }
   };
 
@@ -261,13 +253,8 @@ export default function MyAvatarPage() {
       
       await updateDoc(doc(db, 'users', user.id), updates);
       
-      // Update local state
-      setUser({
-        ...user,
-        avatarData: cleanedAvatarData,
-        avatar: tempAvatarData.currentAvatar.id,
-        currentTitleBadge: selectedTitle || undefined
-      });
+      // Refresh user data in context
+      await refreshUser();
       
       setCurrentAvatarData(cleanedAvatarData);
       setHasChanges(false);
@@ -291,37 +278,25 @@ export default function MyAvatarPage() {
     setHasChanges(false);
   };
 
-  if (loading || !tempAvatarData) {
-    return (
-      <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="text-6xl"
-        >
-          👤
-        </motion.div>
-      </div>
-    );
-  }
+  if (!user || !tempAvatarData) return null;
 
   return (
-    <div className="min-h-screen bg-metaverse-black py-8">
+    <div className="min-h-screen max-h-screen bg-metaverse-black flex flex-col overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 max-w-7xl">
-        {/* Header */}
+      <div className="relative z-10 flex-1 flex flex-col p-4 max-w-6xl mx-auto w-full">
+        {/* Header - Compact */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-3"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => router.push('/play')}
                 className="p-2 glass rounded-full hover:bg-white/10 transition"
@@ -329,37 +304,37 @@ export default function MyAvatarPage() {
                 <ArrowLeft className="w-5 h-5 text-white" />
               </button>
               <div>
-                <h1 className="text-3xl font-bold text-white flex items-center gap-2">
-                  <Sparkles className="w-8 h-8 text-metaverse-purple" />
+                <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-metaverse-purple" />
                   My Avatar
                 </h1>
-                <p className="text-white/60">จัดการตัวละครและเครื่องประดับ</p>
+                <p className="text-white/60 text-xs md:text-sm">จัดการตัวละครและเครื่องประดับ</p>
               </div>
             </div>
             
-            {/* Save/Reset Buttons - Always reserve space */}
-            <div className="h-[52px] flex items-center">
+            {/* Save/Reset Buttons - Compact */}
+            <div className="h-10 flex items-center">
               <AnimatePresence>
                 {hasChanges && (
                   <motion.div
                     initial={{ opacity: 0, x: 20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20 }}
-                    className="flex gap-3"
+                    className="flex gap-2"
                   >
                     <motion.button
                       onClick={handleReset}
-                      className="px-4 py-2 glass rounded-xl text-white font-medium hover:bg-white/10 transition flex items-center gap-2"
+                      className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-1 text-sm"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
                       <RefreshCw className="w-4 h-4" />
-                      ยกเลิก
+                      <span className="hidden sm:inline">ยกเลิก</span>
                     </motion.button>
                     <motion.button
                       onClick={handleSave}
                       disabled={saving}
-                      className="px-6 py-2 metaverse-button text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center gap-2"
+                      className="px-4 py-1.5 metaverse-button text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center gap-1 text-sm"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
@@ -368,15 +343,16 @@ export default function MyAvatarPage() {
                           <motion.span
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="text-base"
                           >
                             ⏳
                           </motion.span>
-                          กำลังบันทึก...
+                          <span className="hidden sm:inline">กำลังบันทึก...</span>
                         </>
                       ) : (
                         <>
                           <Save className="w-4 h-4" />
-                          บันทึก
+                          <span className="hidden sm:inline">บันทึก</span>
                         </>
                       )}
                     </motion.button>
@@ -387,47 +363,49 @@ export default function MyAvatarPage() {
           </div>
         </motion.div>
 
-        {/* Tab Navigation */}
-        <div className="glass-dark rounded-2xl p-1 mb-6 border border-metaverse-purple/30">
+        {/* Tab Navigation - Compact */}
+        <div className="glass-dark rounded-xl p-1 mb-3 border border-metaverse-purple/30">
           <div className="flex">
             <button
               onClick={() => setActiveTab('avatar')}
-              className={`flex-1 px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
+              className={`flex-1 px-3 py-2 rounded-lg font-medium transition flex items-center justify-center gap-1 text-sm ${
                 activeTab === 'avatar'
                   ? 'metaverse-button text-white'
                   : 'text-white/60 hover:text-white'
               }`}
             >
-              <Palette className="w-5 h-5" />
-              Avatar & Accessories
+              <Palette className="w-4 h-4" />
+              <span className="hidden sm:inline">Avatar & Accessories</span>
+              <span className="sm:hidden">Avatar</span>
             </button>
             <button
               onClick={() => setActiveTab('title')}
-              className={`flex-1 px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
+              className={`flex-1 px-3 py-2 rounded-lg font-medium transition flex items-center justify-center gap-1 text-sm ${
                 activeTab === 'title'
                   ? 'metaverse-button text-white'
                   : 'text-white/60 hover:text-white'
               }`}
             >
-              <Crown className="w-5 h-5" />
-              Title Badges
+              <Crown className="w-4 h-4" />
+              <span className="hidden sm:inline">Title Badges</span>
+              <span className="sm:hidden">Title</span>
             </button>
             <button
               onClick={() => setActiveTab('badges')}
-              className={`flex-1 px-6 py-3 rounded-xl font-medium transition flex items-center justify-center gap-2 ${
+              className={`flex-1 px-3 py-2 rounded-lg font-medium transition flex items-center justify-center gap-1 text-sm ${
                 activeTab === 'badges'
                   ? 'metaverse-button text-white'
                   : 'text-white/60 hover:text-white'
               }`}
             >
-              <Award className="w-5 h-5" />
+              <Award className="w-4 h-4" />
               Badges
             </button>
           </div>
         </div>
 
-        {/* Content - Fixed min-height to prevent scrollbar flash */}
-        <div className="min-h-[600px]">
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
             {activeTab === 'avatar' && (
               <motion.div
@@ -436,6 +414,7 @@ export default function MyAvatarPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
+                className="h-full"
               >
                 <AvatarPreview
                   currentAvatarData={tempAvatarData}
@@ -458,20 +437,20 @@ export default function MyAvatarPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
-                className="glass-dark rounded-3xl p-8 border border-metaverse-purple/30"
+                className="h-full glass-dark rounded-2xl p-4 md:p-6 border border-metaverse-purple/30 overflow-y-auto"
               >
-                <h3 className="text-2xl font-bold text-white mb-6">Title Badges</h3>
+                <h3 className="text-lg md:text-xl font-bold text-white mb-4">Title Badges</h3>
                 
                 {/* Current Title */}
-                <div className="mb-8">
-                  <p className="text-white/60 mb-2">ฉายาปัจจุบัน:</p>
-                  <div className="glass rounded-xl p-4 border border-metaverse-purple/30">
+                <div className="mb-4">
+                  <p className="text-white/60 mb-2 text-sm">ฉายาปัจจุบัน:</p>
+                  <div className="glass rounded-lg p-3 border border-metaverse-purple/30">
                     {selectedTitle ? (
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Crown className="w-6 h-6 text-yellow-400" />
+                        <div className="flex items-center gap-2">
+                          <Crown className="w-5 h-5 text-yellow-400" />
                           <span 
-                            className="text-xl font-bold"
+                            className="text-base md:text-lg font-bold"
                             style={{ color: getTitleColor('epic') }}
                           >
                             {getTitleName(selectedTitle)}
@@ -482,19 +461,19 @@ export default function MyAvatarPage() {
                             setSelectedTitle(null);
                             setHasChanges(true);
                           }}
-                          className="text-red-400 hover:text-red-300 text-sm"
+                          className="text-red-400 hover:text-red-300 text-xs"
                         >
                           ถอดฉายา
                         </button>
                       </div>
                     ) : (
-                      <p className="text-white/40 text-center">ไม่ได้ใส่ฉายา</p>
+                      <p className="text-white/40 text-center text-sm">ไม่ได้ใส่ฉายา</p>
                     )}
                   </div>
                 </div>
                 
                 {/* Available Titles */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {titleBadges.map(title => (
                     <motion.button
                       key={title.id}
@@ -502,7 +481,7 @@ export default function MyAvatarPage() {
                         setSelectedTitle(title.id);
                         setHasChanges(true);
                       }}
-                      className={`glass rounded-xl p-4 border transition-all text-left ${
+                      className={`glass rounded-lg p-3 border transition-all text-left ${
                         selectedTitle === title.id
                           ? 'border-yellow-400/50 bg-yellow-400/10'
                           : 'border-metaverse-purple/30 hover:bg-white/5'
@@ -513,20 +492,20 @@ export default function MyAvatarPage() {
                       <div className="flex items-start justify-between">
                         <div>
                           <h4 
-                            className="text-lg font-bold mb-1"
+                            className="text-base font-bold mb-0.5"
                             style={{ color: title.color || '#FFD700' }}
                           >
                             {title.name}
                           </h4>
-                          <p className="text-sm text-white/60">{title.description}</p>
-                          <div className="flex items-center gap-1 mt-2">
+                          <p className="text-xs text-white/60">{title.description}</p>
+                          <div className="flex items-center gap-0.5 mt-1">
                             {Array.from({ length: getRarityStars(title.rarity) }).map((_, i) => (
-                              <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                              <Star key={i} className="w-3 h-3 text-yellow-400 fill-yellow-400" />
                             ))}
                           </div>
                         </div>
                         {selectedTitle === title.id && (
-                          <Check className="w-5 h-5 text-green-400" />
+                          <Check className="w-4 h-4 text-green-400" />
                         )}
                       </div>
                     </motion.button>
@@ -534,10 +513,10 @@ export default function MyAvatarPage() {
                 </div>
                 
                 {titleBadges.length === 0 && (
-                  <div className="text-center py-12">
-                    <Crown className="w-16 h-16 text-white/20 mx-auto mb-4" />
+                  <div className="text-center py-8">
+                    <Crown className="w-12 h-12 text-white/20 mx-auto mb-3" />
                     <p className="text-white/40">ยังไม่มี Title Badge</p>
-                    <p className="text-sm text-white/30 mt-2">เล่นเกมเพื่อปลดล็อค Title Badge พิเศษ!</p>
+                    <p className="text-xs text-white/30 mt-1">เล่นเกมเพื่อปลดล็อค Title Badge พิเศษ!</p>
                   </div>
                 )}
               </motion.div>
@@ -550,31 +529,31 @@ export default function MyAvatarPage() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
-                className="glass-dark rounded-3xl p-8 border border-metaverse-purple/30"
+                className="h-full glass-dark rounded-2xl p-4 md:p-6 border border-metaverse-purple/30 overflow-y-auto"
               >
-                <h3 className="text-2xl font-bold text-white mb-6">Achievement Badges</h3>
+                <h3 className="text-lg md:text-xl font-bold text-white mb-4">Achievement Badges</h3>
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {badges.map(badge => (
                     <motion.div
                       key={badge.id}
-                      className="glass rounded-xl p-4 border border-metaverse-purple/30 text-center"
+                      className="glass rounded-lg p-3 border border-metaverse-purple/30 text-center"
                       whileHover={{ scale: 1.05 }}
                     >
-                      <div className="w-16 h-16 mx-auto mb-2 bg-metaverse-purple/20 rounded-full flex items-center justify-center">
-                        <Shield className="w-8 h-8 text-metaverse-purple" />
+                      <div className="w-12 h-12 mx-auto mb-2 bg-metaverse-purple/20 rounded-full flex items-center justify-center">
+                        <Shield className="w-6 h-6 text-metaverse-purple" />
                       </div>
-                      <h4 className="font-bold text-white mb-1">{badge.name}</h4>
+                      <h4 className="font-bold text-white mb-0.5 text-sm">{badge.name}</h4>
                       <p className="text-xs text-white/60">{badge.description}</p>
                     </motion.div>
                   ))}
                 </div>
                 
                 {badges.length === 0 && (
-                  <div className="text-center py-12">
-                    <Award className="w-16 h-16 text-white/20 mx-auto mb-4" />
+                  <div className="text-center py-8">
+                    <Award className="w-12 h-12 text-white/20 mx-auto mb-3" />
                     <p className="text-white/40">ยังไม่มี Badge</p>
-                    <p className="text-sm text-white/30 mt-2">ทำภารกิจต่างๆ เพื่อรับ Badge!</p>
+                    <p className="text-xs text-white/30 mt-1">ทำภารกิจต่างๆ เพื่อรับ Badge!</p>
                   </div>
                 )}
               </motion.div>
@@ -583,7 +562,7 @@ export default function MyAvatarPage() {
         </div>
       </div>
       
-      {/* Success Dialog */}
+      {/* Success Dialog - Compact */}
       <AnimatePresence>
         {showSuccessDialog && (
           <motion.div
@@ -597,7 +576,7 @@ export default function MyAvatarPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-dark rounded-3xl p-8 max-w-sm w-full border border-metaverse-purple/30"
+              className="glass-dark rounded-2xl p-6 max-w-sm w-full border border-metaverse-purple/30"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Success Icon */}
@@ -605,22 +584,22 @@ export default function MyAvatarPage() {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", delay: 0.2 }}
-                className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4"
+                className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3"
               >
-                <Check className="w-10 h-10 text-green-400" />
+                <Check className="w-8 h-8 text-green-400" />
               </motion.div>
               
-              <h3 className="text-2xl font-bold text-white text-center mb-2">
+              <h3 className="text-xl font-bold text-white text-center mb-1">
                 บันทึกสำเร็จ!
               </h3>
               
-              <p className="text-white/60 text-center mb-6">
+              <p className="text-white/60 text-center mb-4 text-sm">
                 การเปลี่ยนแปลงของคุณถูกบันทึกเรียบร้อยแล้ว
               </p>
               
               <motion.button
                 onClick={() => setShowSuccessDialog(false)}
-                className="w-full py-3 metaverse-button text-white font-bold rounded-xl"
+                className="w-full py-2.5 metaverse-button text-white font-bold rounded-lg"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -631,7 +610,7 @@ export default function MyAvatarPage() {
         )}
       </AnimatePresence>
       
-      {/* Error Dialog */}
+      {/* Error Dialog - Compact */}
       <AnimatePresence>
         {showErrorDialog && (
           <motion.div
@@ -645,7 +624,7 @@ export default function MyAvatarPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-dark rounded-3xl p-8 max-w-sm w-full border border-metaverse-purple/30"
+              className="glass-dark rounded-2xl p-6 max-w-sm w-full border border-metaverse-purple/30"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Error Icon */}
@@ -653,22 +632,22 @@ export default function MyAvatarPage() {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", delay: 0.2 }}
-                className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4"
+                className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-3"
               >
-                <X className="w-10 h-10 text-red-400" />
+                <X className="w-8 h-8 text-red-400" />
               </motion.div>
               
-              <h3 className="text-2xl font-bold text-white text-center mb-2">
+              <h3 className="text-xl font-bold text-white text-center mb-1">
                 เกิดข้อผิดพลาด
               </h3>
               
-              <p className="text-white/60 text-center mb-6">
+              <p className="text-white/60 text-center mb-4 text-sm">
                 {errorMessage}
               </p>
               
               <motion.button
                 onClick={() => setShowErrorDialog(false)}
-                className="w-full py-3 glass border border-red-500/50 text-red-400 font-bold rounded-xl hover:bg-red-500/10 transition"
+                className="w-full py-2.5 glass border border-red-500/50 text-red-400 font-bold rounded-lg hover:bg-red-500/10 transition"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >

@@ -1,10 +1,10 @@
+// app/(game)/summary/page.tsx
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { User } from '@/types';
 import AvatarDisplay from '@/components/avatar/AvatarDisplay';
 import { 
   Trophy, 
@@ -30,8 +30,7 @@ interface ExpBreakdown {
 function SummaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
   
   // Get params from URL
   const score = parseInt(searchParams.get('score') || '0');
@@ -59,25 +58,6 @@ function SummaryContent() {
     console.error('Error parsing exp breakdown:', e);
   }
 
-  useEffect(() => {
-    loadUser();
-  }, []);
-
-  const loadUser = async () => {
-    try {
-      const userData = await getCurrentUser();
-      if (!userData) {
-        router.push('/login');
-        return;
-      }
-      setUser(userData);
-    } catch (error) {
-      console.error('Error loading user:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Format time
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
@@ -103,7 +83,7 @@ function SummaryContent() {
     switch (levelChange) {
       case 'increase':
         return {
-          icon: <TrendingUp className="w-8 h-8" />,
+          icon: <TrendingUp className="w-6 h-6 md:w-8 md:h-8" />,
           text: 'Level Up!',
           color: 'text-green-400',
           bgColor: 'bg-green-500/20',
@@ -111,7 +91,7 @@ function SummaryContent() {
         };
       case 'decrease':
         return {
-          icon: <TrendingDown className="w-8 h-8" />,
+          icon: <TrendingDown className="w-6 h-6 md:w-8 md:h-8" />,
           text: 'Level Down',
           color: 'text-red-400',
           bgColor: 'bg-red-500/20',
@@ -119,7 +99,7 @@ function SummaryContent() {
         };
       default:
         return {
-          icon: <Award className="w-8 h-8" />,
+          icon: <Award className="w-6 h-6 md:w-8 md:h-8" />,
           text: 'Level คงเดิม',
           color: 'text-orange-400',
           bgColor: 'bg-orange-500/20',
@@ -130,252 +110,243 @@ function SummaryContent() {
 
   const levelInfo = getLevelChangeInfo();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="text-6xl"
-        >
-          ⏳
-        </motion.div>
-      </div>
-    );
-  }
+  if (!user) return null;
 
   return (
-    <div className="min-h-screen bg-metaverse-black py-8">
+    <div className="min-h-screen max-h-screen bg-metaverse-black flex flex-col overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 max-w-4xl">
-        {/* Header */}
+      <div className="relative z-10 flex-1 flex flex-col p-4 max-w-4xl mx-auto w-full">
+        {/* Header - Compact */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className="text-center mb-3"
         >
-          <h1 className="text-4xl font-bold text-white mb-2">สรุปผลการเล่น</h1>
-          <p className={`text-2xl font-medium ${performance.color}`}>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">สรุปผลการเล่น</h1>
+          <p className={`text-lg md:text-xl font-medium ${performance.color}`}>
             {performance.text}
           </p>
         </motion.div>
 
-        {/* Avatar & Main Score */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.2 }}
-          className="glass-dark rounded-3xl p-8 mb-6 border border-metaverse-purple/30 text-center"
-        >
-          {/* Avatar */}
+        {/* Main Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto space-y-3">
+          {/* Avatar & Main Score */}
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", delay: 0.3 }}
-            className="inline-block mb-6"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="glass-dark rounded-2xl p-4 md:p-6 border border-metaverse-purple/30 text-center"
           >
-            <AvatarDisplay
-              avatarData={user?.avatarData}
-              basicAvatar={user?.avatar}
-              size="xlarge"
-              showEffects={true}
-              showTitle={true}
-              titleBadge={user?.currentTitleBadge}
-            />
-          </motion.div>
-
-          {/* Score Display */}
-          <div className="mb-6">
+            {/* Avatar */}
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ type: "spring", delay: 0.4 }}
-              className="text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink mb-2"
+              transition={{ type: "spring", delay: 0.3 }}
+              className="inline-block mb-3"
             >
-              {score}/{total}
-            </motion.div>
-            
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: "100%" }}
-              transition={{ delay: 0.5, duration: 1 }}
-              className="w-full max-w-md mx-auto bg-white/10 rounded-full h-8 overflow-hidden mb-4"
-            >
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${percentage}%` }}
-                transition={{ delay: 0.6, duration: 1 }}
-                className={`h-full bg-gradient-to-r ${
-                  percentage >= 85 ? 'from-green-400 to-emerald-400' :
-                  percentage >= 50 ? 'from-orange-400 to-yellow-400' :
-                  'from-red-400 to-pink-400'
-                }`}
+              <AvatarDisplay
+                avatarData={user?.avatarData}
+                basicAvatar={user?.avatar}
+                size="large"
+                showEffects={true}
+                showTitle={true}
+                titleBadge={user?.currentTitleBadge}
               />
             </motion.div>
-            
-            <p className="text-3xl font-bold text-white">
-              {percentage}% ถูกต้อง
-            </p>
-          </div>
 
-          {/* High Score Badge */}
-          {isHighScore && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="inline-block glass bg-gradient-to-r from-yellow-400/20 to-orange-400/20 rounded-full px-6 py-3 border border-yellow-400/30"
-            >
-              <div className="flex items-center gap-2">
-                <Trophy className="w-6 h-6 text-yellow-400" />
-                <span className="text-lg font-bold text-yellow-400">
-                  New High Score! (+{scoreDiff} คะแนน)
-                </span>
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
+            {/* Score Display */}
+            <div className="mb-4">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", delay: 0.4 }}
+                className="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink mb-2"
+              >
+                {score}/{total}
+              </motion.div>
+              
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ delay: 0.5, duration: 1 }}
+                className="w-full max-w-xs mx-auto bg-white/10 rounded-full h-6 overflow-hidden mb-3"
+              >
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${percentage}%` }}
+                  transition={{ delay: 0.6, duration: 1 }}
+                  className={`h-full bg-gradient-to-r ${
+                    percentage >= 85 ? 'from-green-400 to-emerald-400' :
+                    percentage >= 50 ? 'from-orange-400 to-yellow-400' :
+                    'from-red-400 to-pink-400'
+                  }`}
+                />
+              </motion.div>
+              
+              <p className="text-2xl font-bold text-white">
+                {percentage}% ถูกต้อง
+              </p>
+            </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {/* Level Change */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.9 }}
-            className={`glass-dark rounded-2xl p-6 border ${levelInfo.borderColor} ${levelInfo.bgColor}`}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-white/60 mb-1">Level</p>
+            {/* High Score Badge */}
+            {isHighScore && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="inline-block glass bg-gradient-to-r from-yellow-400/20 to-orange-400/20 rounded-full px-4 py-2 border border-yellow-400/30"
+              >
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold text-white">
-                    {oldLevel}
-                  </span>
-                  <span className={levelInfo.color}>→</span>
-                  <span className={`text-2xl font-bold ${levelInfo.color}`}>
-                    {newLevel}
+                  <Trophy className="w-5 h-5 text-yellow-400" />
+                  <span className="text-sm md:text-base font-bold text-yellow-400">
+                    New High Score! (+{scoreDiff} คะแนน)
                   </span>
                 </div>
-                <p className={`font-medium ${levelInfo.color}`}>
-                  {levelInfo.text}
-                </p>
-              </div>
-              <div className={levelInfo.color}>
-                {levelInfo.icon}
-              </div>
-            </div>
+              </motion.div>
+            )}
           </motion.div>
 
-          {/* Time */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 1 }}
-            className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-white/60 mb-1">เวลาที่ใช้</p>
-                <p className="text-2xl font-bold text-white">
-                  {formatTime(timeSpent)}
-                </p>
-                <p className="text-sm text-white/60">
-                  เฉลี่ย {Math.round(timeSpent / total)} วินาที/ข้อ
-                </p>
+          {/* Stats Grid - Compact */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Level Change */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.9 }}
+              className={`glass-dark rounded-xl p-4 border ${levelInfo.borderColor} ${levelInfo.bgColor}`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-white/60 mb-1">Level</p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg md:text-xl font-bold text-white">
+                      {oldLevel}
+                    </span>
+                    <span className={levelInfo.color}>→</span>
+                    <span className={`text-lg md:text-xl font-bold ${levelInfo.color}`}>
+                      {newLevel}
+                    </span>
+                  </div>
+                  <p className={`font-medium text-sm ${levelInfo.color}`}>
+                    {levelInfo.text}
+                  </p>
+                </div>
+                <div className={levelInfo.color}>
+                  {levelInfo.icon}
+                </div>
               </div>
-              <Clock className="w-8 h-8 text-metaverse-purple" />
+            </motion.div>
+
+            {/* Time */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1 }}
+              className="glass-dark rounded-xl p-4 border border-metaverse-purple/30"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-white/60 mb-1">เวลาที่ใช้</p>
+                  <p className="text-lg md:text-xl font-bold text-white">
+                    {formatTime(timeSpent)}
+                  </p>
+                  <p className="text-xs text-white/60">
+                    เฉลี่ย {Math.round(timeSpent / total)} วินาที/ข้อ
+                  </p>
+                </div>
+                <Clock className="w-6 h-6 md:w-8 md:h-8 text-metaverse-purple" />
+              </div>
+            </motion.div>
+          </div>
+
+          {/* EXP Earned - Compact */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1.1 }}
+            className="glass-dark rounded-2xl p-4 border border-metaverse-purple/30"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
+                <Zap className="w-5 h-5 text-yellow-400" />
+                EXP ที่ได้รับ
+              </h3>
+              {boostMultiplier > 1 && (
+                <span className="px-2 py-0.5 bg-yellow-400/20 text-yellow-400 rounded-full text-xs font-medium">
+                  Boost x{boostMultiplier}
+                </span>
+              )}
             </div>
+            
+            {/* EXP Breakdown - Compact */}
+            {expBreakdown.length > 0 && (
+              <div className="space-y-1.5 mb-3">
+                {expBreakdown.map((item, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 1.2 + index * 0.1 }}
+                    className="flex items-center justify-between text-xs"
+                  >
+                    <div>
+                      <span className="text-white/80">{item.label}</span>
+                      <span className="text-white/50 ml-1 text-xs hidden sm:inline">({item.description})</span>
+                    </div>
+                    <span className={`font-medium ${
+                      item.value > 0 ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {item.value > 0 ? '+' : ''}{item.value}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+            )}
+            
+            {/* Total EXP */}
+            <div className="pt-3 border-t border-white/10">
+              <div className="flex items-center justify-between">
+                <span className="text-sm md:text-base font-medium text-white">รวมทั้งหมด</span>
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", delay: 1.5 }}
+                  className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400"
+                >
+                  +{exp} EXP
+                </motion.span>
+              </div>
+            </div>
+
+            {/* Streak Bonus Info */}
+            {playStreak > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.6 }}
+                className="mt-3 p-2 bg-yellow-400/10 rounded-lg border border-yellow-400/30"
+              >
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-yellow-400" />
+                  <span className="text-xs text-yellow-400">
+                    เล่นต่อเนื่อง {playStreak} วัน!
+                    {isFirstToday && ' (+50 EXP โบนัสวันแรก)'}
+                  </span>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
         </div>
 
-        {/* EXP Earned */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.1 }}
-          className="glass-dark rounded-3xl p-6 mb-6 border border-metaverse-purple/30"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <Zap className="w-6 h-6 text-yellow-400" />
-              EXP ที่ได้รับ
-            </h3>
-            {boostMultiplier > 1 && (
-              <span className="px-3 py-1 bg-yellow-400/20 text-yellow-400 rounded-full text-sm font-medium">
-                Boost x{boostMultiplier}
-              </span>
-            )}
-          </div>
-          
-          {/* EXP Breakdown */}
-          {expBreakdown.length > 0 && (
-            <div className="space-y-2 mb-4">
-              {expBreakdown.map((item, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 1.2 + index * 0.1 }}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <div>
-                    <span className="text-white/80">{item.label}</span>
-                    <span className="text-white/50 ml-2 text-xs">({item.description})</span>
-                  </div>
-                  <span className={`font-medium ${
-                    item.value > 0 ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    {item.value > 0 ? '+' : ''}{item.value}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-          )}
-          
-          {/* Total EXP */}
-          <div className="pt-4 border-t border-white/10">
-            <div className="flex items-center justify-between">
-              <span className="text-lg font-medium text-white">รวมทั้งหมด</span>
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", delay: 1.5 }}
-                className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400"
-              >
-                +{exp} EXP
-              </motion.span>
-            </div>
-          </div>
-
-          {/* Streak Bonus Info */}
-          {playStreak > 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.6 }}
-              className="mt-4 p-3 bg-yellow-400/10 rounded-xl border border-yellow-400/30"
-            >
-              <div className="flex items-center gap-2">
-                <Crown className="w-5 h-5 text-yellow-400" />
-                <span className="text-sm text-yellow-400">
-                  เล่นต่อเนื่อง {playStreak} วัน!
-                  {isFirstToday && ' (+50 EXP โบนัสวันแรก)'}
-                </span>
-              </div>
-            </motion.div>
-          )}
-        </motion.div>
-
-        {/* Action Buttons - Responsive Layout */}
+        {/* Action Buttons - Fixed at bottom */}
         {percentage >= 85 ? (
           // Layout สำหรับคนที่ได้ >= 85%
-          <div className="space-y-4">
+          <div className="mt-3 space-y-3">
             {/* ปุ่มเล่นต่อขนาดใหญ่ */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -384,7 +355,7 @@ function SummaryContent() {
             >
               <motion.button
                 onClick={() => router.push('/play')}
-                className="w-full py-6 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold text-2xl rounded-2xl shadow-lg hover:shadow-xl relative overflow-hidden"
+                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold text-lg md:text-xl rounded-xl shadow-lg hover:shadow-xl relative overflow-hidden"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
@@ -394,8 +365,8 @@ function SummaryContent() {
                   whileHover={{ x: '100%' }}
                   transition={{ duration: 0.5 }}
                 />
-                <span className="relative z-10 flex items-center justify-center gap-3">
-                  <Rocket className="w-7 h-7" />
+                <span className="relative z-10 flex items-center justify-center gap-2">
+                  <Rocket className="w-6 h-6" />
                   {levelChange === 'increase' 
                     ? `เข้าสู่ Level ${newLevel} เลย!`
                     : 'เล่นต่อเลย!'
@@ -411,13 +382,13 @@ function SummaryContent() {
             </motion.div>
 
             {/* ปุ่มย่อย 3 ปุ่ม */}
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <motion.button
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 1.7 }}
                 onClick={() => router.push('/play')}
-                className="flex-1 py-3 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
+                className="flex-1 py-2.5 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -429,7 +400,7 @@ function SummaryContent() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.8 }}
                 onClick={() => router.push('/ranking')}
-                className="flex-1 py-3 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
+                className="flex-1 py-2.5 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -441,7 +412,7 @@ function SummaryContent() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 1.9 }}
                 onClick={() => router.push('/rewards')}
-                className="flex-1 py-3 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
+                className="flex-1 py-2.5 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
@@ -451,18 +422,18 @@ function SummaryContent() {
           </div>
         ) : (
           // Layout ปกติสำหรับคนที่ได้ < 85%
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="mt-3 grid grid-cols-3 gap-3">
             <motion.button
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.7 }}
               onClick={() => router.push('/play')}
-              className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:bg-white/5 transition group"
+              className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 hover:bg-white/5 transition group"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <RefreshCw className="w-8 h-8 text-metaverse-purple mx-auto mb-2 group-hover:rotate-180 transition-transform duration-500" />
-              <p className="text-white font-medium">เล่นอีกครั้ง</p>
+              <RefreshCw className="w-6 h-6 text-metaverse-purple mx-auto mb-1 group-hover:rotate-180 transition-transform duration-500" />
+              <p className="text-white font-medium text-xs">เล่นอีกครั้ง</p>
             </motion.button>
 
             <motion.button
@@ -470,12 +441,12 @@ function SummaryContent() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.8 }}
               onClick={() => router.push('/ranking')}
-              className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:bg-white/5 transition group"
+              className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 hover:bg-white/5 transition group"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Trophy className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
-              <p className="text-white font-medium">ดูอันดับ</p>
+              <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-1" />
+              <p className="text-white font-medium text-xs">ดูอันดับ</p>
             </motion.button>
 
             <motion.button
@@ -483,14 +454,14 @@ function SummaryContent() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1.9 }}
               onClick={() => router.push('/rewards')}
-              className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:bg-white/5 transition group"
+              className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 hover:bg-white/5 transition group"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Gift className="w-8 h-8 text-metaverse-pink mx-auto mb-2" />
-              <p className="text-white font-medium">แลกรางวัล</p>
-              <p className="text-xs text-white/60 mt-1">
-                EXP: {user?.experience.toLocaleString()}
+              <Gift className="w-6 h-6 text-metaverse-pink mx-auto mb-1" />
+              <p className="text-white font-medium text-xs">แลกรางวัล</p>
+              <p className="text-xs text-white/60 mt-0.5">
+                {user?.experience.toLocaleString()} EXP
               </p>
             </motion.button>
           </div>
@@ -502,6 +473,8 @@ function SummaryContent() {
 
 // Main component with Suspense boundary
 export default function SummaryPage() {
+  const { user } = useAuth();
+  
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-metaverse-black flex items-center justify-center">

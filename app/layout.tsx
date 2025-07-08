@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Thai } from "next/font/google";
 import "./globals.css";
+// ลอง import ทั้งสองแบบ
 import { AuthProvider } from "@/lib/contexts/AuthContext";
+// หรือใช้ default import
+// import AuthProvider from "@/lib/contexts/AuthContext";
 
 const ibmPlexSansThai = IBM_Plex_Sans_Thai({
   subsets: ['thai', 'latin'],
