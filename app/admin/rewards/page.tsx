@@ -38,7 +38,8 @@ import {
   Check,
   ToggleLeft,
   ToggleRight,
-  Sparkles
+  Sparkles,
+  Info
 } from 'lucide-react';
 
 export default function AdminRewardsPage() {
@@ -75,7 +76,8 @@ export default function AdminRewardsPage() {
     boostDuration: 60,
     boostMultiplier: 2,
     imageUrl: undefined,
-    imagePath: undefined
+    imagePath: undefined,
+    itemId: undefined
   });
   
   const [saving, setSaving] = useState(false);
@@ -146,7 +148,8 @@ export default function AdminRewardsPage() {
       boostDuration: 60,
       boostMultiplier: 2,
       imageUrl: undefined,
-      imagePath: undefined
+      imagePath: undefined,
+      itemId: undefined
     });
     setErrors({});
     setShowCreateModal(true);
@@ -229,6 +232,11 @@ export default function AdminRewardsPage() {
 
     if (!formData.price || formData.price < 0) {
       newErrors.price = 'กรุณากรอกราคา EXP ที่ถูกต้อง';
+    }
+
+    // Validate itemId for avatar and accessory types
+    if ((formData.type === RewardType.AVATAR || formData.type === RewardType.ACCESSORY || formData.type === RewardType.TITLE_BADGE) && !formData.itemId?.trim()) {
+      newErrors.itemId = 'กรุณากรอก Item ID';
     }
 
     if (formData.type === RewardType.BOOST) {
@@ -471,6 +479,7 @@ export default function AdminRewardsPage() {
               <tr className="border-b border-metaverse-purple/30">
                 <th className="px-6 py-4 text-left text-sm font-medium text-white/60">รางวัล</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-white/60">ประเภท</th>
+                <th className="px-6 py-4 text-left text-sm font-medium text-white/60">Item ID</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-white/60">ราคา (EXP)</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-white/60">Stock</th>
                 <th className="px-6 py-4 text-left text-sm font-medium text-white/60">เงื่อนไข</th>
@@ -502,6 +511,15 @@ export default function AdminRewardsPage() {
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-metaverse-purple/20 text-metaverse-purple">
                       {reward.type}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    {reward.itemId ? (
+                      <code className="text-xs font-mono text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded">
+                        {reward.itemId}
+                      </code>
+                    ) : (
+                      <span className="text-white/40">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1">
@@ -682,6 +700,61 @@ export default function AdminRewardsPage() {
                     <p className="mt-1 text-sm text-red-400">{errors.description}</p>
                   )}
                 </div>
+
+                {/* Item ID - For Avatar, Accessory, Title Badge */}
+                {(formData.type === 'avatar' || 
+                  formData.type === 'accessory' || 
+                  formData.type === 'titleBadge') && (
+                  <div>
+                    <label className="block text-sm font-medium text-white/80 mb-2">
+                      Item ID <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.itemId || ''}
+                      onChange={(e) => setFormData({ ...formData, itemId: e.target.value })}
+                      className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 font-mono ${
+                        errors.itemId ? 'border-red-400' : 'border-metaverse-purple/30'
+                      }`}
+                      placeholder={
+                        formData.type === RewardType.AVATAR ? 'เช่น dragon_warrior, cyber_ninja' :
+                        formData.type === RewardType.ACCESSORY ? 'เช่น hat_crown, glasses_cool' :
+                        'เช่น speed_demon, math_master'
+                      }
+                    />
+                    {errors.itemId && (
+                      <p className="mt-1 text-sm text-red-400">{errors.itemId}</p>
+                    )}
+                    <div className="mt-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <Info className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-xs text-blue-400">
+                          <p className="font-medium mb-1">คำแนะนำ Item ID:</p>
+                          {formData.type === RewardType.AVATAR && (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>ใช้ตัวอักษรเล็ก และ underscore</li>
+                              <li>ตัวอย่าง: dragon_warrior, space_hero, cyber_ninja</li>
+                              <li>ID นี้จะใช้ในการแสดง avatar ในเกม</li>
+                            </ul>
+                          )}
+                          {formData.type === RewardType.ACCESSORY && (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>รูปแบบ: ประเภท_ชื่อ</li>
+                              <li>ประเภท: hat, glasses, mask, earring, necklace, background</li>
+                              <li>ตัวอย่าง: hat_crown, glasses_cool, mask_hero</li>
+                            </ul>
+                          )}
+                          {formData.type === RewardType.TITLE_BADGE && (
+                            <ul className="list-disc list-inside space-y-1">
+                              <li>ใช้คำที่สื่อความหมาย</li>
+                              <li>ตัวอย่าง: speed_demon, math_master, legend</li>
+                            </ul>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Price */}
                 <div>

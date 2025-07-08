@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { getUserInventory } from '@/lib/firebase/rewards';
-import { updateDoc, doc } from 'firebase/firestore';
+import { updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { 
   UserAvatarData, 
@@ -68,14 +68,21 @@ export default function MyAvatarPage() {
     if (!user) return;
 
     try {
+      console.log('Loading user avatar data...');
       setSelectedTitle(user.currentTitleBadge || null);
       
-      // Initialize avatar data if not exists
-      if (!user.avatarData) {
-        const defaultAvatarData: UserAvatarData = {
+      // Get fresh user data from Firestore
+      const userDoc = await getDoc(doc(db, 'users', user.id));
+      const freshUserData = userDoc.data();
+      console.log('Fresh user data:', freshUserData);
+      
+      // Initialize or use existing avatar data
+      let avatarData: UserAvatarData;
+      if (!freshUserData?.avatarData) {
+        avatarData = {
           currentAvatar: {
             type: 'basic',
-            id: user.avatar || 'knight',
+            id: freshUserData?.avatar || 'knight',
             accessories: {
               hat: undefined,
               glasses: undefined,
@@ -88,78 +95,171 @@ export default function MyAvatarPage() {
           unlockedPremiumAvatars: [],
           unlockedAccessories: []
         };
-        setCurrentAvatarData(defaultAvatarData);
-        setTempAvatarData(defaultAvatarData);
       } else {
-        setCurrentAvatarData(user.avatarData);
-        setTempAvatarData(JSON.parse(JSON.stringify(user.avatarData)));
+        avatarData = freshUserData.avatarData;
       }
       
-      // Load inventory
+      console.log('Avatar data:', avatarData);
+      
+      // Load inventory from Firebase
       const inventory = await getUserInventory(user.id);
+      console.log('User inventory:', inventory);
+      
       if (inventory) {
-        // In real app, load actual items from rewards collection
-        // For now, mock data
-        loadMockInventoryItems(inventory);
+        // Update avatarData with inventory data
+        if (inventory.avatars.length > 0) {
+          avatarData.unlockedPremiumAvatars = [...new Set([...avatarData.unlockedPremiumAvatars, ...inventory.avatars])];
+        }
+        if (inventory.accessories.length > 0) {
+          avatarData.unlockedAccessories = [...new Set([...avatarData.unlockedAccessories, ...inventory.accessories])];
+        }
+        
+        // Load premium avatars from inventory
+        const loadedPremiumAvatars: PremiumAvatar[] = avatarData.unlockedPremiumAvatars.map(avatarId => ({
+          id: avatarId,
+          name: getPremiumAvatarName(avatarId),
+          svgUrl: `/avatars/premium/${avatarId}.svg`,
+          price: 0, // Already owned
+          rarity: getPremiumAvatarRarity(avatarId),
+          category: 'special' as const
+        }));
+        setPremiumAvatars(loadedPremiumAvatars);
+        console.log('Loaded premium avatars:', loadedPremiumAvatars);
+        
+        // Load accessories from inventory
+        const loadedAccessories: AvatarAccessory[] = avatarData.unlockedAccessories.map(accessoryId => {
+          const type = getAccessoryType(accessoryId);
+          return {
+            id: accessoryId,
+            name: getAccessoryName(accessoryId),
+            type: type,
+            svgUrl: `/accessories/${type}s/${accessoryId}.svg`,
+            price: 0, // Already owned
+            rarity: getAccessoryRarity(accessoryId)
+          };
+        });
+        setAccessories(loadedAccessories);
+        console.log('Loaded accessories:', loadedAccessories);
+        
+        // Load title badges from inventory
+        const loadedTitles: TitleBadge[] = inventory.titleBadges.map(titleId => ({
+          id: titleId,
+          name: getTitleName(titleId),
+          description: `ได้รับจากการแลกรางวัล`,
+          rarity: getTitleRarity(titleId),
+          color: getTitleColor(titleId)
+        }));
+        setTitleBadges(loadedTitles);
+        
+        // Sync avatarData back to user if needed
+        if (freshUserData?.avatarData?.unlockedPremiumAvatars?.length !== avatarData.unlockedPremiumAvatars.length ||
+            freshUserData?.avatarData?.unlockedAccessories?.length !== avatarData.unlockedAccessories.length) {
+          console.log('Syncing avatar data back to user...');
+          await updateDoc(doc(db, 'users', user.id), {
+            avatarData: avatarData
+          });
+        }
       }
+      
+      setCurrentAvatarData(avatarData);
+      setTempAvatarData(JSON.parse(JSON.stringify(avatarData)));
     } catch (error) {
       console.error('Error loading avatar data:', error);
     }
   };
 
-  // Mock function - in real app, load from Firestore
-  const loadMockInventoryItems = (inventory: any) => {
-    // Mock premium avatars
-    const mockPremiumAvatars: PremiumAvatar[] = inventory.avatars.map((id: string) => ({
-      id,
-      name: `Premium ${id}`,
-      svgUrl: `/avatars/premium/${id}.svg`,
-      price: 500,
-      rarity: 'rare' as const,
-      category: 'special' as const
-    }));
-    setPremiumAvatars(mockPremiumAvatars);
-    
-    // Mock accessories
-    const mockAccessories: AvatarAccessory[] = inventory.accessories.map((id: string) => ({
-      id,
-      name: `Accessory ${id}`,
-      type: AccessoryType.HAT,
-      svgUrl: `/accessories/hats/${id}.svg`,
-      price: 300,
-      rarity: 'common' as const
-    }));
-    setAccessories(mockAccessories);
-    
-    // Mock title badges
-    const mockTitles: TitleBadge[] = inventory.titleBadges.map((id: string) => ({
-      id,
-      name: getTitleName(id),
-      description: `ได้รับจากความสำเร็จ`,
-      rarity: 'epic' as const,
-      color: getTitleColor(id)
-    }));
-    setTitleBadges(mockTitles);
+  // Helper functions for names and properties
+  const getPremiumAvatarName = (id: string): string => {
+    const names: Record<string, string> = {
+      'cyber_warrior': 'Cyber Warrior',
+      'dragon_knight': 'Dragon Knight',
+      'space_explorer': 'Space Explorer',
+      'mystic_mage': 'Mystic Mage',
+      'shadow_ninja': 'Shadow Ninja',
+      'phoenix_guardian': 'Phoenix Guardian',
+      'dragon_sodiac': 'Dragon Sodiac',
+      'cute_dragon': 'Cute Dragon',
+      // Map reward IDs to names
+      'xUE45PptWWAN6JjQqfzp': 'หนังสือ เกมเศรษฐี', // This is physical, not avatar
+    };
+    // If it's a Firestore ID, try to extract name from ID or use as-is
+    if (id.length > 20) { // Likely a Firestore auto-generated ID
+      return 'Custom Avatar';
+    }
+    return names[id] || id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  // Helper functions
+  const getPremiumAvatarRarity = (id: string): 'common' | 'rare' | 'epic' | 'legendary' => {
+    const rarities: Record<string, 'common' | 'rare' | 'epic' | 'legendary'> = {
+      'cyber_warrior': 'rare',
+      'dragon_knight': 'epic',
+      'space_explorer': 'rare',
+      'mystic_mage': 'epic',
+      'shadow_ninja': 'legendary',
+      'phoenix_guardian': 'legendary'
+    };
+    return rarities[id] || 'rare';
+  };
+
+  const getAccessoryType = (id: string): AccessoryType => {
+    // Determine type from ID pattern
+    if (id.includes('hat') || id.includes('crown') || id.includes('cap')) return AccessoryType.HAT;
+    if (id.includes('glass') || id.includes('sunglass')) return AccessoryType.GLASSES;
+    if (id.includes('mask')) return AccessoryType.MASK;
+    if (id.includes('earring')) return AccessoryType.EARRING;
+    if (id.includes('necklace') || id.includes('chain')) return AccessoryType.NECKLACE;
+    if (id.includes('background') || id.includes('bg')) return AccessoryType.BACKGROUND;
+    
+    // Default to hat if can't determine
+    return AccessoryType.HAT;
+  };
+
+  const getAccessoryName = (id: string): string => {
+    const names: Record<string, string> = {
+      'hat_crown': 'Golden Crown',
+      'hat_wizard': 'Wizard Hat',
+      'glasses_cool': 'Cool Sunglasses',
+      'glasses_smart': 'Smart Glasses',
+      'mask_hero': 'Hero Mask',
+      'necklace_gold': 'Gold Chain'
+    };
+    return names[id] || id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const getAccessoryRarity = (id: string): 'common' | 'rare' | 'epic' | 'legendary' => {
+    if (id.includes('gold') || id.includes('crown')) return 'epic';
+    if (id.includes('hero') || id.includes('wizard')) return 'rare';
+    return 'common';
+  };
+
   const getTitleName = (id: string): string => {
     const titles: Record<string, string> = {
       'math-master': 'เซียนเลข',
       'speed-demon': 'เร็วสายฟ้า',
       'perfect-scorer': 'นักแม่นยำ',
-      'dedication-hero': 'ผู้มุ่งมั่น'
+      'dedication-hero': 'ผู้มุ่งมั่น',
+      'legend': 'ตำนาน',
+      'champion': 'แชมป์'
     };
     return titles[id] || id;
   };
 
-  const getTitleColor = (rarity: string): string => {
-    switch (rarity) {
-      case 'legendary': return '#FFD700';
-      case 'epic': return '#9333EA';
-      case 'rare': return '#3B82F6';
-      default: return '#6B7280';
-    }
+  const getTitleRarity = (id: string): 'common' | 'rare' | 'epic' | 'legendary' => {
+    if (id === 'legend' || id === 'champion') return 'legendary';
+    if (id === 'math-master' || id === 'perfect-scorer') return 'epic';
+    return 'rare';
+  };
+
+  const getTitleColor = (id: string): string => {
+    const colors: Record<string, string> = {
+      'legend': '#FFD700',
+      'champion': '#FF6B6B',
+      'math-master': '#9333EA',
+      'speed-demon': '#3B82F6',
+      'perfect-scorer': '#10B981',
+      'dedication-hero': '#F59E0B'
+    };
+    return colors[id] || '#6B7280';
   };
 
   const getRarityStars = (rarity: string): number => {
@@ -278,6 +378,11 @@ export default function MyAvatarPage() {
     setHasChanges(false);
   };
 
+  // Add refresh button handler
+  const handleRefreshInventory = async () => {
+    await loadUserAvatarData();
+  };
+
   if (!user || !tempAvatarData) return null;
 
   return (
@@ -313,7 +418,18 @@ export default function MyAvatarPage() {
             </div>
             
             {/* Save/Reset Buttons - Compact */}
-            <div className="h-10 flex items-center">
+            <div className="h-10 flex items-center gap-2">
+              {/* Refresh Button */}
+              <motion.button
+                onClick={handleRefreshInventory}
+                className="p-2 glass rounded-lg hover:bg-white/10 transition"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="รีเฟรชข้อมูล"
+              >
+                <RefreshCw className="w-4 h-4 text-white/70" />
+              </motion.button>
+              
               <AnimatePresence>
                 {hasChanges && (
                   <motion.div
@@ -404,6 +520,15 @@ export default function MyAvatarPage() {
           </div>
         </div>
 
+        {/* Debug Info - Remove in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="text-xs text-white/50 mb-2">
+            Premium Avatars: {premiumAvatars.length} | 
+            Accessories: {accessories.length} | 
+            Unlocked: {tempAvatarData.unlockedPremiumAvatars.length}
+          </div>
+        )}
+
         {/* Content - Scrollable */}
         <div className="flex-1 overflow-hidden">
           <AnimatePresence mode="wait">
@@ -451,7 +576,7 @@ export default function MyAvatarPage() {
                           <Crown className="w-5 h-5 text-yellow-400" />
                           <span 
                             className="text-base md:text-lg font-bold"
-                            style={{ color: getTitleColor('epic') }}
+                            style={{ color: getTitleColor(selectedTitle) }}
                           >
                             {getTitleName(selectedTitle)}
                           </span>

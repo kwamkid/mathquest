@@ -148,7 +148,7 @@ export const purchaseReward = async (
         throw new Error('กรุณากรอกที่อยู่จัดส่ง');
       }
       
-      // 5. Check purchase limit (still reading)
+      // 5. Check purchase limit and ownership for digital items
       if (reward.limitPerUser) {
         const existingRedemptions = await getDocs(
           query(
@@ -161,6 +161,37 @@ export const purchaseReward = async (
         
         if (existingRedemptions.size >= reward.limitPerUser) {
           throw new Error(`แลกได้สูงสุด ${reward.limitPerUser} ครั้งต่อคน`);
+        }
+      }
+      
+      // Check if digital item already owned
+      if (!reward.requiresShipping && needsInventoryUpdate && inventoryDoc) {
+        const itemId = reward.itemId || reward.id;
+        const inventory = inventoryDoc.exists() ? inventoryDoc.data() as UserInventory : null;
+        
+        if (inventory) {
+          switch (reward.type) {
+            case RewardType.AVATAR:
+              if (inventory.avatars.includes(itemId)) {
+                throw new Error('คุณมี Avatar นี้แล้ว');
+              }
+              break;
+            case RewardType.ACCESSORY:
+              if (inventory.accessories.includes(itemId)) {
+                throw new Error('คุณมี Accessory นี้แล้ว');
+              }
+              break;
+            case RewardType.TITLE_BADGE:
+              if (inventory.titleBadges.includes(itemId)) {
+                throw new Error('คุณมี Title Badge นี้แล้ว');
+              }
+              break;
+            case RewardType.BADGE:
+              if (inventory.badges.includes(itemId)) {
+                throw new Error('คุณมี Badge นี้แล้ว');
+              }
+              break;
+          }
         }
       }
       
@@ -181,7 +212,7 @@ export const purchaseReward = async (
           : RedemptionStatus.APPROVED,
         createdAt: new Date().toISOString(),
         shippingAddress: shippingAddress,
-        itemId: reward.itemId
+        itemId: reward.itemId || reward.id // Use reward.id as fallback
       };
       
       // Clean undefined values before saving to Firestore
@@ -203,7 +234,7 @@ export const purchaseReward = async (
       
       // 9. Process digital rewards immediately
       if (!reward.requiresShipping && inventoryDoc !== undefined) {
-        processDigitalRewardInTransaction(transaction, userId, reward, redemptionRef.id, inventoryDoc);
+        processDigitalRewardInTransaction(transaction, userId, reward, redemptionRef.id, inventoryDoc, userData);
       }
       
       return {
@@ -223,13 +254,14 @@ export const purchaseReward = async (
   }
 };
 
-// Process digital rewards within transaction
+// Process digital rewards within transaction - FIXED VERSION
 const processDigitalRewardInTransaction = (
   transaction: any,
   userId: string,
   reward: Reward,
   redemptionId: string,
-  inventoryDoc: any
+  inventoryDoc: any,
+  userData: any
 ) => {
   const inventoryRef = doc(db, COLLECTIONS.USER_INVENTORY, userId);
   
@@ -251,27 +283,35 @@ const processDigitalRewardInTransaction = (
   
   // Process based on reward type
   switch (reward.type) {
-    case RewardType.AVATAR:
-      if (reward.itemId && !inventory.avatars.includes(reward.itemId)) {
-        inventory.avatars.push(reward.itemId);
+          case RewardType.AVATAR:
+      // Use reward.id if itemId not available
+      const avatarId = reward.itemId || reward.id;
+      if (avatarId && !inventory.avatars.includes(avatarId)) {
+        inventory.avatars.push(avatarId);
       }
       break;
       
     case RewardType.ACCESSORY:
-      if (reward.itemId && !inventory.accessories.includes(reward.itemId)) {
-        inventory.accessories.push(reward.itemId);
+      // Use reward.id if itemId not available
+      const accessoryId = reward.itemId || reward.id;
+      if (accessoryId && !inventory.accessories.includes(accessoryId)) {
+        inventory.accessories.push(accessoryId);
       }
       break;
       
     case RewardType.TITLE_BADGE:
-      if (reward.itemId && !inventory.titleBadges.includes(reward.itemId)) {
-        inventory.titleBadges.push(reward.itemId);
+      // Use reward.id if itemId not available
+      const titleId = reward.itemId || reward.id;
+      if (titleId && !inventory.titleBadges.includes(titleId)) {
+        inventory.titleBadges.push(titleId);
       }
       break;
       
     case RewardType.BADGE:
-      if (reward.itemId && !inventory.badges.includes(reward.itemId)) {
-        inventory.badges.push(reward.itemId);
+      // Use reward.id if itemId not available
+      const badgeId = reward.itemId || reward.id;
+      if (badgeId && !inventory.badges.includes(badgeId)) {
+        inventory.badges.push(badgeId);
       }
       break;
       
@@ -305,15 +345,34 @@ const processDigitalRewardInTransaction = (
   if (reward.type === RewardType.AVATAR || reward.type === RewardType.ACCESSORY) {
     const userRef = doc(db, COLLECTIONS.USERS, userId);
     
-    if (reward.type === RewardType.AVATAR && reward.itemId) {
-      transaction.update(userRef, {
-        'avatarData.unlockedPremiumAvatars': inventory.avatars
-      });
-    } else if (reward.type === RewardType.ACCESSORY && reward.itemId) {
-      transaction.update(userRef, {
-        'avatarData.unlockedAccessories': inventory.accessories
-      });
+    // Get current avatarData or create default
+    let currentAvatarData = userData.avatarData || {
+      currentAvatar: {
+        type: 'basic',
+        id: userData.avatar || 'knight',
+        accessories: {}
+      },
+      unlockedPremiumAvatars: [],
+      unlockedAccessories: []
+    };
+    
+    // Update the unlocked items
+    if (reward.type === RewardType.AVATAR) {
+      const avatarId = reward.itemId || reward.id;
+      if (avatarId && !currentAvatarData.unlockedPremiumAvatars.includes(avatarId)) {
+        currentAvatarData.unlockedPremiumAvatars.push(avatarId);
+      }
+    } else if (reward.type === RewardType.ACCESSORY) {
+      const accessoryId = reward.itemId || reward.id;
+      if (accessoryId && !currentAvatarData.unlockedAccessories.includes(accessoryId)) {
+        currentAvatarData.unlockedAccessories.push(accessoryId);
+      }
     }
+    
+    // Update user document with complete avatarData
+    transaction.update(userRef, {
+      avatarData: currentAvatarData
+    });
   }
 };
 

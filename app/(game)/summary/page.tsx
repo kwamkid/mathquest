@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import AvatarDisplay from '@/components/avatar/AvatarDisplay';
+import confetti from 'canvas-confetti';
 import { 
   Trophy, 
   TrendingUp, 
@@ -18,6 +19,8 @@ import {
   RefreshCw,
   Crown,
   Rocket,
+  RotateCcw,
+  BarChart3,
 } from 'lucide-react';
 
 interface ExpBreakdown {
@@ -25,6 +28,76 @@ interface ExpBreakdown {
   value: number;
   description: string;
 }
+
+// Confetti functions
+const fireConfetti = () => {
+  const duration = 3 * 1000;
+  const animationEnd = Date.now() + duration;
+  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+  function randomInRange(min: number, max: number) {
+    return Math.random() * (max - min) + min;
+  }
+
+  const interval: any = setInterval(function() {
+    const timeLeft = animationEnd - Date.now();
+
+    if (timeLeft <= 0) {
+      return clearInterval(interval);
+    }
+
+    const particleCount = 50 * (timeLeft / duration);
+
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 }
+    });
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 }
+    });
+  }, 250);
+};
+
+const fireLevelUpConfetti = () => {
+  const count = 200;
+  const defaults = {
+    origin: { y: 0.7 }
+  };
+
+  function fire(particleRatio: number, opts: any) {
+    confetti({
+      ...defaults,
+      ...opts,
+      particleCount: Math.floor(count * particleRatio)
+    });
+  }
+
+  fire(0.25, {
+    spread: 26,
+    startVelocity: 55,
+  });
+  fire(0.2, {
+    spread: 60,
+  });
+  fire(0.35, {
+    spread: 100,
+    decay: 0.91,
+    scalar: 0.8
+  });
+  fire(0.1, {
+    spread: 120,
+    startVelocity: 25,
+    decay: 0.92,
+    scalar: 1.2
+  });
+  fire(0.1, {
+    spread: 120,
+    startVelocity: 45,
+  });
+};
 
 // Separate component for content that uses useSearchParams
 function SummaryContent() {
@@ -57,6 +130,30 @@ function SummaryContent() {
   } catch (e) {
     console.error('Error parsing exp breakdown:', e);
   }
+
+  // Fire confetti effects
+  useEffect(() => {
+    // Delay a bit to ensure page is loaded
+    const timer = setTimeout(() => {
+      if (percentage >= 85) {
+        fireConfetti();
+      }
+      if (levelChange === 'increase') {
+        fireLevelUpConfetti();
+      }
+      if (percentage === 100) {
+        // Special confetti for perfect score
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#FFD700', '#FFA500', '#FF6347']
+        });
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [percentage, levelChange]);
 
   // Format time
   const formatTime = (seconds: number): string => {
@@ -110,6 +207,18 @@ function SummaryContent() {
 
   const levelInfo = getLevelChangeInfo();
 
+  // Handle play same level
+  const handlePlaySameLevel = () => {
+    // Keep current level regardless of score
+    router.push(`/game?level=${oldLevel}`);
+  };
+
+  // Handle play next
+  const handlePlayNext = () => {
+    // ไปเล่น level ตามผลที่ได้
+    router.push(`/game?level=${newLevel}`);
+  };
+
   if (!user) return null;
 
   return (
@@ -120,7 +229,32 @@ function SummaryContent() {
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col p-4 max-w-4xl mx-auto w-full">
+      {/* Icon buttons at top - Fixed position */}
+      <div className="absolute top-4 left-4 right-4 z-20 flex justify-between">
+        <motion.button
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={() => router.push('/play')}
+          className="p-2 glass rounded-full hover:bg-white/10 transition"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Home className="w-5 h-5 text-white/70" />
+        </motion.button>
+        
+        <motion.button
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          onClick={() => router.push('/ranking')}
+          className="p-2 glass rounded-full hover:bg-white/10 transition"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <BarChart3 className="w-5 h-5 text-white/70" />
+        </motion.button>
+      </div>
+
+      <div className="relative z-10 flex-1 flex flex-col p-4 max-w-4xl mx-auto w-full pt-16">
         {/* Header - Compact */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -344,128 +478,62 @@ function SummaryContent() {
         </div>
 
         {/* Action Buttons - Fixed at bottom */}
-        {percentage >= 85 ? (
-          // Layout สำหรับคนที่ได้ >= 85%
-          <div className="mt-3 space-y-3">
-            {/* ปุ่มเล่นต่อขนาดใหญ่ */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 1.5, type: "spring" }}
-            >
-              <motion.button
-                onClick={() => router.push('/play')}
-                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold text-lg md:text-xl rounded-xl shadow-lg hover:shadow-xl relative overflow-hidden"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <motion.div
-                  className="absolute inset-0 bg-white/20"
-                  initial={{ x: '-100%' }}
-                  whileHover={{ x: '100%' }}
-                  transition={{ duration: 0.5 }}
-                />
-                <span className="relative z-10 flex items-center justify-center gap-2">
-                  <Rocket className="w-6 h-6" />
-                  {levelChange === 'increase' 
-                    ? `เข้าสู่ Level ${newLevel} เลย!`
-                    : 'เล่นต่อเลย!'
-                  }
-                  <motion.span
-                    animate={{ rotate: [0, 10, -10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    ⚡
-                  </motion.span>
-                </span>
-              </motion.button>
-            </motion.div>
+        <div className="mt-3 flex gap-3">
+          {/* เล่น Level เดิมซ้ำ */}
+          <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.7 }}
+            onClick={handlePlaySameLevel}
+            className="flex-1 py-3 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition flex items-center justify-center gap-2 text-white font-medium"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <RotateCcw className="w-5 h-5" />
+            <span>เล่น Level {oldLevel} อีกครั้ง</span>
+          </motion.button>
 
-            {/* ปุ่มย่อย 3 ปุ่ม */}
-            <div className="flex gap-2">
-              <motion.button
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 1.7 }}
-                onClick={() => router.push('/play')}
-                className="flex-1 py-2.5 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Home className="w-5 h-5 text-white/70 mx-auto" />
-              </motion.button>
+          {/* เล่นต่อ */}
+          <motion.button
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 1.8 }}
+            onClick={handlePlayNext}
+            className={`flex-1 py-3 rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2 text-white font-bold ${
+              levelChange === 'increase' 
+                ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                : percentage >= 85
+                  ? 'metaverse-button'
+                  : 'bg-gradient-to-r from-gray-600 to-gray-700'
+            }`}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            {levelChange === 'increase' ? (
+              <>
+                <Rocket className="w-5 h-5" />
+                <span>เข้าสู่ Level {newLevel}</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-5 h-5" />
+                <span>เล่นต่อ</span>
+              </>
+            )}
+          </motion.button>
+        </div>
 
-              <motion.button
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.8 }}
-                onClick={() => router.push('/ranking')}
-                className="flex-1 py-2.5 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Trophy className="w-5 h-5 text-yellow-400 mx-auto" />
-              </motion.button>
-
-              <motion.button
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 1.9 }}
-                onClick={() => router.push('/rewards')}
-                className="flex-1 py-2.5 glass-dark rounded-xl border border-metaverse-purple/30 hover:bg-white/5 transition"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Gift className="w-5 h-5 text-metaverse-pink mx-auto" />
-              </motion.button>
-            </div>
-          </div>
-        ) : (
-          // Layout ปกติสำหรับคนที่ได้ < 85%
-          <div className="mt-3 grid grid-cols-3 gap-3">
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.7 }}
-              onClick={() => router.push('/play')}
-              className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 hover:bg-white/5 transition group"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <RefreshCw className="w-6 h-6 text-metaverse-purple mx-auto mb-1 group-hover:rotate-180 transition-transform duration-500" />
-              <p className="text-white font-medium text-xs">เล่นอีกครั้ง</p>
-            </motion.button>
-
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.8 }}
-              onClick={() => router.push('/ranking')}
-              className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 hover:bg-white/5 transition group"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Trophy className="w-6 h-6 text-yellow-400 mx-auto mb-1" />
-              <p className="text-white font-medium text-xs">ดูอันดับ</p>
-            </motion.button>
-
-            <motion.button
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1.9 }}
-              onClick={() => router.push('/rewards')}
-              className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 hover:bg-white/5 transition group"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Gift className="w-6 h-6 text-metaverse-pink mx-auto mb-1" />
-              <p className="text-white font-medium text-xs">แลกรางวัล</p>
-              <p className="text-xs text-white/60 mt-0.5">
-                {user?.experience.toLocaleString()} EXP
-              </p>
-            </motion.button>
-          </div>
-        )}
+        {/* EXP display at bottom */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 2 }}
+          className="text-center mt-2"
+        >
+          <p className="text-sm text-white/60">
+            EXP ทั้งหมด: <span className="text-yellow-400 font-medium">{user?.experience.toLocaleString()}</span>
+          </p>
+        </motion.div>
       </div>
     </div>
   );

@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { getActiveRewards, purchaseReward } from '@/lib/firebase/rewards';
-import { Reward, RewardType, ShippingAddress } from '@/types/avatar';
+import { getActiveRewards, purchaseReward, getUserInventory } from '@/lib/firebase/rewards';
+import { Reward, RewardType, ShippingAddress, UserInventory } from '@/types/avatar';
 import { useDialog } from '@/components/ui/Dialog';
 import ShippingAddressForm from '@/components/rewards/ShippingAddressForm';
 import { 
@@ -52,12 +52,13 @@ export default function RewardShopPage() {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
   const [showShippingModal, setShowShippingModal] = useState(false);
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress | null>(null);
+  const [userInventory, setUserInventory] = useState<UserInventory | null>(null);
   
   // Dialogs
   const successDialog = useDialog({ type: 'success' });
   const errorDialog = useDialog({ type: 'error' });
 
-  // Load rewards
+  // Load rewards and inventory
   useEffect(() => {
     if (user) {
       loadRewards();
@@ -68,6 +69,11 @@ export default function RewardShopPage() {
     if (!user) return;
     
     try {
+      // Load user inventory first
+      const inventory = await getUserInventory(user.id);
+      setUserInventory(inventory);
+      
+      // Load rewards
       const rewardsList = await getActiveRewards(undefined, user.level);
       setRewards(rewardsList);
       setFilteredRewards(rewardsList);
@@ -98,6 +104,26 @@ export default function RewardShopPage() {
     setFilteredRewards(filtered);
   }, [selectedCategory, searchQuery, rewards]);
 
+  // Check if user already owns a digital item
+  const isItemOwned = (reward: Reward): boolean => {
+    if (!userInventory || reward.requiresShipping) return false;
+    
+    const itemId = reward.itemId || reward.id;
+    
+    switch (reward.type) {
+      case RewardType.AVATAR:
+        return userInventory.avatars.includes(itemId);
+      case RewardType.ACCESSORY:
+        return userInventory.accessories.includes(itemId);
+      case RewardType.TITLE_BADGE:
+        return userInventory.titleBadges.includes(itemId);
+      case RewardType.BADGE:
+        return userInventory.badges.includes(itemId);
+      default:
+        return false;
+    }
+  };
+
   // Handle purchase
   const handlePurchase = async (reward: Reward) => {
     if (!user) return;
@@ -105,6 +131,12 @@ export default function RewardShopPage() {
     // Check if can afford
     if (user.experience < reward.price) {
       errorDialog.showDialog(`EXP ไม่พอ! คุณมี ${user.experience} EXP แต่ต้องการ ${reward.price} EXP`);
+      return;
+    }
+
+    // Check if already owned
+    if (isItemOwned(reward)) {
+      errorDialog.showDialog('คุณมีไอเทมนี้แล้ว');
       return;
     }
 
@@ -144,9 +176,15 @@ export default function RewardShopPage() {
         setShowPurchaseModal(false);
         setShippingAddress(null);
         
-        // Reload rewards (in case stock changed)
+        // Reload rewards and inventory
         const updatedRewards = await getActiveRewards(undefined, user.level);
         setRewards(updatedRewards);
+        
+        // Reload inventory for digital items
+        if (!selectedReward.requiresShipping) {
+          const updatedInventory = await getUserInventory(user.id);
+          setUserInventory(updatedInventory);
+        }
         
         // Navigate to history if physical reward
         if (selectedReward.type === RewardType.PHYSICAL) {
@@ -348,6 +386,7 @@ export default function RewardShopPage() {
                   const canAfford = user && user.experience >= reward.price;
                   const isLocked = reward.requiredLevel && user && user.level < reward.requiredLevel;
                   const outOfStock = reward.stock !== undefined && reward.stock <= 0;
+                  const isOwned = isItemOwned(reward);
                   
                   return (
                     <motion.div
@@ -359,10 +398,17 @@ export default function RewardShopPage() {
                       className="relative"
                     >
                       <div className={`glass-dark rounded-xl p-3 md:p-4 border border-metaverse-purple/30 h-full flex flex-col ${
-                        !canAfford || isLocked || outOfStock ? 'opacity-60' : ''
+                        !canAfford || isLocked || outOfStock || isOwned ? 'opacity-60' : ''
                       }`}>
+                        {/* Owned Badge */}
+                        {isOwned && (
+                          <div className="absolute top-2 right-2 glass bg-green-500/20 rounded-full px-2 py-0.5 text-xs font-medium border border-green-500/30">
+                            <span className="text-green-400">มีแล้ว</span>
+                          </div>
+                        )}
+                        
                         {/* Stock Badge */}
-                        {reward.stock !== undefined && (
+                        {!isOwned && reward.stock !== undefined && (
                           <div className="absolute top-2 right-2 glass rounded-full px-2 py-0.5 text-xs font-medium">
                             {outOfStock ? (
                               <span className="text-red-400">หมด</span>
@@ -413,16 +459,18 @@ export default function RewardShopPage() {
                           
                           <motion.button
                             onClick={() => handlePurchase(reward)}
-                            disabled={!canAfford || isLocked || outOfStock}
+                            disabled={!canAfford || isLocked || outOfStock || isOwned}
                             className={`px-3 py-1 rounded-lg font-medium transition-all text-xs ${
-                              canAfford && !isLocked && !outOfStock
+                              canAfford && !isLocked && !outOfStock && !isOwned
                                 ? 'metaverse-button text-white'
                                 : 'glass opacity-50 cursor-not-allowed text-white/50'
                             }`}
-                            whileHover={canAfford && !isLocked && !outOfStock ? { scale: 1.05 } : {}}
-                            whileTap={canAfford && !isLocked && !outOfStock ? { scale: 0.95 } : {}}
+                            whileHover={canAfford && !isLocked && !outOfStock && !isOwned ? { scale: 1.05 } : {}}
+                            whileTap={canAfford && !isLocked && !outOfStock && !isOwned ? { scale: 0.95 } : {}}
                           >
-                            {isLocked ? (
+                            {isOwned ? (
+                              <Check className="w-4 h-4" />
+                            ) : isLocked ? (
                               <Lock className="w-4 h-4" />
                             ) : outOfStock ? (
                               'หมด'
