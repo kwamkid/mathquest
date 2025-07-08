@@ -212,8 +212,26 @@ export default function RedemptionHistoryPage() {
 
   // Render reward icon or image
   const renderRewardIcon = (redemption: Redemption) => {
-    // Note: redemption doesn't have imageUrl, so we just use emoji for now
-    // You might want to add imageUrl to Redemption type or fetch reward data
+    if (redemption.rewardImageUrl) {
+      return (
+        <div className="w-12 h-12 bg-black rounded-lg overflow-hidden">
+          <img 
+            src={redemption.rewardImageUrl} 
+            alt={redemption.rewardName}
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              // Fallback to emoji if image fails
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-3xl">${getRewardTypeIcon(redemption.rewardType)}</div>`;
+              }
+            }}
+          />
+        </div>
+      );
+    }
     return (
       <div className="text-4xl">
         {getRewardTypeIcon(redemption.rewardType)}
@@ -548,8 +566,18 @@ export default function RedemptionHistoryPage() {
               {/* Reward Info */}
               <div className="glass rounded-xl p-4 mb-6">
                 <div className="flex items-start gap-4">
-                  <div className="text-4xl">
-                    {getRewardTypeIcon(selectedRedemption.rewardType)}
+                  <div className="w-16 h-16 bg-black rounded-xl overflow-hidden flex-shrink-0">
+                    {selectedRedemption.rewardImageUrl ? (
+                      <img 
+                        src={selectedRedemption.rewardImageUrl} 
+                        alt={selectedRedemption.rewardName}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-4xl">
+                        {getRewardTypeIcon(selectedRedemption.rewardType)}
+                      </div>
+                    )}
                   </div>
                   <div className="flex-1">
                     <h4 className="text-xl font-bold text-white mb-1">
@@ -668,8 +696,18 @@ export default function RedemptionHistoryPage() {
               {/* Reward Info */}
               <div className="glass rounded-xl p-4 mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="text-3xl">
-                    {getRewardTypeIcon(selectedRedemption.rewardType)}
+                  <div className="w-12 h-12 bg-black rounded-lg overflow-hidden flex-shrink-0">
+                    {selectedRedemption.rewardImageUrl ? (
+                      <img 
+                        src={selectedRedemption.rewardImageUrl} 
+                        alt={selectedRedemption.rewardName}
+                        className="w-full h-full object-contain"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-3xl">
+                        {getRewardTypeIcon(selectedRedemption.rewardType)}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <p className="font-bold text-white">{selectedRedemption.rewardName}</p>

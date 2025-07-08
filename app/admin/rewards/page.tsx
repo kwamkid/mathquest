@@ -15,8 +15,10 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { saveReward } from '@/lib/firebase/rewards';
+import { uploadImage, deleteImage } from '@/lib/firebase/storage';
 import { Reward, RewardType } from '@/types/avatar';
 import { useDialog } from '@/components/ui/Dialog';
+import ImageUpload from '@/components/ui/ImageUpload';
 import { 
   Plus, 
   Edit, 
@@ -71,7 +73,9 @@ export default function AdminRewardsPage() {
     isActive: true,
     requiresShipping: false,
     boostDuration: 60,
-    boostMultiplier: 2
+    boostMultiplier: 2,
+    imageUrl: undefined,
+    imagePath: undefined
   });
   
   const [saving, setSaving] = useState(false);
@@ -140,7 +144,9 @@ export default function AdminRewardsPage() {
       isActive: true,
       requiresShipping: false,
       boostDuration: 60,
-      boostMultiplier: 2
+      boostMultiplier: 2,
+      imageUrl: undefined,
+      imagePath: undefined
     });
     setErrors({});
     setShowCreateModal(true);
@@ -154,9 +160,16 @@ export default function AdminRewardsPage() {
   };
 
   const handleDelete = async (rewardId: string) => {
+    const reward = rewards.find(r => r.id === rewardId);
+    
     deleteDialog.showDialog('คุณต้องการลบรางวัลนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้', {
       onConfirm: async () => {
         try {
+          // Delete image from storage if exists
+          if (reward?.imagePath) {
+            await deleteImage(reward.imagePath);
+          }
+          
           await deleteDoc(doc(db, 'rewards', rewardId));
           await loadRewards();
           successDialog.showDialog('ลบรางวัลเรียบร้อยแล้ว');
@@ -178,6 +191,29 @@ export default function AdminRewardsPage() {
     } catch (error) {
       console.error('Error toggling active:', error);
     }
+  };
+
+  const handleImageUpload = async (file: File): Promise<string> => {
+    const timestamp = Date.now();
+    const fileName = `${timestamp}_${file.name}`;
+    const path = `rewards/${fileName}`;
+    
+    // Upload with resize options
+    const { url } = await uploadImage(file, path, {
+      resize: true,
+      maxWidth: 800,
+      maxHeight: 800,
+      quality: 0.85
+    });
+    
+    // Update form data with both URL and path
+    setFormData(prev => ({
+      ...prev,
+      imageUrl: url,
+      imagePath: path
+    }));
+    
+    return url;
   };
 
   const validateForm = (): boolean => {
@@ -226,6 +262,11 @@ export default function AdminRewardsPage() {
       // Set requiresShipping based on type
       cleanedData.requiresShipping = cleanedData.type === RewardType.PHYSICAL;
 
+      // If editing and image changed, delete old image
+      if (editingReward && editingReward.imagePath && editingReward.imagePath !== formData.imagePath) {
+        await deleteImage(editingReward.imagePath);
+      }
+
       const result = await saveReward(cleanedData, editingReward?.id);
       
       if (result.success) {
@@ -255,6 +296,19 @@ export default function AdminRewardsPage() {
     }
   };
 
+  const getRewardImage = (reward: Reward) => {
+    if (reward.imageUrl) {
+      return (
+        <img 
+          src={reward.imageUrl} 
+          alt={reward.name}
+          className="w-full h-full object-contain"
+        />
+      );
+    }
+    return <div className="text-3xl">{getRewardIcon(reward.type)}</div>;
+  };
+
   const rewardTypes = [
     { value: RewardType.AVATAR, label: 'Avatar', icon: '🦸' },
     { value: RewardType.ACCESSORY, label: 'Accessories', icon: '👑' },
@@ -279,6 +333,11 @@ export default function AdminRewardsPage() {
 
   return (
     <div>
+      {/* Dialogs */}
+      <successDialog.Dialog />
+      <errorDialog.Dialog />
+      <deleteDialog.Dialog />
+      
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-white flex items-center gap-3">
@@ -430,7 +489,9 @@ export default function AdminRewardsPage() {
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="text-3xl">{getRewardIcon(reward.type)}</div>
+                      <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center overflow-hidden">
+                        {getRewardImage(reward)}
+                      </div>
                       <div>
                         <p className="font-medium text-white">{reward.name}</p>
                         <p className="text-sm text-white/60 line-clamp-1">{reward.description}</p>
@@ -548,6 +609,24 @@ export default function AdminRewardsPage() {
               </h3>
 
               <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Image Upload */}
+                <div>
+                  <label className="block text-sm font-medium text-white/80 mb-2">
+                    รูปภาพรางวัล
+                  </label>
+                  <ImageUpload
+                    value={formData.imageUrl}
+                    onChange={(url) => setFormData({ ...formData, imageUrl: url, imagePath: url })}
+                    onUpload={handleImageUpload}
+                    maxSize={2}
+                    placeholder="คลิกเพื่ออัพโหลดรูปรางวัล"
+                    allowUrl={true}
+                  />
+                  <p className="mt-2 text-xs text-white/40">
+                    * สามารถอัพโหลดรูปหรือใส่ URL รูปภาพก็ได้
+                  </p>
+                </div>
+
                 {/* Type */}
                 <div>
                   <label className="block text-sm font-medium text-white/80 mb-2">
@@ -713,20 +792,6 @@ export default function AdminRewardsPage() {
                       placeholder="ไม่จำกัด"
                     />
                   </div>
-                </div>
-
-                {/* Image URL */}
-                <div>
-                  <label className="block text-sm font-medium text-white/80 mb-2">
-                    URL รูปภาพ
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.imageUrl || ''}
-                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                    className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40"
-                    placeholder="https://example.com/image.png"
-                  />
                 </div>
 
                 {/* Actions */}

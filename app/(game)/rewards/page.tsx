@@ -29,16 +29,15 @@ import {
   FileText,
   Loader2
 } from 'lucide-react';
-import AvatarDisplay from '@/components/avatar/AvatarDisplay';
 
 // Category filters
 const categories = [
   { id: 'all', label: 'ทั้งหมด', icon: <Sparkles className="w-5 h-5" /> },
-  { id: RewardType.AVATAR, label: 'Avatars', icon: <img className="w-5 h-5" src="🦸" alt="" /> },
-  { id: RewardType.ACCESSORY, label: 'Accessories', icon: <Crown className="w-5 h-5" /> },
-  { id: RewardType.TITLE_BADGE, label: 'Title Badges', icon: <Award className="w-5 h-5" /> },
-  { id: RewardType.BOOST, label: 'Boosts', icon: <Zap className="w-5 h-5" /> },
-  { id: RewardType.PHYSICAL, label: 'ของจริง', icon: <Package className="w-5 h-5" /> },
+  { id: RewardType.AVATAR, label: 'Avatars', icon: '🦸' },
+  { id: RewardType.ACCESSORY, label: 'Accessories', icon: '👑' },
+  { id: RewardType.TITLE_BADGE, label: 'Title Badges', icon: '🏆' },
+  { id: RewardType.BOOST, label: 'Boosts', icon: '⚡' },
+  { id: RewardType.PHYSICAL, label: 'ของจริง', icon: '📦' },
 ];
 
 export default function RewardShopPage() {
@@ -186,6 +185,35 @@ export default function RewardShopPage() {
     }
   };
 
+  // Render reward image or icon
+  const renderRewardImage = (reward: Reward) => {
+    if (reward.imageUrl) {
+      return (
+        <div className="w-24 h-24 mx-auto mb-4 bg-black rounded-xl overflow-hidden">
+          <img 
+            src={reward.imageUrl} 
+            alt={reward.name}
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              // Fallback to emoji if image fails to load
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-6xl">${getRewardIcon(reward.type)}</div>`;
+              }
+            }}
+          />
+        </div>
+      );
+    }
+    return (
+      <div className="text-6xl text-center mb-4">
+        {getRewardIcon(reward.type)}
+      </div>
+    );
+  };
+
   // Get rarity color
   const getRarityColor = (rarity?: string) => {
     switch (rarity) {
@@ -295,7 +323,11 @@ export default function RewardShopPage() {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    {category.icon}
+                    {typeof category.icon === 'string' ? (
+                      <span className="text-lg">{category.icon}</span>
+                    ) : (
+                      category.icon
+                    )}
                     <span>{category.label}</span>
                   </motion.button>
                 ))}
@@ -348,9 +380,7 @@ export default function RewardShopPage() {
                     )}
                     
                     {/* Icon */}
-                    <div className="text-6xl text-center mb-4">
-                      {getRewardIcon(reward.type)}
-                    </div>
+                    {renderRewardImage(reward)}
                     
                     {/* Name */}
                     <h3 className="text-xl font-bold text-white mb-2">{reward.name}</h3>
@@ -474,7 +504,17 @@ export default function RewardShopPage() {
               
               {/* Reward Preview */}
               <div className="text-center mb-6">
-                <div className="text-6xl mb-4">{getRewardIcon(selectedReward.type)}</div>
+                {selectedReward.imageUrl ? (
+                  <div className="w-32 h-32 mx-auto mb-4 bg-black rounded-xl overflow-hidden">
+                    <img 
+                      src={selectedReward.imageUrl} 
+                      alt={selectedReward.name}
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="text-6xl mb-4">{getRewardIcon(selectedReward.type)}</div>
+                )}
                 <h4 className="text-xl font-bold text-white mb-2">{selectedReward.name}</h4>
                 <p className="text-white/60">{selectedReward.description}</p>
               </div>

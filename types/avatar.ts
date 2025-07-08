@@ -73,7 +73,8 @@ export interface Reward {
   name: string;
   description: string;
   price: number;              // EXP cost
-  imageUrl?: string;
+  imageUrl?: string;          // URL สำหรับแสดงผล
+  imagePath?: string;         // Path ใน Storage
   
   // Digital rewards
   itemId?: string;            // ID ของ avatar/accessory/boost
@@ -103,6 +104,7 @@ export interface Redemption {
   rewardId: string;
   rewardType: RewardType;
   rewardName: string;
+  rewardImageUrl?: string;  // เพิ่ม field นี้
   expCost: number;
   
   // Status

@@ -155,7 +155,7 @@ export const purchaseReward = async (
         }
       }
       
-      // 5. Create redemption record
+        // 5. Create redemption record
       const redemptionRef = doc(collection(db, COLLECTIONS.REDEMPTIONS));
       const redemption: Redemption = {
         id: redemptionRef.id,
@@ -163,6 +163,7 @@ export const purchaseReward = async (
         rewardId,
         rewardType: reward.type,
         rewardName: reward.name,
+        rewardImageUrl: reward.imageUrl,  // เพิ่ม imageUrl
         expCost: reward.price,
         status: reward.requiresShipping 
           ? RedemptionStatus.PENDING 
