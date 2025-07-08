@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { updateUserGameData, calculateScoreDifference, updatePlayStreak, calculateExpGained } from '@/lib/firebase/game';
 import { getActiveBoosts } from '@/lib/firebase/rewards';
@@ -35,6 +35,7 @@ import Link from 'next/link';
 
 export default function PlayPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [gameState, setGameState] = useState<'ready' | 'playing' | 'result' | 'processing'>('ready');
@@ -99,24 +100,27 @@ export default function PlayPage() {
     }
   }, [user]);
 
+  // Auto start game if coming from summary
+  useEffect(() => {
+    if (searchParams.get('autoStart') === 'true' && !loading && user && gameState === 'ready') {
+      // Clear the parameter to prevent re-triggering
+      const url = new URL(window.location.href);
+      url.searchParams.delete('autoStart');
+      window.history.replaceState({}, '', url);
+      
+      // Start game immediately
+      startGame();
+    }
+  }, [searchParams, loading, user, gameState]);
+
   // Get grade display name
   const getGradeDisplayName = (grade: string): string => {
     const gradeMap: Record<string, string> = {
-      K1: 'อนุบาล 1',
-      K2: 'อนุบาล 2',
-      K3: 'อนุบาล 3',
-      P1: 'ประถม 1',
-      P2: 'ประถม 2',
-      P3: 'ประถม 3',
-      P4: 'ประถม 4',
-      P5: 'ประถม 5',
-      P6: 'ประถม 6',
-      M1: 'มัธยม 1',
-      M2: 'มัธยม 2',
-      M3: 'มัธยม 3',
-      M4: 'มัธยม 4',
-      M5: 'มัธยม 5',
-      M6: 'มัธยม 6',
+      K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
+      P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
+      P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
+      M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
+      M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
     };
     return gradeMap[grade] || grade;
   };

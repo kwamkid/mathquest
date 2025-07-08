@@ -369,19 +369,21 @@ export default function RankingPage() {
                   >
                     <div className="flex items-center gap-3">
                       {/* Rank */}
-                      <div className="w-12 md:w-16 text-center">
+                      <div className="w-12 md:w-16 text-center flex-shrink-0">
                         {getRankMedal(player.rank || index + 1)}
                       </div>
                       
-                      {/* Avatar - Now using EnhancedAvatarDisplay */}
-                      <EnhancedAvatarDisplay
-                        userId={player.id}
-                        avatarData={player.avatarData}
-                        basicAvatar={player.avatar}
-                        size="small"
-                        showEffects={!!player.rank && player.rank <= 3}
-                        showAccessories={true}
-                      />
+                      {/* Avatar Container - Fixed Height */}
+                      <div className="flex-shrink-0 flex items-center justify-center" style={{ height: '48px', width: '48px' }}>
+                        <EnhancedAvatarDisplay
+                          userId={player.id}
+                          avatarData={player.avatarData}
+                          basicAvatar={player.avatar}
+                          size="small"
+                          showEffects={!!player.rank && player.rank <= 3}
+                          showAccessories={true}
+                        />
+                      </div>
                       
                       {/* Player Info */}
                       <div className="flex-1 min-w-0">
@@ -409,7 +411,7 @@ export default function RankingPage() {
                       </div>
                       
                       {/* Score/EXP */}
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0">
                         <p className="text-lg md:text-xl font-bold text-white">
                           {rankingType === 'score' 
                             ? player.totalScore.toLocaleString()

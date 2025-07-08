@@ -1,16 +1,14 @@
 // app/(game)/profile/page.tsx
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { updateUserProfile } from '@/lib/firebase/auth';
-import { getPremiumAvatarData } from '@/lib/data/items';
-import { getReward } from '@/lib/firebase/rewards';
 import { User as UserIcon, School, GraduationCap, Save, ArrowLeft, AlertCircle, Edit, TrendingUp, Pi, Sparkles, Gift, Trophy, Zap, AlertTriangle, X } from 'lucide-react';
-import AvatarDisplay from '@/components/avatar/AvatarDisplay';
+import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import LevelProgressDisplay from '@/components/game/LevelProgressDisplay';
 
 const grades = [
@@ -40,7 +38,6 @@ export default function ProfilePage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [pendingGrade, setPendingGrade] = useState('');
-  const [premiumAvatarUrl, setPremiumAvatarUrl] = useState<string | undefined>(undefined);
   
   const [formData, setFormData] = useState({
     displayName: '',
@@ -50,30 +47,6 @@ export default function ProfilePage() {
   
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState('');
-
-  // Get premium avatar URL if using premium avatar
-  useMemo(async () => {
-    if (user?.avatarData?.currentAvatar?.type === 'premium' && user.avatarData.currentAvatar.id) {
-      const avatarId = user.avatarData.currentAvatar.id;
-      
-      // Try local database first
-      const localData = getPremiumAvatarData(avatarId);
-      if (localData?.svgUrl) {
-        setPremiumAvatarUrl(localData.svgUrl);
-        return;
-      }
-      
-      // Fallback to reward data
-      try {
-        const rewardData = await getReward(avatarId);
-        if (rewardData?.imageUrl) {
-          setPremiumAvatarUrl(rewardData.imageUrl);
-        }
-      } catch (error) {
-        console.error('Error loading avatar URL:', error);
-      }
-    }
-  }, [user?.avatarData]);
 
   useEffect(() => {
     if (user) {
@@ -235,10 +208,10 @@ export default function ProfilePage() {
                   whileHover={{ scale: 1.1 }}
                   className="relative"
                 >
-                  <AvatarDisplay
+                  <EnhancedAvatarDisplay
+                    userId={user.id}
                     avatarData={user.avatarData}
                     basicAvatar={user.avatar}
-                    premiumAvatarUrl={premiumAvatarUrl}
                     size="medium"
                     showEffects={true}
                     showTitle={true}
