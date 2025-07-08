@@ -47,15 +47,15 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
     zIndex: ACCESSORY_LAYERS.glasses,
     defaultPosition: { 
       x: 0, 
-      y: -5,   // ระดับตา
-      scale: 0.9 
+      y: 8,   // ระดับตา
+      scale: 1.2
     },
     anchorPoint: 'center',
     affectsContainerSize: false,
     positionOverrides: {
-      'owl': { x: 0, y: -8, scale: 1.1 },         // นกฮูกตาใหญ่
-      'panda': { x: 0, y: -3, scale: 0.95 },      // แพนด้าตาต่ำกว่า
-      'robot': { x: 0, y: -5, scale: 1.0 }        // หุ่นยนต์
+      'owl': { x: 0, y: -8, scale: 1.3 },         // นกฮูกตาใหญ่
+      'panda': { x: 0, y: -3, scale: 1.2 },      // แพนด้าตาต่ำกว่า
+      'robot': { x: 0, y: -5, scale: 1.3 }        // หุ่นยนต์
     }
   },
   

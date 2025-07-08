@@ -7,9 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import AvatarDisplay from '@/components/avatar/AvatarDisplay';
-import { getPremiumAvatarData } from '@/lib/data/items';
-import { getReward } from '@/lib/firebase/rewards';
+import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import { 
   Trophy, 
   Medal, 
@@ -33,7 +31,6 @@ interface RankingUser {
   experience: number;
   rank?: number;
   grade: string;
-  premiumAvatarUrl?: string; // Add this field
 }
 
 const grades = [
@@ -76,33 +73,6 @@ export default function RankingPage() {
     }
   }, [selectedGrade, rankingType, user]);
 
-  // Helper function to get premium avatar URL
-  const getPremiumAvatarUrl = async (avatarData: any): Promise<string | undefined> => {
-    if (!avatarData?.currentAvatar || avatarData.currentAvatar.type !== 'premium') {
-      return undefined;
-    }
-
-    const avatarId = avatarData.currentAvatar.id;
-    
-    // Try local database first
-    const localData = getPremiumAvatarData(avatarId);
-    if (localData?.svgUrl) {
-      return localData.svgUrl;
-    }
-    
-    // Fallback to reward data
-    try {
-      const rewardData = await getReward(avatarId);
-      if (rewardData?.imageUrl) {
-        return rewardData.imageUrl;
-      }
-    } catch (error) {
-      console.error('Error loading avatar URL:', error);
-    }
-    
-    return undefined;
-  };
-
   const loadRankings = async (grade: string, userId: string) => {
     setLoadingRankings(true);
     try {
@@ -125,10 +95,9 @@ export default function RankingPage() {
       let currentUserRank = null;
       let currentUserInList = false;
       
-      // Process users and load premium avatar URLs
-      const userPromises = snapshot.docs.map(async (doc, index) => {
+      // Process users
+      snapshot.docs.forEach((doc, index) => {
         const data = doc.data();
-        const premiumAvatarUrl = await getPremiumAvatarUrl(data.avatarData);
         
         const rankUser: RankingUser = {
           id: doc.id,
@@ -141,23 +110,19 @@ export default function RankingPage() {
           level: data.level || 1,
           experience: data.experience || 0,
           rank: index + 1,
-          grade: data.grade,
-          premiumAvatarUrl
+          grade: data.grade
         };
+        
+        users.push(rankUser);
         
         if (doc.id === userId) {
           currentUserRank = index + 1;
           currentUserInList = true;
         }
-        
-        return rankUser;
       });
       
-      // Wait for all avatar URLs to load
-      const loadedUsers = await Promise.all(userPromises);
-      
       // Sort by rank
-      loadedUsers.sort((a, b) => (a.rank || 0) - (b.rank || 0));
+      users.sort((a, b) => (a.rank || 0) - (b.rank || 0));
       
       // ถ้า user ไม่อยู่ใน top 20 และดูระดับชั้นตัวเอง ให้คำนวณอันดับจริง
       if (!currentUserInList && grade === user?.grade && userId) {
@@ -177,7 +142,7 @@ export default function RankingPage() {
         }
       }
       
-      setRankings(loadedUsers);
+      setRankings(users);
       setUserRank(currentUserRank);
     } catch (error) {
       console.error('Error loading rankings:', error);
@@ -408,13 +373,14 @@ export default function RankingPage() {
                         {getRankMedal(player.rank || index + 1)}
                       </div>
                       
-                      {/* Avatar - Now with premium support */}
-                      <AvatarDisplay
+                      {/* Avatar - Now using EnhancedAvatarDisplay */}
+                      <EnhancedAvatarDisplay
+                        userId={player.id}
                         avatarData={player.avatarData}
                         basicAvatar={player.avatar}
-                        premiumAvatarUrl={player.premiumAvatarUrl}
                         size="small"
                         showEffects={!!player.rank && player.rank <= 3}
+                        showAccessories={true}
                       />
                       
                       {/* Player Info */}
