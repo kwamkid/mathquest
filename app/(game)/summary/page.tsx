@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getCurrentUser } from '@/lib/firebase/auth';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { User } from '@/types';
 import AvatarDisplay from '@/components/avatar/AvatarDisplay';
 import { 

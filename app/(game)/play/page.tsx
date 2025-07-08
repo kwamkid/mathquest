@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { getCurrentUser } from '@/lib/firebase/auth';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import { updateUserGameData, calculateScoreDifference, updatePlayStreak, calculateExpGained } from '@/lib/firebase/game';
 import { getActiveBoosts } from '@/lib/firebase/rewards';
-import { User, Question } from '@/types';
+import { Question } from '@/types';
 import { ActiveBoost } from '@/types/avatar';
 import QuestionDisplay from '@/components/game/QuestionDisplay';
 import GameHeader from '@/components/game/GameHeader';
@@ -35,7 +35,7 @@ import Link from 'next/link';
 
 export default function PlayPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [gameState, setGameState] = useState<'ready' | 'playing' | 'result' | 'processing'>('ready');
   const [showExitModal, setShowExitModal] = useState(false);
@@ -63,38 +63,26 @@ export default function PlayPage() {
   // Sound hook
   const { playSound } = useSound();
 
-  // Check authentication
-  const checkAuth = useCallback(async () => {
-    try {
-      const userData = await getCurrentUser();
-      if (!userData) {
-        router.push('/login');
-        return;
-      }
-      setUser(userData);
-      setTotalQuestions(getQuestionCount(userData.grade));
-      setTempTotalScore(userData.totalScore);
+  // Initialize game when user is loaded
+  useEffect(() => {
+    if (user) {
+      setTotalQuestions(getQuestionCount(user.grade));
+      setTempTotalScore(user.totalScore);
       
       // Check for active boosts
-      const boosts = await getActiveBoosts(userData.id);
-      setActiveBoosts(boosts);
+      getActiveBoosts(user.id).then(boosts => {
+        setActiveBoosts(boosts);
+        
+        // Calculate boost multiplier
+        if (boosts.length > 0) {
+          const maxMultiplier = Math.max(...boosts.map(b => b.multiplier));
+          setCurrentBoostMultiplier(maxMultiplier);
+        }
+      });
       
-      // Calculate boost multiplier
-      if (boosts.length > 0) {
-        const maxMultiplier = Math.max(...boosts.map(b => b.multiplier));
-        setCurrentBoostMultiplier(maxMultiplier);
-      }
-    } catch (error) {
-      console.error('Auth error:', error);
-      router.push('/login');
-    } finally {
       setLoading(false);
     }
-  }, [router]);
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+  }, [user]);
 
   // Check if we need to play specific level
   useEffect(() => {
@@ -103,7 +91,8 @@ export default function PlayPage() {
       if (forceLevel) {
         const level = parseInt(forceLevel);
         if (!isNaN(level) && level >= 1 && level <= 100) {
-          setUser({ ...user, level });
+          // Note: Can't directly modify user from auth context
+          // This would need to be handled differently
           localStorage.removeItem('forceLevel');
         }
       }
@@ -259,6 +248,7 @@ export default function PlayPage() {
           playCount: playCount
         };
         
+        // Update user data
         await updateUserGameData(user.id, {
           level: newLevel,
           totalScore: newTotalScore,
@@ -268,14 +258,8 @@ export default function PlayPage() {
           playStreak: playStreak
         });
         
-        setUser({
-          ...user,
-          level: newLevel,
-          totalScore: newTotalScore,
-          experience: user.experience + boostedExp,
-          levelScores: levelScores,
-          playStreak: playStreak
-        });
+        // Refresh user data in auth context
+        await refreshUser();
         
         setTempTotalScore(newTotalScore);
         
@@ -342,7 +326,7 @@ export default function PlayPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-30"></div>

@@ -3,7 +3,10 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { auth, db } from './client';
@@ -173,11 +176,14 @@ export const signUp = async (
   }
 };
 
-// Sign in existing user
-export const signIn = async (username: string, password: string): Promise<User> => {
+// Sign in existing user with remember me option
+export const signIn = async (username: string, password: string, rememberMe: boolean = false): Promise<User> => {
   const email = createEmailFromUsername(username);
   
   try {
+    // Set persistence based on rememberMe
+    await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+    
     // Try to sign in
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     

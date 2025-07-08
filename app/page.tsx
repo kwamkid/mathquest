@@ -4,16 +4,27 @@ import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Swords, Target, Trophy, Gift, Pi, UserPlus } from 'lucide-react';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 // Math symbols for floating animation
 const mathSymbols = ['+', '-', '×', '÷', '=', '>', '<', '√', 'π', '∞', '∑', '∫'];
 
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // ถ้า login แล้ว redirect ไป play
+  useEffect(() => {
+    if (!loading && user) {
+      router.push('/play');
+    }
+  }, [user, loading, router]);
 
   // Generate floating symbols with fixed positions
   const floatingSymbols = Array.from({ length: 20 }, (_, i) => ({

@@ -20,6 +20,7 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true); // Default to true
 
   useEffect(() => {
     // Show success message if just registered
@@ -65,8 +66,8 @@ function LoginForm() {
     const restoreConsoleError = suppressConsoleError();
     
     try {
-      // Firebase authentication
-      await signIn(formData.username, formData.password);
+      // Firebase authentication with remember me option
+      await signIn(formData.username, formData.password, rememberMe);
       
       // Success - redirect to game
       router.push('/play');
@@ -244,7 +245,9 @@ function LoginForm() {
               <label className="flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  className="w-4 h-4 bg-white/10 border-metaverse-purple/50 rounded focus:ring-metaverse-purple"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 bg-white/10 border-metaverse-purple/50 rounded focus:ring-metaverse-purple accent-metaverse-purple"
                 />
                 <span className="ml-2 text-sm text-white/70">จดจำฉัน</span>
               </label>
