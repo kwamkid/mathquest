@@ -97,7 +97,7 @@ export const purchaseReward = async (
 ): Promise<{ success: boolean; message: string; redemptionId?: string }> => {
   try {
     return await runTransaction(db, async (transaction) => {
-      // 1. Get user data
+      // 1. Get all documents first (all reads before writes)
       const userRef = doc(db, COLLECTIONS.USERS, userId);
       const userDoc = await transaction.get(userRef);
       
@@ -118,7 +118,16 @@ export const purchaseReward = async (
       
       const reward = rewardDoc.data() as Reward;
       
-      // 3. Validate purchase
+      // 3. Get inventory if needed for digital rewards
+      let inventoryDoc;
+      let needsInventoryUpdate = !reward.requiresShipping;
+      
+      if (needsInventoryUpdate) {
+        const inventoryRef = doc(db, COLLECTIONS.USER_INVENTORY, userId);
+        inventoryDoc = await transaction.get(inventoryRef);
+      }
+      
+      // 4. Validate purchase (no writes yet)
       if (!reward.isActive) {
         throw new Error('รางวัลนี้ไม่เปิดให้แลกแล้ว');
       }
@@ -139,7 +148,7 @@ export const purchaseReward = async (
         throw new Error('กรุณากรอกที่อยู่จัดส่ง');
       }
       
-      // 4. Check purchase limit
+      // 5. Check purchase limit (still reading)
       if (reward.limitPerUser) {
         const existingRedemptions = await getDocs(
           query(
@@ -155,7 +164,9 @@ export const purchaseReward = async (
         }
       }
       
-        // 5. Create redemption record
+      // === NOW ALL WRITES AFTER ALL READS ===
+      
+      // 6. Create redemption record
       const redemptionRef = doc(collection(db, COLLECTIONS.REDEMPTIONS));
       const redemption: Redemption = {
         id: redemptionRef.id,
@@ -163,7 +174,7 @@ export const purchaseReward = async (
         rewardId,
         rewardType: reward.type,
         rewardName: reward.name,
-        rewardImageUrl: reward.imageUrl,  // เพิ่ม imageUrl
+        rewardImageUrl: reward.imageUrl,
         expCost: reward.price,
         status: reward.requiresShipping 
           ? RedemptionStatus.PENDING 
@@ -178,21 +189,21 @@ export const purchaseReward = async (
       
       transaction.set(redemptionRef, cleanedRedemption);
       
-      // 6. Deduct EXP from user
+      // 7. Deduct EXP from user
       transaction.update(userRef, {
         experience: userExp - reward.price
       });
       
-      // 7. Update stock if applicable
+      // 8. Update stock if applicable
       if (reward.stock !== undefined) {
         transaction.update(rewardRef, {
           stock: reward.stock - 1
         });
       }
       
-      // 8. Process digital rewards immediately
-      if (!reward.requiresShipping) {
-        await processDigitalReward(transaction, userId, reward, redemptionRef.id);
+      // 9. Process digital rewards immediately
+      if (!reward.requiresShipping && inventoryDoc !== undefined) {
+        processDigitalRewardInTransaction(transaction, userId, reward, redemptionRef.id, inventoryDoc);
       }
       
       return {
@@ -212,15 +223,15 @@ export const purchaseReward = async (
   }
 };
 
-// Process digital rewards
-const processDigitalReward = async (
+// Process digital rewards within transaction
+const processDigitalRewardInTransaction = (
   transaction: any,
   userId: string,
   reward: Reward,
-  redemptionId: string
+  redemptionId: string,
+  inventoryDoc: any
 ) => {
   const inventoryRef = doc(db, COLLECTIONS.USER_INVENTORY, userId);
-  const inventoryDoc = await transaction.get(inventoryRef);
   
   let inventory: UserInventory;
   
