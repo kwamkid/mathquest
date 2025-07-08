@@ -1,11 +1,13 @@
 // app/(game)/summary/page.tsx
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import AvatarDisplay from '@/components/avatar/AvatarDisplay';
+import { getPremiumAvatarData } from '@/lib/data/items';
+import { getReward } from '@/lib/firebase/rewards';
 import confetti from 'canvas-confetti';
 import { 
   Trophy, 
@@ -104,6 +106,7 @@ function SummaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
+  const [premiumAvatarUrl, setPremiumAvatarUrl] = useState<string | undefined>(undefined);
   
   // Get params from URL
   const score = parseInt(searchParams.get('score') || '0');
@@ -130,6 +133,30 @@ function SummaryContent() {
   } catch (e) {
     console.error('Error parsing exp breakdown:', e);
   }
+
+  // Get premium avatar URL if using premium avatar
+  useMemo(async () => {
+    if (user?.avatarData?.currentAvatar?.type === 'premium' && user.avatarData.currentAvatar.id) {
+      const avatarId = user.avatarData.currentAvatar.id;
+      
+      // Try local database first
+      const localData = getPremiumAvatarData(avatarId);
+      if (localData?.svgUrl) {
+        setPremiumAvatarUrl(localData.svgUrl);
+        return;
+      }
+      
+      // Fallback to reward data
+      try {
+        const rewardData = await getReward(avatarId);
+        if (rewardData?.imageUrl) {
+          setPremiumAvatarUrl(rewardData.imageUrl);
+        }
+      } catch (error) {
+        console.error('Error loading avatar URL:', error);
+      }
+    }
+  }, [user?.avatarData]);
 
   // Fire confetti effects
   useEffect(() => {
@@ -210,13 +237,13 @@ function SummaryContent() {
   // Handle play same level
   const handlePlaySameLevel = () => {
     // Keep current level regardless of score
-    router.push(`/game?level=${oldLevel}`);
+    router.push(`/play`);
   };
 
   // Handle play next
   const handlePlayNext = () => {
     // ไปเล่น level ตามผลที่ได้
-    router.push(`/game?level=${newLevel}`);
+    router.push(`/play`);
   };
 
   if (!user) return null;
@@ -286,6 +313,7 @@ function SummaryContent() {
               <AvatarDisplay
                 avatarData={user?.avatarData}
                 basicAvatar={user?.avatar}
+                premiumAvatarUrl={premiumAvatarUrl}
                 size="large"
                 showEffects={true}
                 showTitle={true}
