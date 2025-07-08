@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Reward, RewardType } from '@/types/avatar';
+import { Reward, RewardType, AccessoryType } from '@/types/avatar';
 import ImageUpload from '@/components/ui/ImageUpload';
 import { uploadImage, deleteImage } from '@/lib/firebase/storage';
 import { saveReward } from '@/lib/firebase/rewards';
@@ -11,7 +11,13 @@ import {
   Save,
   Info,
   Zap,
-  X
+  X,
+  HardHat,
+  Glasses,
+  Smile,
+  Gem,
+  Link,
+  Square
 } from 'lucide-react';
 
 interface RewardFormProps {
@@ -36,7 +42,9 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
     boostMultiplier: 2,
     imageUrl: undefined,
     imagePath: undefined,
-    itemId: undefined
+    itemId: undefined,
+    accessoryType: AccessoryType.HAT,
+    badgeCategory: 'achievement'
   });
   
   const [saving, setSaving] = useState(false);
@@ -50,7 +58,7 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
   }, [reward]);
 
   // Generate Item ID from name
-  const generateItemId = (name: string, type: RewardType): string => {
+  const generateItemId = (name: string, type: RewardType, accessoryType?: AccessoryType): string => {
     // Convert to lowercase and replace spaces with dashes
     let itemId = name
       .toLowerCase()
@@ -62,10 +70,17 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
     // Add prefix based on type if needed
     if (type === RewardType.AVATAR && !itemId.includes('avatar')) {
       itemId = `avatar-${itemId}`;
-    } else if (type === RewardType.ACCESSORY && !itemId.includes('acc')) {
-      itemId = `acc-${itemId}`;
+    } else if (type === RewardType.ACCESSORY) {
+      // For accessories, include the type in the ID
+      if (accessoryType && !itemId.includes(accessoryType)) {
+        itemId = `acc-${accessoryType}-${itemId}`;
+      } else if (!itemId.includes('acc')) {
+        itemId = `acc-${itemId}`;
+      }
     } else if (type === RewardType.TITLE_BADGE && !itemId.includes('title')) {
       itemId = `title-${itemId}`;
+    } else if (type === RewardType.BADGE && !itemId.includes('badge')) {
+      itemId = `badge-${itemId}`;
     }
     
     return itemId;
@@ -77,9 +92,15 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
       const newData = { ...prev, name };
       
       // Auto-generate itemId for digital rewards
-      const needsItemId = [RewardType.AVATAR, RewardType.ACCESSORY, RewardType.TITLE_BADGE].includes(prev.type as RewardType);
+      const needsItemId = [
+        RewardType.AVATAR, 
+        RewardType.ACCESSORY, 
+        RewardType.TITLE_BADGE,
+        RewardType.BADGE
+      ].includes(prev.type as RewardType);
+      
       if (needsItemId) {
-        newData.itemId = generateItemId(name, prev.type as RewardType);
+        newData.itemId = generateItemId(name, prev.type as RewardType, prev.accessoryType);
       }
       
       return newData;
@@ -92,9 +113,15 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
       const newData = { ...prev, type };
       
       // Re-generate itemId when type changes
-      const needsItemId = [RewardType.AVATAR, RewardType.ACCESSORY, RewardType.TITLE_BADGE].includes(type);
+      const needsItemId = [
+        RewardType.AVATAR, 
+        RewardType.ACCESSORY, 
+        RewardType.TITLE_BADGE,
+        RewardType.BADGE
+      ].includes(type);
+      
       if (needsItemId && prev.name) {
-        newData.itemId = generateItemId(prev.name, type);
+        newData.itemId = generateItemId(prev.name, type, prev.accessoryType);
       } else if (!needsItemId) {
         newData.itemId = undefined;
       }
@@ -106,6 +133,32 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
       if (type !== RewardType.BOOST) {
         newData.boostDuration = 60;
         newData.boostMultiplier = 2;
+      }
+      if (type !== RewardType.ACCESSORY) {
+        newData.accessoryType = undefined;
+      } else {
+        // Set default accessory type
+        newData.accessoryType = AccessoryType.HAT;
+      }
+      if (type !== RewardType.BADGE) {
+        newData.badgeCategory = undefined;
+      } else {
+        // Set default badge category
+        newData.badgeCategory = 'achievement';
+      }
+      
+      return newData;
+    });
+  };
+
+  // Handle accessory type change
+  const handleAccessoryTypeChange = (accessoryType: AccessoryType) => {
+    setFormData(prev => {
+      const newData = { ...prev, accessoryType };
+      
+      // Re-generate itemId with new accessory type
+      if (prev.name && prev.type === RewardType.ACCESSORY) {
+        newData.itemId = generateItemId(prev.name, prev.type, accessoryType);
       }
       
       return newData;
@@ -151,9 +204,20 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
     }
 
     // Validate itemId for digital reward types
-    const needsItemId = [RewardType.AVATAR, RewardType.ACCESSORY, RewardType.TITLE_BADGE].includes(formData.type as RewardType);
+    const needsItemId = [
+      RewardType.AVATAR, 
+      RewardType.ACCESSORY, 
+      RewardType.TITLE_BADGE,
+      RewardType.BADGE
+    ].includes(formData.type as RewardType);
+    
     if (needsItemId && (!formData.itemId || formData.itemId.trim() === '')) {
       newErrors.itemId = 'กรุณากรอก Item ID';
+    }
+
+    // Validate accessory type
+    if (formData.type === RewardType.ACCESSORY && !formData.accessoryType) {
+      newErrors.accessoryType = 'กรุณาเลือกประเภท Accessory';
     }
 
     if (formData.type === RewardType.BOOST) {
@@ -215,6 +279,7 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
     }
   };
 
+  // Data
   const rewardTypes = [
     { value: RewardType.AVATAR, label: 'Avatar', icon: '🦸' },
     { value: RewardType.ACCESSORY, label: 'Accessories', icon: '👑' },
@@ -222,6 +287,21 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
     { value: RewardType.BOOST, label: 'EXP Boost', icon: '⚡' },
     { value: RewardType.PHYSICAL, label: 'ของจริง', icon: '📦' },
     { value: RewardType.BADGE, label: 'Badge', icon: '🎖️' }
+  ];
+
+  const accessoryTypes = [
+    { value: AccessoryType.HAT, label: 'หมวก', icon: <HardHat className="w-4 h-4" /> },
+    { value: AccessoryType.GLASSES, label: 'แว่นตา', icon: <Glasses className="w-4 h-4" /> },
+    { value: AccessoryType.MASK, label: 'หน้ากาก', icon: <Smile className="w-4 h-4" /> },
+    { value: AccessoryType.EARRING, label: 'ต่างหู', icon: <Gem className="w-4 h-4" /> },
+    { value: AccessoryType.NECKLACE, label: 'สร้อยคอ', icon: <Link className="w-4 h-4" /> },
+    { value: AccessoryType.BACKGROUND, label: 'พื้นหลัง', icon: <Square className="w-4 h-4" /> }
+  ];
+
+  const badgeCategories = [
+    { value: 'achievement', label: 'Achievement', description: 'จากการทำภารกิจ' },
+    { value: 'special', label: 'Special', description: 'รางวัลพิเศษ' },
+    { value: 'event', label: 'Event', description: 'จากกิจกรรม' }
   ];
 
   return (
@@ -247,7 +327,7 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
           allowUrl={true}
         />
         <p className="mt-2 text-xs text-white/40">
-          * สามารถอัพโหลดรูปหรือใส่ URL รูปภาพก็ได้
+          * สามารถอัพโหลดรูปหรือใส่ URL รูปภาพก็ได้ (แนะนำ SVG สำหรับ accessories)
         </p>
       </div>
 
@@ -269,6 +349,57 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
         </select>
       </div>
 
+      {/* Accessory Type - For Accessories only */}
+      {formData.type === RewardType.ACCESSORY && (
+        <div>
+          <label className="block text-sm font-medium text-white/80 mb-2">
+            ประเภท Accessory <span className="text-red-400">*</span>
+          </label>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {accessoryTypes.map(type => (
+              <motion.button
+                key={type.value}
+                type="button"
+                onClick={() => handleAccessoryTypeChange(type.value)}
+                className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                  formData.accessoryType === type.value
+                    ? 'bg-metaverse-purple/20 border-metaverse-purple text-white'
+                    : 'bg-white/5 border-white/20 text-white/60 hover:border-white/40'
+                }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {type.icon}
+                <span className="text-sm font-medium">{type.label}</span>
+              </motion.button>
+            ))}
+          </div>
+          {errors.accessoryType && (
+            <p className="mt-1 text-sm text-red-400">{errors.accessoryType}</p>
+          )}
+        </div>
+      )}
+
+      {/* Badge Category - For Badges only */}
+      {formData.type === RewardType.BADGE && (
+        <div>
+          <label className="block text-sm font-medium text-white/80 mb-2">
+            ประเภท Badge
+          </label>
+          <select
+            value={formData.badgeCategory}
+            onChange={(e) => setFormData({ ...formData, badgeCategory: e.target.value as any })}
+            className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink text-white"
+          >
+            {badgeCategories.map(cat => (
+              <option key={cat.value} value={cat.value}>
+                {cat.label} - {cat.description}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Name */}
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2">
@@ -281,7 +412,7 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
           className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
             errors.name ? 'border-red-400' : 'border-metaverse-purple/30'
           }`}
-          placeholder="เช่น Ninja Avatar, EXP Boost 2x"
+          placeholder="เช่น Golden Crown, Cool Sunglasses, EXP Boost 2x"
         />
         {errors.name && (
           <p className="mt-1 text-sm text-red-400">{errors.name}</p>
@@ -307,10 +438,11 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
         )}
       </div>
 
-      {/* Item ID - For Avatar, Accessory, Title Badge */}
+      {/* Item ID - For Avatar, Accessory, Title Badge, Badge */}
       {(formData.type === RewardType.AVATAR || 
         formData.type === RewardType.ACCESSORY || 
-        formData.type === RewardType.TITLE_BADGE) && (
+        formData.type === RewardType.TITLE_BADGE ||
+        formData.type === RewardType.BADGE) && (
         <div>
           <label className="block text-sm font-medium text-white/80 mb-2">
             Item ID <span className="text-red-400">*</span>
@@ -336,7 +468,11 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
                 <ul className="list-disc list-inside space-y-1">
                   <li>ช่องว่างจะถูกแทนด้วย - (dash)</li>
                   <li>ตัวอักษรจะเป็นตัวพิมพ์เล็กทั้งหมด</li>
-                  <li>ตัวอักษรพิเศษจะถูกลบออก</li>
+                  {formData.type === RewardType.ACCESSORY && (
+                    <li className="font-medium">
+                      Format: acc-{formData.accessoryType}-{'{name}'}
+                    </li>
+                  )}
                   <li>สามารถแก้ไขได้หากต้องการ</li>
                 </ul>
               </div>

@@ -39,6 +39,75 @@ export enum AccessoryType {
   BACKGROUND = 'background',
 }
 
+// NEW: Positioning Types for Enhanced Avatar System
+export interface AccessoryPosition {
+  x?: number;          // offset จากจุดกึ่งกลาง (pixels หรือ %)
+  y?: number;          // offset จากจุดกึ่งกลาง (pixels หรือ %)
+  scale?: number;      // ขนาด relative to avatar (default 1)
+  rotation?: number;   // องศา (degrees)
+  opacity?: number;    // ความโปร่งใส 0-1 (default 1)
+  flipX?: boolean;     // พลิกแนวนอน
+  flipY?: boolean;     // พลิกแนวตั้ง
+}
+
+export interface AccessoryConfig {
+  zIndex: number;
+  defaultPosition: AccessoryPosition;
+  // position overrides per avatar type/id
+  positionOverrides?: Record<string, AccessoryPosition>;
+  // animation config
+  animation?: {
+    type: 'float' | 'rotate' | 'pulse' | 'bounce' | 'none';
+    duration?: number; // seconds
+    delay?: number;    // seconds
+  };
+  // anchor point for positioning (e.g., 'bottom-center' for hats)
+  anchorPoint?: 'top-left' | 'top-center' | 'top-right' | 
+                'center-left' | 'center' | 'center-right' |
+                'bottom-left' | 'bottom-center' | 'bottom-right';
+  // whether this accessory affects container size
+  affectsContainerSize?: boolean;
+}
+
+// Container sizing configuration
+export interface AvatarContainerConfig {
+  baseAspectRatio: number;     // default 1 (square)
+  withHatAspectRatio: number;  // e.g., 1.2 (taller)
+  maxHeightMultiplier: number; // e.g., 1.3 (max 30% taller)
+  scalingStrategy: 'expand-container' | 'scale-avatar' | 'overflow';
+}
+
+// Size configuration for different avatar sizes
+export interface AvatarSizeConfig {
+  small: {
+    base: number;      // base size in pixels
+    withHat: number;   // height with hat
+  };
+  medium: {
+    base: number;
+    withHat: number;
+  };
+  large: {
+    base: number;
+    withHat: number;
+  };
+  xlarge: {
+    base: number;
+    withHat: number;
+  };
+}
+
+// Enhanced accessory with positioning data
+export interface EnhancedAccessory extends AvatarAccessory {
+  positioning?: AccessoryConfig;
+  // SVG specific config
+  svgConfig?: {
+    viewBox?: string;           // default viewBox if needed
+    preserveAspectRatio?: string; // SVG aspect ratio handling
+    strokeScaling?: boolean;    // whether strokes should scale
+  };
+}
+
 // User's Avatar Data
 export interface UserAvatarData {
   currentAvatar: {
@@ -80,6 +149,12 @@ export interface Reward {
   itemId?: string;            // ID ของ avatar/accessory/boost
   boostDuration?: number;     // สำหรับ boost (minutes)
   boostMultiplier?: number;   // 1.5x, 2x, etc.
+  
+  // Accessory specific
+  accessoryType?: AccessoryType;  // ประเภทของ accessory (hat, glasses, etc.)
+  
+  // Badge specific
+  badgeCategory?: 'achievement' | 'special' | 'event';  // ประเภทของ badge
   
   // Physical rewards
   stock?: number;

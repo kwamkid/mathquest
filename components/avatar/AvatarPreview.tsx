@@ -3,7 +3,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserAvatarData, AvatarAccessory, PremiumAvatar } from '@/types/avatar';
-import AvatarDisplay from './AvatarDisplay';
+import EnhancedAvatarDisplay from './EnhancedAvatarDisplay';
 import { Star, Lock, Check } from 'lucide-react';
 
 interface AvatarPreviewProps {
@@ -42,13 +42,16 @@ export default function AvatarPreview({
     return acc;
   }, {} as Record<string, AvatarAccessory[]>);
 
+  // Create a temporary user ID for preview (won't actually load from DB)
+  const tempUserId = 'preview-user';
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       {/* Preview Section */}
       <div className="glass-dark rounded-3xl p-8 border border-metaverse-purple/30">
         <h3 className="text-2xl font-bold text-white mb-6 text-center">ตัวอย่าง</h3>
         
-        {/* Large Avatar Preview */}
+        {/* Large Avatar Preview with Accessories */}
         <div className="flex justify-center mb-8">
           <motion.div
             key={JSON.stringify(currentAvatarData)}
@@ -56,15 +59,17 @@ export default function AvatarPreview({
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: "spring", duration: 0.5 }}
           >
-            <AvatarDisplay
+            <EnhancedAvatarDisplay
+              userId={tempUserId}
               avatarData={currentAvatarData}
-              premiumAvatarUrl={
-                currentAvatarData.currentAvatar.type === 'premium' 
-                  ? availableAvatars.premium.find(a => a.id === currentAvatarData.currentAvatar.id)?.svgUrl
+              basicAvatar={
+                currentAvatarData.currentAvatar.type === 'basic' 
+                  ? currentAvatarData.currentAvatar.id 
                   : undefined
               }
               size="xlarge"
               showEffects={true}
+              showAccessories={true}
             />
           </motion.div>
         </div>
@@ -74,11 +79,14 @@ export default function AvatarPreview({
           <div className="flex justify-between">
             <span>Avatar:</span>
             <span className="font-medium text-white">
-              {currentAvatarData.currentAvatar.type === 'basic' ? 'Basic' : 'Premium'}
+              {currentAvatarData.currentAvatar.type === 'basic' 
+                ? availableAvatars.basic.find(a => a.id === currentAvatarData.currentAvatar.id)?.name || 'Basic'
+                : availableAvatars.premium.find(a => a.id === currentAvatarData.currentAvatar.id)?.name || 'Premium'
+              }
             </span>
           </div>
           
-          {(Object.entries(currentAvatarData.currentAvatar.accessories) as Array<[keyof typeof currentAvatarData.currentAvatar.accessories, string | undefined]>).map(([type, id]) => (
+          {Object.entries(currentAvatarData.currentAvatar.accessories).map(([type, id]) => (
             id && (
               <div key={type} className="flex justify-between">
                 <span className="capitalize">{type}:</span>
@@ -106,11 +114,11 @@ export default function AvatarPreview({
                   key={avatar.id}
                   onClick={() => onAvatarChange(avatar.id, 'basic')}
                   className={`p-3 rounded-xl transition-all ${
-                    currentAvatarData.currentAvatar.id === avatar.id 
+                    currentAvatarData.currentAvatar.id === avatar.id && currentAvatarData.currentAvatar.type === 'basic'
                       ? 'bg-gradient-to-br from-metaverse-purple to-metaverse-pink'
                       : 'glass hover:bg-white/10'
                   } border ${
-                    currentAvatarData.currentAvatar.id === avatar.id
+                    currentAvatarData.currentAvatar.id === avatar.id && currentAvatarData.currentAvatar.type === 'basic'
                       ? 'border-white/30'
                       : 'border-metaverse-purple/30'
                   }`}
@@ -137,13 +145,13 @@ export default function AvatarPreview({
                     onClick={() => owned && onAvatarChange(avatar.id, 'premium')}
                     disabled={!owned}
                     className={`relative p-4 rounded-xl transition-all ${
-                      currentAvatarData.currentAvatar.id === avatar.id 
+                      currentAvatarData.currentAvatar.id === avatar.id && currentAvatarData.currentAvatar.type === 'premium'
                         ? 'bg-gradient-to-br from-metaverse-purple to-metaverse-pink'
                         : owned
                           ? 'glass hover:bg-white/10'
                           : 'glass opacity-50 cursor-not-allowed'
                     } border ${
-                      currentAvatarData.currentAvatar.id === avatar.id
+                      currentAvatarData.currentAvatar.id === avatar.id && currentAvatarData.currentAvatar.type === 'premium'
                         ? 'border-white/30'
                         : 'border-metaverse-purple/30'
                     }`}
@@ -177,9 +185,11 @@ export default function AvatarPreview({
                     
                     {/* Status Indicators */}
                     {owned ? (
-                      <div className="absolute top-1 right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
-                        <Check className="w-3 h-3 text-white" />
-                      </div>
+                      currentAvatarData.currentAvatar.id === avatar.id && currentAvatarData.currentAvatar.type === 'premium' && (
+                        <div className="absolute top-1 right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                      )
                     ) : (
                       <div className="absolute top-1 right-1">
                         <Lock className={`w-4 h-4 ${canAfford ? 'text-yellow-400' : 'text-red-400'}`} />
@@ -209,9 +219,9 @@ export default function AvatarPreview({
             <div className="grid grid-cols-4 gap-3">
               {/* Remove option */}
               <motion.button
-                onClick={() => onAccessoryChange(type as keyof UserAvatarData['currentAvatar']['accessories'], null)}
+                onClick={() => onAccessoryChange(type, null)}
                 className={`p-4 rounded-xl transition-all glass hover:bg-white/10 border ${
-                  !currentAvatarData.currentAvatar.accessories[type as keyof UserAvatarData['currentAvatar']['accessories']]
+                  !currentAvatarData.currentAvatar.accessories[type as keyof typeof currentAvatarData.currentAvatar.accessories]
                     ? 'border-white/30 bg-white/10'
                     : 'border-metaverse-purple/30'
                 }`}
@@ -227,13 +237,13 @@ export default function AvatarPreview({
               {/* Accessory options */}
               {accessories.map(accessory => {
                 const owned = isOwned(accessory.id, 'accessory');
-                const selected = currentAvatarData.currentAvatar.accessories[type as keyof UserAvatarData['currentAvatar']['accessories']] === accessory.id;
+                const selected = currentAvatarData.currentAvatar.accessories[type as keyof typeof currentAvatarData.currentAvatar.accessories] === accessory.id;
                 const canAfford = userExp >= accessory.price;
                 
                 return (
                   <motion.button
                     key={accessory.id}
-                    onClick={() => owned && onAccessoryChange(type as keyof UserAvatarData['currentAvatar']['accessories'], accessory.id)}
+                    onClick={() => owned && onAccessoryChange(type, accessory.id)}
                     disabled={!owned}
                     className={`relative p-4 rounded-xl transition-all ${
                       selected

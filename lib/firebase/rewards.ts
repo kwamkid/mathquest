@@ -71,16 +71,37 @@ export const getActiveRewards = async (
   }
 };
 
-// Get single reward
-export const getReward = async (rewardId: string): Promise<Reward | null> => {
+// Get single reward - FIXED to search by itemId field
+export const getReward = async (itemId: string): Promise<Reward | null> => {
   try {
-    const docRef = await getDoc(doc(db, COLLECTIONS.REWARDS, rewardId));
-    if (!docRef.exists()) return null;
+    // First try to get by document ID (backward compatibility)
+    const docRef = doc(db, COLLECTIONS.REWARDS, itemId);
+    const docSnap = await getDoc(docRef);
     
-    return {
-      id: docRef.id,
-      ...docRef.data()
-    } as Reward;
+    if (docSnap.exists()) {
+      return {
+        id: docSnap.id,
+        ...docSnap.data()
+      } as Reward;
+    }
+    
+    // If not found, query by itemId field
+    const q = query(
+      collection(db, COLLECTIONS.REWARDS),
+      where('itemId', '==', itemId),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    if (!querySnapshot.empty) {
+      const doc = querySnapshot.docs[0];
+      return {
+        id: doc.id,
+        ...doc.data()
+      } as Reward;
+    }
+    
+    return null;
   } catch (error) {
     console.error('Error getting reward:', error);
     return null;

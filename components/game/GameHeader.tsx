@@ -1,7 +1,7 @@
 // components/game/GameHeader.tsx
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
@@ -9,10 +9,8 @@ import { useRouter } from 'next/navigation';
 import { Settings, LogOut, Trophy, Zap, X, Gift, Info, Crown } from 'lucide-react';
 import SoundToggle from './SoundToggle';
 import { getQuestionCount } from '@/lib/game/config';
-import AvatarDisplay from '@/components/avatar/AvatarDisplay';
+import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import Link from 'next/link';
-import { getPremiumAvatarData } from '@/lib/data/items';
-import { getReward } from '@/lib/firebase/rewards';
 
 interface GameHeaderProps {
   user: User;
@@ -22,27 +20,6 @@ interface GameHeaderProps {
 export default function GameHeader({ user, hideActions = false }: GameHeaderProps) {
   const router = useRouter();
   const [showExpModal, setShowExpModal] = useState(false);
-  const [premiumAvatarUrl, setPremiumAvatarUrl] = useState<string | undefined>(undefined);
-
-  // Get premium avatar URL if using premium avatar
-  useMemo(async () => {
-    if (user.avatarData?.currentAvatar?.type === 'premium' && user.avatarData.currentAvatar.id) {
-      const avatarId = user.avatarData.currentAvatar.id;
-      
-      // Try local database first
-      const localData = getPremiumAvatarData(avatarId);
-      if (localData?.svgUrl) {
-        setPremiumAvatarUrl(localData.svgUrl);
-        return;
-      }
-      
-      // Fallback to reward data
-      const rewardData = await getReward(avatarId);
-      if (rewardData?.imageUrl) {
-        setPremiumAvatarUrl(rewardData.imageUrl);
-      }
-    }
-  }, [user.avatarData]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -106,10 +83,10 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
               <div className="flex items-center gap-3">
                 {hideActions ? (
                   <div className="cursor-not-allowed opacity-60">
-                    <AvatarDisplay
+                    <EnhancedAvatarDisplay
+                      userId={user.id}
                       avatarData={user.avatarData}
                       basicAvatar={user.avatar}
-                      premiumAvatarUrl={premiumAvatarUrl}
                       size="small"
                       showEffects={false}
                     />
@@ -117,10 +94,10 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 ) : (
                   <Link href="/my-avatar" className="group">
                     <motion.div whileHover={{ scale: 1.1 }}>
-                      <AvatarDisplay
+                      <EnhancedAvatarDisplay
+                        userId={user.id}
                         avatarData={user.avatarData}
                         basicAvatar={user.avatar}
-                        premiumAvatarUrl={premiumAvatarUrl}
                         size="small"
                         showEffects={false}
                       />
@@ -255,10 +232,10 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
             <div className="flex items-center gap-4">
               {hideActions ? (
                 <div className="cursor-not-allowed opacity-60">
-                  <AvatarDisplay
+                  <EnhancedAvatarDisplay
+                    userId={user.id}
                     avatarData={user.avatarData}
                     basicAvatar={user.avatar}
-                    premiumAvatarUrl={premiumAvatarUrl}
                     size="medium"
                     showEffects={true}
                     showTitle={true}
@@ -269,10 +246,10 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
               ) : (
                 <Link href="/my-avatar" className="group">
                   <motion.div whileHover={{ scale: 1.1 }}>
-                    <AvatarDisplay
+                    <EnhancedAvatarDisplay
+                      userId={user.id}
                       avatarData={user.avatarData}
                       basicAvatar={user.avatar}
-                      premiumAvatarUrl={premiumAvatarUrl}
                       size="medium"
                       showEffects={true}
                       showTitle={true}

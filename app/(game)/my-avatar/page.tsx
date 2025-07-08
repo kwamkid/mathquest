@@ -223,18 +223,25 @@ export default function MyAvatarPage() {
       // Load accessories using local data first
       const loadedAccessories: AvatarAccessory[] = [];
       
+      console.log('Processing accessories:', avatarData.unlockedAccessories);
+      
       for (const accessoryId of avatarData.unlockedAccessories) {
+        console.log('Loading accessory:', accessoryId);
+        
         // First try local database
         const localData = getAccessoryData(accessoryId);
         if (localData) {
+          console.log('Found in local database:', localData);
           loadedAccessories.push(localData);
         } else {
           // Fallback to reward data
           const rewardData = await getReward(accessoryId);
+          console.log('Reward data for accessory', accessoryId, ':', rewardData);
           
           if (rewardData) {
-            // Determine type from ID
-            const type = getAccessoryType(accessoryId);
+            // Use accessoryType from reward data if available
+            const type = rewardData.accessoryType || getAccessoryType(accessoryId);
+            console.log('Accessory type determined:', type);
             
             loadedAccessories.push({
               id: accessoryId,
@@ -295,8 +302,9 @@ export default function MyAvatarPage() {
     }
   };
 
-  // Helper function to determine accessory type
+  // Helper function to determine accessory type from ID
   const getAccessoryType = (id: string): AccessoryType => {
+    // Check specific patterns in ID
     if (id.includes('hat') || id.includes('crown') || id.includes('cap')) return AccessoryType.HAT;
     if (id.includes('glass') || id.includes('sunglass')) return AccessoryType.GLASSES;
     if (id.includes('mask')) return AccessoryType.MASK;
@@ -304,15 +312,22 @@ export default function MyAvatarPage() {
     if (id.includes('necklace') || id.includes('chain')) return AccessoryType.NECKLACE;
     if (id.includes('background') || id.includes('bg')) return AccessoryType.BACKGROUND;
     
-    // Check prefix
-    if (id.startsWith('acc-hat')) return AccessoryType.HAT;
-    if (id.startsWith('acc-glasses')) return AccessoryType.GLASSES;
-    if (id.startsWith('acc-mask')) return AccessoryType.MASK;
-    if (id.startsWith('acc-earring')) return AccessoryType.EARRING;
-    if (id.startsWith('acc-necklace')) return AccessoryType.NECKLACE;
-    if (id.startsWith('acc-background')) return AccessoryType.BACKGROUND;
+    // Check prefix pattern acc-{type}-{name}
+    const prefixMatch = id.match(/^acc-(\w+)-/);
+    if (prefixMatch) {
+      const typeStr = prefixMatch[1];
+      switch (typeStr) {
+        case 'hat': return AccessoryType.HAT;
+        case 'glasses': return AccessoryType.GLASSES;
+        case 'mask': return AccessoryType.MASK;
+        case 'earring': return AccessoryType.EARRING;
+        case 'necklace': return AccessoryType.NECKLACE;
+        case 'background': return AccessoryType.BACKGROUND;
+      }
+    }
     
     // Default to hat if can't determine
+    console.warn(`Could not determine accessory type for ID: ${id}, defaulting to HAT`);
     return AccessoryType.HAT;
   };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -11,12 +11,10 @@ import { ActiveBoost } from '@/types/avatar';
 import QuestionDisplay from '@/components/game/QuestionDisplay';
 import GameHeader from '@/components/game/GameHeader';
 import GameProgress from '@/components/game/GameProgress';
-import AvatarDisplay from '@/components/avatar/AvatarDisplay';
+import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import { generateQuestion } from '@/lib/game/questionGenerator';
 import { getQuestionCount, calculateLevelChange, getLevelConfig } from '@/lib/game/config';
 import { useSound } from '@/lib/game/soundManager';
-import { getPremiumAvatarData } from '@/lib/data/items';
-import { getReward } from '@/lib/firebase/rewards';
 import { 
   Sparkles, 
   Rocket, 
@@ -42,7 +40,6 @@ export default function PlayPage() {
   const [gameState, setGameState] = useState<'ready' | 'playing' | 'result' | 'processing'>('ready');
   const [showExitModal, setShowExitModal] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<number>(0);
-  const [premiumAvatarUrl, setPremiumAvatarUrl] = useState<string | undefined>(undefined);
   
   // Game session state
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -65,30 +62,6 @@ export default function PlayPage() {
   
   // Sound hook
   const { playSound } = useSound();
-
-  // Get premium avatar URL if using premium avatar
-  useMemo(async () => {
-    if (user?.avatarData?.currentAvatar?.type === 'premium' && user.avatarData.currentAvatar.id) {
-      const avatarId = user.avatarData.currentAvatar.id;
-      
-      // Try local database first
-      const localData = getPremiumAvatarData(avatarId);
-      if (localData?.svgUrl) {
-        setPremiumAvatarUrl(localData.svgUrl);
-        return;
-      }
-      
-      // Fallback to reward data
-      try {
-        const rewardData = await getReward(avatarId);
-        if (rewardData?.imageUrl) {
-          setPremiumAvatarUrl(rewardData.imageUrl);
-        }
-      } catch (error) {
-        console.error('Error loading avatar URL:', error);
-      }
-    }
-  }, [user?.avatarData]);
 
   // Initialize game when user is loaded
   useEffect(() => {
@@ -461,14 +434,14 @@ export default function PlayPage() {
                       ease: "easeInOut"
                     }}
                   >
-                    <AvatarDisplay
-                      avatarData={user?.avatarData}
-                      basicAvatar={user?.avatar}
-                      premiumAvatarUrl={premiumAvatarUrl}
+                    <EnhancedAvatarDisplay
+                      userId={user.id}
+                      avatarData={user.avatarData}
+                      basicAvatar={user.avatar}
                       size="xlarge"
                       showEffects={true}
                       showTitle={true}
-                      titleBadge={user?.currentTitleBadge}
+                      titleBadge={user.currentTitleBadge}
                     />
                   </motion.div>
                 </div>
