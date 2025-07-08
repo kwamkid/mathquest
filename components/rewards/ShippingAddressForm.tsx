@@ -1,30 +1,18 @@
 // components/rewards/ShippingAddressForm.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { 
   MapPin, 
   Phone, 
   User, 
   Home,
-  Search,
   Check,
   AlertCircle,
   Loader2
 } from 'lucide-react';
 import { ShippingAddress } from '@/types/avatar';
-import { 
-  parseThaiAddressData,
-  getProvinces,
-  getDistrictsByProvince,
-  getSubdistrictsByDistrict,
-  getPostalCode,
-  validateThaiPhone,
-  formatThaiPhone,
-  validatePostalCode
-} from '@/lib/utils/thaiAddress';
-import { thaiAddressData } from '@/lib/data/thaiAddress';
 
 interface ShippingAddressFormProps {
   onSubmit: (address: ShippingAddress) => void;
@@ -39,98 +27,47 @@ export default function ShippingAddressForm({
   loading = false,
   savedAddress = null
 }: ShippingAddressFormProps) {
-  // Parse address data once
-  const [addressData] = useState(() => parseThaiAddressData(thaiAddressData));
-  
   // Form fields
   const [fullName, setFullName] = useState(savedAddress?.fullName || '');
   const [phone, setPhone] = useState(savedAddress?.phone || '');
   const [addressLine1, setAddressLine1] = useState(savedAddress?.addressLine1 || '');
   const [addressLine2, setAddressLine2] = useState(savedAddress?.addressLine2 || '');
-  const [province, setProvince] = useState(savedAddress?.province || '');
-  const [district, setDistrict] = useState(savedAddress?.district || '');
   const [subDistrict, setSubDistrict] = useState(savedAddress?.subDistrict || '');
+  const [district, setDistrict] = useState(savedAddress?.district || '');
+  const [province, setProvince] = useState(savedAddress?.province || '');
   const [postalCode, setPostalCode] = useState(savedAddress?.postalCode || '');
-  
-  // Dropdown data
-  const [provinces] = useState(() => getProvinces(addressData));
-  const [districts, setDistricts] = useState<string[]>([]);
-  const [subDistricts, setSubDistricts] = useState<Array<{ subdistrict: string; postalCode: number }>>([]);
-  
-  // Search states
-  const [provinceSearch, setProvinceSearch] = useState('');
-  const [districtSearch, setDistrictSearch] = useState('');
-  const [subDistrictSearch, setSubDistrictSearch] = useState('');
-  
-  // Dropdown visibility
-  const [showProvinces, setShowProvinces] = useState(false);
-  const [showDistricts, setShowDistricts] = useState(false);
-  const [showSubDistricts, setShowSubDistricts] = useState(false);
   
   // Validation errors
   const [errors, setErrors] = useState<Record<string, string>>({});
   
-  // Load districts when province changes
-  useEffect(() => {
-    if (province) {
-      const districtList = getDistrictsByProvince(addressData, province);
-      setDistricts(districtList);
-      
-      // Reset district and subdistrict if not in new list
-      if (!districtList.includes(district)) {
-        setDistrict('');
-        setSubDistrict('');
-        setPostalCode('');
-      }
-    } else {
-      setDistricts([]);
-      setDistrict('');
-      setSubDistrict('');
-      setPostalCode('');
-    }
-  }, [province, addressData, district]);
-  
-  // Load subdistricts when district changes
-  useEffect(() => {
-    if (province && district) {
-      const subDistrictList = getSubdistrictsByDistrict(addressData, province, district);
-      setSubDistricts(subDistrictList);
-      
-      // Reset subdistrict if not in new list
-      const currentSubDistrict = subDistrictList.find(s => s.subdistrict === subDistrict);
-      if (!currentSubDistrict) {
-        setSubDistrict('');
-        setPostalCode('');
-      }
-    } else {
-      setSubDistricts([]);
-      setSubDistrict('');
-      setPostalCode('');
-    }
-  }, [province, district, addressData, subDistrict]);
-  
-  // Auto-fill postal code when subdistrict is selected
-  useEffect(() => {
-    if (province && district && subDistrict) {
-      const code = getPostalCode(addressData, province, district, subDistrict);
-      if (code) {
-        setPostalCode(code.toString());
-      }
-    }
-  }, [province, district, subDistrict, addressData]);
-  
-  // Format phone number as user types
+  // Phone handling functions
   const handlePhoneChange = (value: string) => {
-    // Remove non-digits
     const digits = value.replace(/\D/g, '');
-    
-    // Limit to 10 digits
     if (digits.length <= 10) {
       setPhone(digits);
     }
   };
+
+  const validateThaiPhone = (phone: string): boolean => {
+    const cleaned = phone.replace(/[\s-]/g, '');
+    const mobileRegex = /^(08|09|06)\d{8}$/;
+    const landlineRegex = /^(02|03|04|05|07)\d{7}$/;
+    return mobileRegex.test(cleaned) || landlineRegex.test(cleaned);
+  };
+
+  const formatThaiPhone = (phone: string): string => {
+    const cleaned = phone.replace(/[\s-]/g, '');
+    
+    if (cleaned.length === 10 && cleaned.startsWith('0')) {
+      return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    } else if (cleaned.length === 9 && cleaned.startsWith('0')) {
+      return `${cleaned.slice(0, 2)}-${cleaned.slice(2, 5)}-${cleaned.slice(5)}`;
+    }
+    
+    return phone;
+  };
   
-  // Validate form
+  // Validation
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
     
@@ -141,36 +78,36 @@ export default function ShippingAddressForm({
     if (!phone) {
       newErrors.phone = 'กรุณากรอกเบอร์โทรศัพท์';
     } else if (!validateThaiPhone(phone)) {
-      newErrors.phone = 'เบอร์โทรศัพท์ไม่ถูกต้อง';
+      newErrors.phone = 'เบอร์โทรศัพท์ไม่ถูกต้อง (ตัวอย่าง: 081-234-5678)';
     }
     
     if (!addressLine1.trim()) {
       newErrors.addressLine1 = 'กรุณากรอกที่อยู่';
     }
     
-    if (!province) {
-      newErrors.province = 'กรุณาเลือกจังหวัด';
+    if (!subDistrict.trim()) {
+      newErrors.subDistrict = 'กรุณากรอกตำบล/แขวง';
     }
     
-    if (!district) {
-      newErrors.district = 'กรุณาเลือกอำเภอ/เขต';
+    if (!district.trim()) {
+      newErrors.district = 'กรุณากรอกอำเภอ/เขต';
     }
     
-    if (!subDistrict) {
-      newErrors.subDistrict = 'กรุณาเลือกตำบล/แขวง';
+    if (!province.trim()) {
+      newErrors.province = 'กรุณากรอกจังหวัด';
     }
     
     if (!postalCode) {
       newErrors.postalCode = 'กรุณากรอกรหัสไปรษณีย์';
-    } else if (!validatePostalCode(postalCode)) {
-      newErrors.postalCode = 'รหัสไปรษณีย์ไม่ถูกต้อง';
+    } else if (!/^\d{5}$/.test(postalCode)) {
+      newErrors.postalCode = 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก';
     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
   
-  // Handle form submission
+  // Submit handler
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -179,29 +116,20 @@ export default function ShippingAddressForm({
         fullName: fullName.trim(),
         phone: formatThaiPhone(phone),
         addressLine1: addressLine1.trim(),
-        addressLine2: addressLine2.trim() || undefined,
-        subDistrict,
-        district,
-        province,
+        subDistrict: subDistrict.trim(),
+        district: district.trim(),
+        province: province.trim(),
         postalCode
       };
+      
+      // Add addressLine2 only if it has value
+      if (addressLine2.trim()) {
+        address.addressLine2 = addressLine2.trim();
+      }
       
       onSubmit(address);
     }
   };
-  
-  // Filter functions
-  const filteredProvinces = provinces.filter(p => 
-    p.toLowerCase().includes(provinceSearch.toLowerCase())
-  );
-  
-  const filteredDistricts = districts.filter(d => 
-    d.toLowerCase().includes(districtSearch.toLowerCase())
-  );
-  
-  const filteredSubDistricts = subDistricts.filter(s => 
-    s.subdistrict.toLowerCase().includes(subDistrictSearch.toLowerCase())
-  );
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -218,7 +146,7 @@ export default function ShippingAddressForm({
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2">
           <User className="w-4 h-4 inline mr-1" />
-          ชื่อ-นามสกุล (ผู้รับ)
+          ชื่อ-นามสกุล (ผู้รับ) <span className="text-red-400">*</span>
         </label>
         <input
           type="text"
@@ -241,7 +169,7 @@ export default function ShippingAddressForm({
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2">
           <Phone className="w-4 h-4 inline mr-1" />
-          เบอร์โทรศัพท์
+          เบอร์โทรศัพท์ <span className="text-red-400">*</span>
         </label>
         <input
           type="tel"
@@ -250,8 +178,10 @@ export default function ShippingAddressForm({
           className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
             errors.phone ? 'border-red-400' : 'border-metaverse-purple/30'
           }`}
-          placeholder="08x-xxx-xxxx"
+          placeholder="081234xxxx"
+          maxLength={10}
         />
+        <p className="mt-1 text-xs text-white/40">กรอกเฉพาะตัวเลข 10 หลัก</p>
         {errors.phone && (
           <p className="mt-1 text-sm text-red-400 flex items-center">
             <AlertCircle className="w-4 h-4 mr-1" />
@@ -264,7 +194,7 @@ export default function ShippingAddressForm({
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2">
           <Home className="w-4 h-4 inline mr-1" />
-          ที่อยู่ (บ้านเลขที่, หมู่, ถนน)
+          ที่อยู่ <span className="text-red-400">*</span>
         </label>
         <input
           type="text"
@@ -273,7 +203,7 @@ export default function ShippingAddressForm({
           className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
             errors.addressLine1 ? 'border-red-400' : 'border-metaverse-purple/30'
           }`}
-          placeholder="123 หมู่ 4 ถนนสุขุมวิท"
+          placeholder="บ้านเลขที่ หมู่ ซอย ถนน"
         />
         {errors.addressLine1 && (
           <p className="mt-1 text-sm text-red-400 flex items-center">
@@ -286,205 +216,33 @@ export default function ShippingAddressForm({
       {/* Address Line 2 (Optional) */}
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2">
-          ที่อยู่เพิ่มเติม (ไม่บังคับ)
+          รายละเอียดเพิ่มเติม (ไม่บังคับ)
         </label>
         <input
           type="text"
           value={addressLine2}
           onChange={(e) => setAddressLine2(e.target.value)}
           className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40"
-          placeholder="อาคาร, ชั้น, ห้อง (ถ้ามี)"
+          placeholder="อาคาร ชั้น ห้อง หรือจุดสังเกต"
         />
       </div>
       
-      {/* Province */}
-      <div className="relative">
-        <label className="block text-sm font-medium text-white/80 mb-2">
-          จังหวัด
-        </label>
-        <div className="relative">
-          <input
-            type="text"
-            value={province}
-            onChange={(e) => {
-              setProvince(e.target.value);
-              setProvinceSearch(e.target.value);
-              setShowProvinces(true);
-            }}
-            onFocus={() => setShowProvinces(true)}
-            className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 pr-10 ${
-              errors.province ? 'border-red-400' : 'border-metaverse-purple/30'
-            }`}
-            placeholder="เลือกจังหวัด"
-          />
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
-        </div>
-        
-        {/* Province Dropdown */}
-        <AnimatePresence>
-          {showProvinces && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute z-10 w-full mt-1 bg-metaverse-black/95 backdrop-blur-md border border-metaverse-purple/30 rounded-xl shadow-xl max-h-60 overflow-y-auto"
-            >
-              {filteredProvinces.length > 0 ? (
-                filteredProvinces.map((prov) => (
-                  <button
-                    key={prov}
-                    type="button"
-                    onClick={() => {
-                      setProvince(prov);
-                      setProvinceSearch('');
-                      setShowProvinces(false);
-                    }}
-                    className="w-full px-4 py-3 text-left text-white hover:bg-metaverse-purple/20 transition flex items-center justify-between"
-                  >
-                    {prov}
-                    {province === prov && <Check className="w-4 h-4 text-green-400" />}
-                  </button>
-                ))
-              ) : (
-                <div className="px-4 py-3 text-white/40">ไม่พบจังหวัดที่ค้นหา</div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        {errors.province && (
-          <p className="mt-1 text-sm text-red-400 flex items-center">
-            <AlertCircle className="w-4 h-4 mr-1" />
-            {errors.province}
-          </p>
-        )}
-      </div>
-      
-      {/* District */}
-      <div className="relative">
-        <label className="block text-sm font-medium text-white/80 mb-2">
-          อำเภอ/เขต
-        </label>
-        <div className="relative">
-          <input
-            type="text"
-            value={district}
-            onChange={(e) => {
-              setDistrict(e.target.value);
-              setDistrictSearch(e.target.value);
-              setShowDistricts(true);
-            }}
-            onFocus={() => setShowDistricts(true)}
-            disabled={!province}
-            className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 pr-10 disabled:opacity-50 disabled:cursor-not-allowed ${
-              errors.district ? 'border-red-400' : 'border-metaverse-purple/30'
-            }`}
-            placeholder={province ? "เลือกอำเภอ/เขต" : "กรุณาเลือกจังหวัดก่อน"}
-          />
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
-        </div>
-        
-        {/* District Dropdown */}
-        <AnimatePresence>
-          {showDistricts && districts.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="absolute z-10 w-full mt-1 bg-metaverse-black/95 backdrop-blur-md border border-metaverse-purple/30 rounded-xl shadow-xl max-h-60 overflow-y-auto"
-            >
-              {filteredDistricts.length > 0 ? (
-                filteredDistricts.map((dist) => (
-                  <button
-                    key={dist}
-                    type="button"
-                    onClick={() => {
-                      setDistrict(dist);
-                      setDistrictSearch('');
-                      setShowDistricts(false);
-                    }}
-                    className="w-full px-4 py-3 text-left text-white hover:bg-metaverse-purple/20 transition flex items-center justify-between"
-                  >
-                    {dist}
-                    {district === dist && <Check className="w-4 h-4 text-green-400" />}
-                  </button>
-                ))
-              ) : (
-                <div className="px-4 py-3 text-white/40">ไม่พบอำเภอ/เขตที่ค้นหา</div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-        
-        {errors.district && (
-          <p className="mt-1 text-sm text-red-400 flex items-center">
-            <AlertCircle className="w-4 h-4 mr-1" />
-            {errors.district}
-          </p>
-        )}
-      </div>
-      
-      {/* Sub-district and Postal Code */}
+      {/* Sub-district and District */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Sub-district */}
-        <div className="relative">
+        <div>
           <label className="block text-sm font-medium text-white/80 mb-2">
-            ตำบล/แขวง
+            ตำบล/แขวง <span className="text-red-400">*</span>
           </label>
-          <div className="relative">
-            <input
-              type="text"
-              value={subDistrict}
-              onChange={(e) => {
-                setSubDistrict(e.target.value);
-                setSubDistrictSearch(e.target.value);
-                setShowSubDistricts(true);
-              }}
-              onFocus={() => setShowSubDistricts(true)}
-              disabled={!district}
-              className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 pr-10 disabled:opacity-50 disabled:cursor-not-allowed ${
-                errors.subDistrict ? 'border-red-400' : 'border-metaverse-purple/30'
-              }`}
-              placeholder={district ? "เลือกตำบล/แขวง" : "กรุณาเลือกอำเภอก่อน"}
-            />
-            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
-          </div>
-          
-          {/* Sub-district Dropdown */}
-          <AnimatePresence>
-            {showSubDistricts && subDistricts.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="absolute z-10 w-full mt-1 bg-metaverse-black/95 backdrop-blur-md border border-metaverse-purple/30 rounded-xl shadow-xl max-h-60 overflow-y-auto"
-              >
-                {filteredSubDistricts.length > 0 ? (
-                  filteredSubDistricts.map((sub) => (
-                    <button
-                      key={sub.subdistrict}
-                      type="button"
-                      onClick={() => {
-                        setSubDistrict(sub.subdistrict);
-                        setPostalCode(sub.postalCode.toString());
-                        setSubDistrictSearch('');
-                        setShowSubDistricts(false);
-                      }}
-                      className="w-full px-4 py-3 text-left text-white hover:bg-metaverse-purple/20 transition"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{sub.subdistrict}</span>
-                        <span className="text-sm text-white/60">{sub.postalCode}</span>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <div className="px-4 py-3 text-white/40">ไม่พบตำบล/แขวงที่ค้นหา</div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
+          <input
+            type="text"
+            value={subDistrict}
+            onChange={(e) => setSubDistrict(e.target.value)}
+            className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
+              errors.subDistrict ? 'border-red-400' : 'border-metaverse-purple/30'
+            }`}
+            placeholder="ตำบล หรือ แขวง"
+          />
           {errors.subDistrict && (
             <p className="mt-1 text-sm text-red-400 flex items-center">
               <AlertCircle className="w-4 h-4 mr-1" />
@@ -493,10 +251,57 @@ export default function ShippingAddressForm({
           )}
         </div>
         
+        {/* District */}
+        <div>
+          <label className="block text-sm font-medium text-white/80 mb-2">
+            อำเภอ/เขต <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            value={district}
+            onChange={(e) => setDistrict(e.target.value)}
+            className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
+              errors.district ? 'border-red-400' : 'border-metaverse-purple/30'
+            }`}
+            placeholder="อำเภอ หรือ เขต"
+          />
+          {errors.district && (
+            <p className="mt-1 text-sm text-red-400 flex items-center">
+              <AlertCircle className="w-4 h-4 mr-1" />
+              {errors.district}
+            </p>
+          )}
+        </div>
+      </div>
+      
+      {/* Province and Postal Code */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Province */}
+        <div>
+          <label className="block text-sm font-medium text-white/80 mb-2">
+            จังหวัด <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            value={province}
+            onChange={(e) => setProvince(e.target.value)}
+            className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
+              errors.province ? 'border-red-400' : 'border-metaverse-purple/30'
+            }`}
+            placeholder="จังหวัด"
+          />
+          {errors.province && (
+            <p className="mt-1 text-sm text-red-400 flex items-center">
+              <AlertCircle className="w-4 h-4 mr-1" />
+              {errors.province}
+            </p>
+          )}
+        </div>
+        
         {/* Postal Code */}
         <div>
           <label className="block text-sm font-medium text-white/80 mb-2">
-            รหัสไปรษณีย์
+            รหัสไปรษณีย์ <span className="text-red-400">*</span>
           </label>
           <input
             type="text"
@@ -516,21 +321,6 @@ export default function ShippingAddressForm({
           )}
         </div>
       </div>
-      
-      {/* Click outside to close dropdowns */}
-      {(showProvinces || showDistricts || showSubDistricts) && (
-        <div
-          className="fixed inset-0 z-0"
-          onClick={() => {
-            setShowProvinces(false);
-            setShowDistricts(false);
-            setShowSubDistricts(false);
-            setProvinceSearch('');
-            setDistrictSearch('');
-            setSubDistrictSearch('');
-          }}
-        />
-      )}
       
       {/* Actions */}
       <div className="flex gap-4 pt-4">

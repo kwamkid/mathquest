@@ -8,6 +8,7 @@ import { getCurrentUser } from '@/lib/firebase/auth';
 import { getUserRedemptions, cancelRedemption } from '@/lib/firebase/rewards';
 import { User } from '@/types';
 import { Redemption, RedemptionStatus, RewardType } from '@/types/avatar';
+import { useDialog } from '@/components/ui/Dialog';
 import { 
   ArrowLeft,
   Package,
@@ -38,6 +39,10 @@ export default function RedemptionHistoryPage() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  
+  // Dialogs
+  const successDialog = useDialog({ type: 'success' });
+  const errorDialog = useDialog({ type: 'error' });
   
   // Filters
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -105,16 +110,16 @@ export default function RedemptionHistoryPage() {
           experience: user.experience + selectedRedemption.expCost
         });
         
-        alert('ยกเลิกและคืน EXP เรียบร้อยแล้ว');
+        successDialog.showDialog('ยกเลิกและคืน EXP เรียบร้อยแล้ว');
         setShowCancelModal(false);
         setSelectedRedemption(null);
         setCancelReason('');
       } else {
-        alert(result.message);
+        errorDialog.showDialog(result.message);
       }
     } catch (error) {
       console.error('Cancel error:', error);
-      alert('เกิดข้อผิดพลาดในการยกเลิก');
+      errorDialog.showDialog('เกิดข้อผิดพลาดในการยกเลิก');
     } finally {
       setCancelling(false);
     }
@@ -205,6 +210,17 @@ export default function RedemptionHistoryPage() {
     }
   };
 
+  // Render reward icon or image
+  const renderRewardIcon = (redemption: Redemption) => {
+    // Note: redemption doesn't have imageUrl, so we just use emoji for now
+    // You might want to add imageUrl to Redemption type or fetch reward data
+    return (
+      <div className="text-4xl">
+        {getRewardTypeIcon(redemption.rewardType)}
+      </div>
+    );
+  };
+
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -233,6 +249,10 @@ export default function RedemptionHistoryPage() {
 
   return (
     <div className="min-h-screen bg-metaverse-black py-8">
+      {/* Dialogs */}
+      <successDialog.Dialog />
+      <errorDialog.Dialog />
+      
       {/* Background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
@@ -358,9 +378,7 @@ export default function RedemptionHistoryPage() {
                     {/* Icon & Basic Info */}
                     <div className="flex items-start gap-4 flex-1">
                       {/* Reward Icon */}
-                      <div className="text-4xl">
-                        {getRewardTypeIcon(redemption.rewardType)}
-                      </div>
+                      {renderRewardIcon(redemption)}
                       
                       {/* Info */}
                       <div className="flex-1">

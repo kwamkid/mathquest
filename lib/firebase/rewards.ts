@@ -172,7 +172,10 @@ export const purchaseReward = async (
         itemId: reward.itemId
       };
       
-      transaction.set(redemptionRef, redemption);
+      // Clean undefined values before saving to Firestore
+      const cleanedRedemption = JSON.parse(JSON.stringify(redemption));
+      
+      transaction.set(redemptionRef, cleanedRedemption);
       
       // 6. Deduct EXP from user
       transaction.update(userRef, {
@@ -381,7 +384,7 @@ export const cancelRedemption = async (
 ): Promise<{ success: boolean; message: string }> => {
   try {
     return await runTransaction(db, async (transaction) => {
-      // Get redemption
+      // 1. Read all documents first
       const redemptionRef = doc(db, COLLECTIONS.REDEMPTIONS, redemptionId);
       const redemptionDoc = await transaction.get(redemptionRef);
       
@@ -400,17 +403,23 @@ export const cancelRedemption = async (
         throw new Error('ไม่สามารถยกเลิกรายการที่ดำเนินการแล้ว');
       }
       
-      // Refund EXP
+      // 2. Read user document
       const userRef = doc(db, COLLECTIONS.USERS, userId);
       const userDoc = await transaction.get(userRef);
       
-      if (userDoc.exists()) {
-        const currentExp = userDoc.data().experience || 0;
-        transaction.update(userRef, {
-          experience: currentExp + redemption.expCost
-        });
+      if (!userDoc.exists()) {
+        throw new Error('ไม่พบข้อมูลผู้ใช้');
       }
       
+      const currentExp = userDoc.data().experience || 0;
+      
+      // 3. Read reward document (if need to restore stock)
+      const rewardRef = doc(db, COLLECTIONS.REWARDS, redemption.rewardId);
+      const rewardDoc = await transaction.get(rewardRef);
+      const hasStock = rewardDoc.exists() && rewardDoc.data().stock !== undefined;
+      const currentStock = hasStock ? rewardDoc.data().stock : 0;
+      
+      // 4. Now do all writes
       // Update redemption status
       transaction.update(redemptionRef, {
         status: RedemptionStatus.CANCELLED,
@@ -418,17 +427,16 @@ export const cancelRedemption = async (
         updatedAt: new Date().toISOString()
       });
       
-      // Restore stock if applicable
-      const rewardRef = doc(db, COLLECTIONS.REWARDS, redemption.rewardId);
-      const rewardDoc = await transaction.get(rewardRef);
+      // Refund EXP to user
+      transaction.update(userRef, {
+        experience: currentExp + redemption.expCost
+      });
       
-      if (rewardDoc.exists()) {
-        const reward = rewardDoc.data();
-        if (reward.stock !== undefined) {
-          transaction.update(rewardRef, {
-            stock: reward.stock + 1
-          });
-        }
+      // Restore stock if applicable
+      if (hasStock) {
+        transaction.update(rewardRef, {
+          stock: currentStock + 1
+        });
       }
       
       return {
