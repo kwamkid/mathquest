@@ -58,6 +58,11 @@ export default function AvatarPreview({
           >
             <AvatarDisplay
               avatarData={currentAvatarData}
+              premiumAvatarUrl={
+                currentAvatarData.currentAvatar.type === 'premium' 
+                  ? availableAvatars.premium.find(a => a.id === currentAvatarData.currentAvatar.id)?.svgUrl
+                  : undefined
+              }
               size="xlarge"
               showEffects={true}
             />
@@ -145,8 +150,27 @@ export default function AvatarPreview({
                     whileHover={owned ? { scale: 1.05 } : {}}
                     whileTap={owned ? { scale: 0.95 } : {}}
                   >
-                    {/* Avatar Image Placeholder */}
-                    <div className="w-12 h-12 bg-metaverse-purple/20 rounded-full mb-1" />
+                    {/* Avatar Image */}
+                    <div className="w-12 h-12 mb-1 relative overflow-hidden rounded-full bg-metaverse-purple/20">
+                      {avatar.svgUrl ? (
+                        <img 
+                          src={avatar.svgUrl} 
+                          alt={avatar.name}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            // Fallback if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-2xl">🦸</div>';
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl">🦸</div>
+                      )}
+                    </div>
                     
                     {/* Name */}
                     <p className="text-xs text-white/80 truncate">{avatar.name}</p>
@@ -225,8 +249,27 @@ export default function AvatarPreview({
                     whileHover={owned ? { scale: 1.05 } : {}}
                     whileTap={owned ? { scale: 0.95 } : {}}
                   >
-                    {/* Accessory Image Placeholder */}
-                    <div className="w-10 h-10 bg-metaverse-purple/20 rounded-lg mb-1 mx-auto" />
+                    {/* Accessory Image */}
+                    <div className="w-10 h-10 mb-1 mx-auto relative overflow-hidden rounded-lg bg-metaverse-purple/20">
+                      {accessory.svgUrl ? (
+                        <img 
+                          src={accessory.svgUrl} 
+                          alt={accessory.name}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            // Fallback if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = '<div class="w-full h-full flex items-center justify-center text-xl">👑</div>';
+                            }
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xl">👑</div>
+                      )}
+                    </div>
                     
                     {/* Name */}
                     <p className="text-xs text-white/80 truncate">{accessory.name}</p>

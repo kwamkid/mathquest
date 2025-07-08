@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { getUserInventory } from '@/lib/firebase/rewards';
-import { updateDoc, doc, getDoc } from 'firebase/firestore';
+import { getUserInventory, getReward } from '@/lib/firebase/rewards';
+import { updateDoc, doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { 
   UserAvatarData, 
@@ -105,7 +105,52 @@ export default function MyAvatarPage() {
       const inventory = await getUserInventory(user.id);
       console.log('User inventory:', inventory);
       
-      if (inventory) {
+      let avatarIds: string[] = [];
+      let accessoryIds: string[] = [];
+      let titleBadgeIds: string[] = [];
+      
+      if (!inventory) {
+        // Try to create inventory from user's redemptions
+        console.log('No inventory found, checking redemptions...');
+        
+        // Get user's successful redemptions
+        const redemptionsQuery = query(
+          collection(db, 'redemptions'),
+          where('userId', '==', user.id),
+          where('status', 'in', ['approved', 'delivered', 'received'])
+        );
+        
+        const redemptionsSnapshot = await getDocs(redemptionsQuery);
+        const redemptions = redemptionsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        
+        console.log('Found redemptions:', redemptions);
+        
+        // Extract avatar and accessory IDs from redemptions
+        redemptions.forEach((redemption: any) => {
+          if (redemption.rewardType === 'avatar' && redemption.itemId) {
+            avatarIds.push(redemption.itemId);
+          } else if (redemption.rewardType === 'accessory' && redemption.itemId) {
+            accessoryIds.push(redemption.itemId);
+          } else if (redemption.rewardType === 'titleBadge' && redemption.itemId) {
+            titleBadgeIds.push(redemption.itemId);
+          }
+        });
+        
+        console.log('Avatar IDs from redemptions:', avatarIds);
+        console.log('Accessory IDs from redemptions:', accessoryIds);
+        console.log('Title Badge IDs from redemptions:', titleBadgeIds);
+        
+        // Update avatarData with found items
+        if (avatarIds.length > 0) {
+          avatarData.unlockedPremiumAvatars = [...new Set([...avatarData.unlockedPremiumAvatars, ...avatarIds])];
+        }
+        if (accessoryIds.length > 0) {
+          avatarData.unlockedAccessories = [...new Set([...avatarData.unlockedAccessories, ...accessoryIds])];
+        }
+      } else {
         // Update avatarData with inventory data
         if (inventory.avatars.length > 0) {
           avatarData.unlockedPremiumAvatars = [...new Set([...avatarData.unlockedPremiumAvatars, ...inventory.avatars])];
@@ -114,51 +159,124 @@ export default function MyAvatarPage() {
           avatarData.unlockedAccessories = [...new Set([...avatarData.unlockedAccessories, ...inventory.accessories])];
         }
         
-        // Load premium avatars from inventory
-        const loadedPremiumAvatars: PremiumAvatar[] = avatarData.unlockedPremiumAvatars.map(avatarId => ({
-          id: avatarId,
-          name: getPremiumAvatarName(avatarId),
-          svgUrl: `/avatars/premium/${avatarId}.svg`,
-          price: 0, // Already owned
-          rarity: getPremiumAvatarRarity(avatarId),
-          category: 'special' as const
-        }));
-        setPremiumAvatars(loadedPremiumAvatars);
-        console.log('Loaded premium avatars:', loadedPremiumAvatars);
+        // Get IDs from inventory for later use
+        avatarIds = inventory.avatars;
+        accessoryIds = inventory.accessories;
+        titleBadgeIds = inventory.titleBadges;
+      }
+      
+      // Load premium avatars from inventory with actual reward data
+      const loadedPremiumAvatars: PremiumAvatar[] = [];
+      
+      console.log('Processing premium avatars:', avatarData.unlockedPremiumAvatars);
+      
+      for (const avatarId of avatarData.unlockedPremiumAvatars) {
+        console.log('Getting reward data for avatar:', avatarId);
         
-        // Load accessories from inventory
-        const loadedAccessories: AvatarAccessory[] = avatarData.unlockedAccessories.map(accessoryId => {
-          const type = getAccessoryType(accessoryId);
-          return {
+        // Try to get reward data for image URL
+        const rewardData = await getReward(avatarId);
+        console.log('Reward data for', avatarId, ':', rewardData);
+        
+        if (rewardData) {
+          const avatarObj = {
+            id: avatarId,
+            name: rewardData.name,
+            description: rewardData.description,
+            svgUrl: rewardData.imageUrl || '', // Use actual image URL from reward
+            price: 0, // Already owned
+            rarity: getPremiumAvatarRarity(avatarId),
+            category: 'special' as const
+          };
+          console.log('Created avatar object:', avatarObj);
+          loadedPremiumAvatars.push(avatarObj);
+        } else {
+          // Fallback if no reward data found
+          console.log('No reward data found for:', avatarId);
+          loadedPremiumAvatars.push({
+            id: avatarId,
+            name: getPremiumAvatarName(avatarId),
+            svgUrl: '', // Will show placeholder
+            price: 0,
+            rarity: getPremiumAvatarRarity(avatarId),
+            category: 'special' as const
+          });
+        }
+      }
+      
+      setPremiumAvatars(loadedPremiumAvatars);
+      console.log('Final loaded premium avatars:', loadedPremiumAvatars);
+      
+      // Load accessories from inventory with actual reward data
+      const loadedAccessories: AvatarAccessory[] = [];
+      
+      for (const accessoryId of avatarData.unlockedAccessories) {
+        // Try to get reward data for image URL
+        const rewardData = await getReward(accessoryId);
+        const type = getAccessoryType(accessoryId);
+        
+        if (rewardData) {
+          loadedAccessories.push({
+            id: accessoryId,
+            name: rewardData.name,
+            description: rewardData.description,
+            type: type,
+            svgUrl: rewardData.imageUrl || '', // Use actual image URL from reward
+            price: 0, // Already owned
+            rarity: getAccessoryRarity(accessoryId)
+          });
+        } else {
+          // Fallback if no reward data found
+          loadedAccessories.push({
             id: accessoryId,
             name: getAccessoryName(accessoryId),
             type: type,
-            svgUrl: `/accessories/${type}s/${accessoryId}.svg`,
-            price: 0, // Already owned
+            svgUrl: '', // Will show placeholder
+            price: 0,
             rarity: getAccessoryRarity(accessoryId)
-          };
-        });
-        setAccessories(loadedAccessories);
-        console.log('Loaded accessories:', loadedAccessories);
-        
-        // Load title badges from inventory
-        const loadedTitles: TitleBadge[] = inventory.titleBadges.map(titleId => ({
-          id: titleId,
-          name: getTitleName(titleId),
-          description: `ได้รับจากการแลกรางวัล`,
-          rarity: getTitleRarity(titleId),
-          color: getTitleColor(titleId)
-        }));
-        setTitleBadges(loadedTitles);
-        
-        // Sync avatarData back to user if needed
-        if (freshUserData?.avatarData?.unlockedPremiumAvatars?.length !== avatarData.unlockedPremiumAvatars.length ||
-            freshUserData?.avatarData?.unlockedAccessories?.length !== avatarData.unlockedAccessories.length) {
-          console.log('Syncing avatar data back to user...');
-          await updateDoc(doc(db, 'users', user.id), {
-            avatarData: avatarData
           });
         }
+      }
+      
+      setAccessories(loadedAccessories);
+      console.log('Loaded accessories:', loadedAccessories);
+      
+      // Load title badges
+      const loadedTitles: TitleBadge[] = [];
+      const allTitleIds = [...new Set([...(inventory?.titleBadges || []), ...titleBadgeIds])];
+      
+      for (const titleId of allTitleIds) {
+        // Try to get reward data
+        const rewardData = await getReward(titleId);
+        
+        if (rewardData) {
+          loadedTitles.push({
+            id: titleId,
+            name: rewardData.name,
+            description: rewardData.description || 'ได้รับจากการแลกรางวัล',
+            rarity: getTitleRarity(titleId),
+            color: getTitleColor(titleId)
+          });
+        } else {
+          // Fallback
+          loadedTitles.push({
+            id: titleId,
+            name: getTitleName(titleId),
+            description: 'ได้รับจากการแลกรางวัล',
+            rarity: getTitleRarity(titleId),
+            color: getTitleColor(titleId)
+          });
+        }
+      }
+      
+      setTitleBadges(loadedTitles);
+      
+      // Sync avatarData back to user if needed
+      if (freshUserData?.avatarData?.unlockedPremiumAvatars?.length !== avatarData.unlockedPremiumAvatars.length ||
+          freshUserData?.avatarData?.unlockedAccessories?.length !== avatarData.unlockedAccessories.length) {
+        console.log('Syncing avatar data back to user...');
+        await updateDoc(doc(db, 'users', user.id), {
+          avatarData: avatarData
+        });
       }
       
       setCurrentAvatarData(avatarData);
@@ -171,32 +289,24 @@ export default function MyAvatarPage() {
   // Helper functions for names and properties
   const getPremiumAvatarName = (id: string): string => {
     const names: Record<string, string> = {
-      'cyber_warrior': 'Cyber Warrior',
-      'dragon_knight': 'Dragon Knight',
-      'space_explorer': 'Space Explorer',
-      'mystic_mage': 'Mystic Mage',
-      'shadow_ninja': 'Shadow Ninja',
-      'phoenix_guardian': 'Phoenix Guardian',
-      'dragon_sodiac': 'Dragon Sodiac',
-      'cute_dragon': 'Cute Dragon',
-      // Map reward IDs to names
-      'xUE45PptWWAN6JjQqfzp': 'หนังสือ เกมเศรษฐี', // This is physical, not avatar
+      'avatar-cyber-warrior': 'Cyber Warrior',
+      'avatar-dragon-knight': 'Dragon Knight',
+      'avatar-space-explorer': 'Space Explorer',
+      'avatar-mystic-mage': 'Mystic Mage',
+      'avatar-shadow-ninja': 'Shadow Ninja',
+      'avatar-phoenix-guardian': 'Phoenix Guardian',
     };
-    // If it's a Firestore ID, try to extract name from ID or use as-is
-    if (id.length > 20) { // Likely a Firestore auto-generated ID
-      return 'Custom Avatar';
-    }
-    return names[id] || id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return names[id] || id.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const getPremiumAvatarRarity = (id: string): 'common' | 'rare' | 'epic' | 'legendary' => {
     const rarities: Record<string, 'common' | 'rare' | 'epic' | 'legendary'> = {
-      'cyber_warrior': 'rare',
-      'dragon_knight': 'epic',
-      'space_explorer': 'rare',
-      'mystic_mage': 'epic',
-      'shadow_ninja': 'legendary',
-      'phoenix_guardian': 'legendary'
+      'avatar-cyber-warrior': 'rare',
+      'avatar-dragon-knight': 'epic',
+      'avatar-space-explorer': 'rare',
+      'avatar-mystic-mage': 'epic',
+      'avatar-shadow-ninja': 'legendary',
+      'avatar-phoenix-guardian': 'legendary'
     };
     return rarities[id] || 'rare';
   };
@@ -210,20 +320,28 @@ export default function MyAvatarPage() {
     if (id.includes('necklace') || id.includes('chain')) return AccessoryType.NECKLACE;
     if (id.includes('background') || id.includes('bg')) return AccessoryType.BACKGROUND;
     
+    // Check prefix
+    if (id.startsWith('acc-hat')) return AccessoryType.HAT;
+    if (id.startsWith('acc-glasses')) return AccessoryType.GLASSES;
+    if (id.startsWith('acc-mask')) return AccessoryType.MASK;
+    if (id.startsWith('acc-earring')) return AccessoryType.EARRING;
+    if (id.startsWith('acc-necklace')) return AccessoryType.NECKLACE;
+    if (id.startsWith('acc-background')) return AccessoryType.BACKGROUND;
+    
     // Default to hat if can't determine
     return AccessoryType.HAT;
   };
 
   const getAccessoryName = (id: string): string => {
     const names: Record<string, string> = {
-      'hat_crown': 'Golden Crown',
-      'hat_wizard': 'Wizard Hat',
-      'glasses_cool': 'Cool Sunglasses',
-      'glasses_smart': 'Smart Glasses',
-      'mask_hero': 'Hero Mask',
-      'necklace_gold': 'Gold Chain'
+      'acc-hat-crown': 'Golden Crown',
+      'acc-hat-wizard': 'Wizard Hat',
+      'acc-glasses-cool': 'Cool Sunglasses',
+      'acc-glasses-smart': 'Smart Glasses',
+      'acc-mask-hero': 'Hero Mask',
+      'acc-necklace-gold': 'Gold Chain'
     };
-    return names[id] || id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return names[id] || id.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const getAccessoryRarity = (id: string): 'common' | 'rare' | 'epic' | 'legendary' => {
@@ -234,30 +352,30 @@ export default function MyAvatarPage() {
 
   const getTitleName = (id: string): string => {
     const titles: Record<string, string> = {
-      'math-master': 'เซียนเลข',
-      'speed-demon': 'เร็วสายฟ้า',
-      'perfect-scorer': 'นักแม่นยำ',
-      'dedication-hero': 'ผู้มุ่งมั่น',
-      'legend': 'ตำนาน',
-      'champion': 'แชมป์'
+      'title-math-master': 'เซียนเลข',
+      'title-speed-demon': 'เร็วสายฟ้า',
+      'title-perfect-scorer': 'นักแม่นยำ',
+      'title-dedication-hero': 'ผู้มุ่งมั่น',
+      'title-legend': 'ตำนาน',
+      'title-champion': 'แชมป์'
     };
-    return titles[id] || id;
+    return titles[id] || id.replace(/[-_]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   const getTitleRarity = (id: string): 'common' | 'rare' | 'epic' | 'legendary' => {
-    if (id === 'legend' || id === 'champion') return 'legendary';
-    if (id === 'math-master' || id === 'perfect-scorer') return 'epic';
+    if (id.includes('legend') || id.includes('champion')) return 'legendary';
+    if (id.includes('math-master') || id.includes('perfect-scorer')) return 'epic';
     return 'rare';
   };
 
   const getTitleColor = (id: string): string => {
     const colors: Record<string, string> = {
-      'legend': '#FFD700',
-      'champion': '#FF6B6B',
-      'math-master': '#9333EA',
-      'speed-demon': '#3B82F6',
-      'perfect-scorer': '#10B981',
-      'dedication-hero': '#F59E0B'
+      'title-legend': '#FFD700',
+      'title-champion': '#FF6B6B',
+      'title-math-master': '#9333EA',
+      'title-speed-demon': '#3B82F6',
+      'title-perfect-scorer': '#10B981',
+      'title-dedication-hero': '#F59E0B'
     };
     return colors[id] || '#6B7280';
   };
@@ -641,7 +759,7 @@ export default function MyAvatarPage() {
                   <div className="text-center py-8">
                     <Crown className="w-12 h-12 text-white/20 mx-auto mb-3" />
                     <p className="text-white/40">ยังไม่มี Title Badge</p>
-                    <p className="text-xs text-white/30 mt-1">เล่นเกมเพื่อปลดล็อค Title Badge พิเศษ!</p>
+                    <p className="text-xs text-white/30 mt-1">แลกรางวัลเพื่อปลดล็อค Title Badge พิเศษ!</p>
                   </div>
                 )}
               </motion.div>

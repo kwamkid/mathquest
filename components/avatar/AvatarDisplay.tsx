@@ -5,11 +5,11 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { UserAvatarData } from '@/types/avatar';
 import { Crown, Sparkles } from 'lucide-react';
-import { getAvatarEmoji } from '@/lib/data/avatars';
 
 interface AvatarDisplayProps {
   avatarData?: UserAvatarData;
   basicAvatar?: string;  // emoji avatar for backward compatibility
+  premiumAvatarUrl?: string; // URL for premium avatar
   size?: 'small' | 'medium' | 'large' | 'xlarge';
   showEffects?: boolean;
   className?: string;
@@ -21,6 +21,7 @@ interface AvatarDisplayProps {
 export default function AvatarDisplay({
   avatarData,
   basicAvatar,
+  premiumAvatarUrl,
   size = 'medium',
   showEffects = true,
   className = '',
@@ -28,8 +29,7 @@ export default function AvatarDisplay({
   titleBadge,
   titleColor = '#FFD700'
 }: AvatarDisplayProps) {
-  const [svgContent, setSvgContent] = useState<string | null>(null);
-  const [accessorySvgs, setAccessorySvgs] = useState<Record<string, string>>({});
+  const [imageError, setImageError] = useState(false);
 
   // Size configurations
   const sizeConfig = {
@@ -55,31 +55,10 @@ export default function AvatarDisplay({
     return avatarMap[avatarId] || '👤';
   };
 
-  // Load SVG content for premium avatars
+  // Reset error state when URL changes
   useEffect(() => {
-    if (avatarData?.currentAvatar.type === 'premium' && avatarData.currentAvatar.id) {
-      // In real app, fetch from storage/CDN
-      // For now, we'll simulate with placeholder
-      setSvgContent(`/avatars/premium/${avatarData.currentAvatar.id}.svg`);
-      
-      // Load accessories SVGs
-      const accessories = avatarData.currentAvatar.accessories;
-      const loadAccessories = async () => {
-        const svgs: Record<string, string> = {};
-        
-        for (const [type, id] of Object.entries(accessories)) {
-          if (id) {
-            // Simulate loading accessory SVG
-            svgs[type] = `/accessories/${type}s/${id}.svg`;
-          }
-        }
-        
-        setAccessorySvgs(svgs);
-      };
-      
-      loadAccessories();
-    }
-  }, [avatarData]);
+    setImageError(false);
+  }, [premiumAvatarUrl]);
 
   // Render basic emoji avatar
   const renderBasicAvatar = () => {
@@ -103,35 +82,26 @@ export default function AvatarDisplay({
     );
   };
 
-  // Render premium SVG avatar with accessories
+  // Render premium avatar
   const renderPremiumAvatar = () => {
+    if (imageError || !premiumAvatarUrl) {
+      // Fallback to emoji if image fails
+      return renderBasicAvatar();
+    }
+
     return (
-      <div className={`relative ${config.svg}`}>
-        {/* Base Avatar SVG */}
-        <div className="absolute inset-0">
-          {svgContent ? (
-            <img 
-              src={svgContent} 
-              alt="Avatar"
-              className="w-full h-full object-contain"
-            />
-          ) : (
-            <div className="w-full h-full bg-metaverse-purple/20 rounded-full animate-pulse" />
-          )}
-        </div>
+      <div className={`relative ${config.svg} overflow-hidden rounded-full`}>
+        <img 
+          src={premiumAvatarUrl} 
+          alt="Premium Avatar"
+          className="w-full h-full object-contain"
+          onError={() => {
+            console.error('Failed to load premium avatar:', premiumAvatarUrl);
+            setImageError(true);
+          }}
+        />
         
-        {/* Accessories Layer */}
-        {Object.entries(accessorySvgs).map(([type, svgPath]) => (
-          <div key={type} className="absolute inset-0 pointer-events-none">
-            <img 
-              src={svgPath} 
-              alt={type}
-              className="w-full h-full object-contain"
-            />
-          </div>
-        ))}
-        
-        {/* Special effect for legendary items */}
+        {/* Special effect for premium avatars */}
         {showEffects && (
           <motion.div
             className="absolute inset-0 pointer-events-none"
@@ -151,7 +121,7 @@ export default function AvatarDisplay({
   };
 
   // Determine which avatar type to render
-  const isBasicAvatar = !avatarData || avatarData.currentAvatar.type === 'basic';
+  const isBasicAvatar = !avatarData || avatarData.currentAvatar.type === 'basic' || !premiumAvatarUrl;
 
   return (
     <div className={`relative inline-block ${className}`}>
@@ -239,7 +209,7 @@ function RarityBadge({ rarity, size }: RarityBadgeProps) {
     common: 'bg-gray-500',
     rare: 'bg-blue-500',
     epic: 'bg-purple-500',
-    legendary: 'bg-gradient-to-r from-yellow-400 to-orange-400'
+    legendary: 'bg-gradient-to-r from-yellow-400 to-orange-500'
   };
   
   const sizes = {
