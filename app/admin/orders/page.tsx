@@ -18,6 +18,7 @@ import { updateRedemptionStatus } from '@/lib/firebase/rewards';
 import { Redemption, RedemptionStatus, RewardType } from '@/types/avatar';
 import { User } from '@/types';
 import { useDialog } from '@/components/ui/Dialog';
+import AdminAvatarDisplay from '@/components/admin/AdminAvatarDisplay';
 import { 
   Package, 
   Clock, 
@@ -39,15 +40,19 @@ import {
   Copy,
   ExternalLink,
   RefreshCw,
-  ChevronRight
+  ChevronRight,
+  Image
 } from 'lucide-react';
 
 interface RedemptionWithUser extends Redemption {
   user?: {
+    id: string;
     username: string;
     displayName?: string;
     school: string;
     grade: string;
+    avatar?: string;
+    avatarData?: any;
   };
 }
 
@@ -104,10 +109,13 @@ export default function AdminOrdersPage() {
           redemptionsList.push({
             ...redemption,
             user: {
+              id: redemption.userId,
               username: userData.username,
               displayName: userData.displayName,
               school: userData.school,
-              grade: userData.grade
+              grade: userData.grade,
+              avatar: userData.avatar,
+              avatarData: userData.avatarData
             }
           });
         } else {
@@ -188,20 +196,71 @@ export default function AdminOrdersPage() {
   const handleSubmitUpdate = async () => {
     if (!selectedRedemption) return;
 
+    console.log('Starting update:', {
+      redemptionId: selectedRedemption.id,
+      currentStatus: selectedRedemption.status,
+      newStatus: updateStatus,
+      rewardType: selectedRedemption.rewardType
+    });
+
     setUpdating(true);
     try {
+      // ถ้าเป็นการยกเลิก digital reward ให้ใช้ status REFUNDED แทน CANCELLED
+      let finalStatus = updateStatus;
+      if (updateStatus === RedemptionStatus.CANCELLED && 
+          selectedRedemption.rewardType !== RewardType.PHYSICAL) {
+        finalStatus = RedemptionStatus.REFUNDED;
+        console.log('Changed status to REFUNDED for digital reward');
+      }
+
+      console.log('Calling updateRedemptionStatus with:', finalStatus);
+
       const result = await updateRedemptionStatus(
         selectedRedemption.id,
-        updateStatus,
+        finalStatus,
         trackingNumber || undefined,
-        adminNotes || undefined
+        adminNotes || 'ยกเลิกและคืน EXP โดย Admin'
       );
 
+      console.log('updateRedemptionStatus result:', result);
+
       if (result.success) {
+        // ถ้าเป็นการ refund digital reward ต้องคืน EXP
+        if (finalStatus === RedemptionStatus.REFUNDED) {
+          console.log('Refunding EXP to user:', selectedRedemption.userId);
+          
+          // คืน EXP ให้ user
+          const userRef = doc(db, 'users', selectedRedemption.userId);
+          const userDoc = await getDoc(userRef);
+          if (userDoc.exists()) {
+            const currentExp = userDoc.data().experience || 0;
+            const newExp = currentExp + selectedRedemption.expCost;
+            
+            console.log('Updating user EXP:', {
+              currentExp,
+              refundAmount: selectedRedemption.expCost,
+              newExp
+            });
+            
+            await updateDoc(userRef, {
+              experience: newExp
+            });
+            
+            console.log('EXP refunded successfully');
+          } else {
+            console.error('User document not found:', selectedRedemption.userId);
+          }
+        }
+
         await loadRedemptions();
         setShowUpdateModal(false);
-        successDialog.showDialog('อัพเดทสถานะเรียบร้อยแล้ว');
+        successDialog.showDialog(
+          finalStatus === RedemptionStatus.REFUNDED 
+            ? `ยกเลิกและคืน ${selectedRedemption.expCost} EXP เรียบร้อยแล้ว`
+            : 'อัพเดทสถานะเรียบร้อยแล้ว'
+        );
       } else {
+        console.error('Update failed:', result.message);
         errorDialog.showDialog(result.message);
       }
     } catch (error) {
@@ -586,26 +645,46 @@ export default function AdminOrdersPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ delay: index * 0.05 }}
-                className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30"
+                className="glass-dark rounded-xl p-4 border border-metaverse-purple/30"
               >
                 <div className="flex flex-col lg:flex-row gap-4">
                   {/* Order Info */}
                   <div className="flex-1">
                     <div className="flex items-start gap-4">
-                      {/* Icon */}
-                      <div className="text-4xl">
-                        {getRewardTypeIcon(redemption.rewardType)}
+                      {/* Reward Image */}
+                      <div className="flex-shrink-0">
+                        {redemption.rewardImageUrl ? (
+                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-metaverse-purple/20 border border-metaverse-purple/30">
+                            <img 
+                              src={redemption.rewardImageUrl}
+                              alt={redemption.rewardName}
+                              className="w-full h-full object-contain"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-2xl">${getRewardTypeIcon(redemption.rewardType)}</div>`;
+                                }
+                              }}
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-16 h-16 rounded-lg bg-metaverse-purple/20 border border-metaverse-purple/30 flex items-center justify-center text-2xl">
+                            {getRewardTypeIcon(redemption.rewardType)}
+                          </div>
+                        )}
                       </div>
                       
                       {/* Details */}
                       <div className="flex-1">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h3 className="text-xl font-bold text-white mb-1">
+                            <h3 className="text-lg font-bold text-white mb-0.5">
                               {redemption.rewardName}
                             </h3>
                             
-                            <div className="flex flex-wrap items-center gap-4 text-sm text-white/60">
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-white/60">
                               <div>
                                 Order: <span className="font-mono text-white/80">#{redemption.id.slice(-8)}</span>
                               </div>
@@ -628,19 +707,30 @@ export default function AdminOrdersPage() {
                         </div>
                         
                         {/* User Info */}
-                        <div className="mt-3 glass rounded-lg p-3">
-                          <p className="text-sm text-white/80">
-                            <strong>ผู้ใช้:</strong> @{redemption.user?.username}
-                            {redemption.user?.displayName && ` (${redemption.user.displayName})`}
-                          </p>
-                          <p className="text-sm text-white/60">
-                            {redemption.user?.school} - {redemption.user?.grade}
-                          </p>
+                        <div className="mt-2 glass rounded-lg p-2 flex items-center gap-2">
+                          {redemption.user && (
+                            <AdminAvatarDisplay
+                              userId={redemption.user.id}
+                              avatarData={redemption.user.avatarData}
+                              basicAvatar={redemption.user.avatar}
+                              size="tiny"
+                              showAccessories={true}
+                            />
+                          )}
+                          <div>
+                            <p className="text-xs text-white/80">
+                              <strong>ผู้ใช้:</strong> @{redemption.user?.username}
+                              {redemption.user?.displayName && ` (${redemption.user.displayName})`}
+                            </p>
+                            <p className="text-xs text-white/60">
+                              {redemption.user?.school} - {redemption.user?.grade}
+                            </p>
+                          </div>
                         </div>
                         
                         {/* Shipping Preview (if physical) */}
                         {isPhysical && redemption.shippingAddress && (
-                          <div className="mt-3 flex items-start gap-2 text-sm text-white/60">
+                          <div className="mt-2 flex items-start gap-2 text-xs text-white/60">
                             <MapPin className="w-4 h-4 mt-0.5" />
                             <div>
                               <p>{redemption.shippingAddress.fullName}</p>
@@ -649,11 +739,21 @@ export default function AdminOrdersPage() {
                           </div>
                         )}
                         
+                        {/* Digital Reward Notice */}
+                        {!isPhysical && redemption.status === RedemptionStatus.DELIVERED && (
+                          <div className="mt-2 glass rounded-lg p-1.5 inline-block bg-green-400/10 border border-green-400/30">
+                            <p className="text-xs text-green-400 flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              ได้รับรางวัลแล้วทันที
+                            </p>
+                          </div>
+                        )}
+                        
                         {/* Tracking Number */}
                         {redemption.trackingNumber && (
-                          <div className="mt-3 glass rounded-lg p-2 inline-block">
+                          <div className="mt-2 glass rounded-lg p-1.5 inline-block">
                             <p className="text-xs text-white/60">Tracking:</p>
-                            <code className="text-sm text-white font-mono">
+                            <code className="text-xs text-white font-mono">
                               {redemption.trackingNumber}
                             </code>
                           </div>
@@ -664,27 +764,29 @@ export default function AdminOrdersPage() {
                   
                   {/* Actions */}
                   <div className="flex lg:flex-col gap-2 lg:justify-center">
-                    <motion.button
-                      onClick={() => handleViewDetail(redemption)}
-                      className="px-4 py-2 glass rounded-xl text-white font-medium hover:bg-white/10 transition flex items-center gap-2"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span className="hidden sm:inline">รายละเอียด</span>
-                    </motion.button>
-                    
-                    {redemption.status !== RedemptionStatus.CANCELLED && 
-                     redemption.status !== RedemptionStatus.REFUNDED &&
-                     redemption.status !== RedemptionStatus.RECEIVED && (
                       <motion.button
-                        onClick={() => handleUpdateStatus(redemption)}
-                        className="px-4 py-2 metaverse-button text-white font-medium rounded-xl flex items-center gap-2"
+                        onClick={() => handleViewDetail(redemption)}
+                        className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-2 text-sm"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        <Edit className="w-4 h-4" />
-                        <span className="hidden sm:inline">อัพเดท</span>
+                        <Eye className="w-3 h-3" />
+                        <span className="hidden sm:inline">รายละเอียด</span>
+                      </motion.button>
+                    
+                    {/* Show update button for all except cancelled/refunded */}
+                    {redemption.status !== RedemptionStatus.CANCELLED && 
+                     redemption.status !== RedemptionStatus.REFUNDED && (
+                      <motion.button
+                        onClick={() => handleUpdateStatus(redemption)}
+                        className="px-3 py-1.5 metaverse-button text-white font-medium rounded-lg flex items-center gap-2 text-sm"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Edit className="w-3 h-3" />
+                        <span className="hidden sm:inline">
+                          {redemption.rewardType === RewardType.PHYSICAL ? 'อัพเดท' : 'จัดการ'}
+                        </span>
                       </motion.button>
                     )}
                   </div>
@@ -743,9 +845,19 @@ export default function AdminOrdersPage() {
               {/* Reward Info */}
               <div className="glass rounded-xl p-4 mb-6">
                 <div className="flex items-start gap-4">
-                  <div className="text-4xl">
-                    {getRewardTypeIcon(selectedRedemption.rewardType)}
-                  </div>
+                  {selectedRedemption.rewardImageUrl ? (
+                    <div className="w-24 h-24 rounded-xl overflow-hidden bg-metaverse-purple/20 border border-metaverse-purple/30">
+                      <img 
+                        src={selectedRedemption.rewardImageUrl}
+                        alt={selectedRedemption.rewardName}
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-24 h-24 rounded-xl bg-metaverse-purple/20 border border-metaverse-purple/30 flex items-center justify-center text-4xl">
+                      {getRewardTypeIcon(selectedRedemption.rewardType)}
+                    </div>
+                  )}
                   <div className="flex-1">
                     <h4 className="text-xl font-bold text-white mb-1">
                       {selectedRedemption.rewardName}
@@ -763,13 +875,24 @@ export default function AdminOrdersPage() {
               {/* User Info */}
               <div className="glass rounded-xl p-4 mb-6">
                 <h4 className="text-lg font-bold text-white mb-3">ข้อมูลผู้ใช้</h4>
-                <div className="space-y-2 text-white/80">
-                  <p><strong>Username:</strong> @{selectedRedemption.user?.username}</p>
-                  {selectedRedemption.user?.displayName && (
-                    <p><strong>ชื่อที่แสดง:</strong> {selectedRedemption.user.displayName}</p>
+                <div className="flex items-start gap-4">
+                  {selectedRedemption.user && (
+                    <AdminAvatarDisplay
+                      userId={selectedRedemption.user.id}
+                      avatarData={selectedRedemption.user.avatarData}
+                      basicAvatar={selectedRedemption.user.avatar}
+                      size="small"
+                      showAccessories={true}
+                    />
                   )}
-                  <p><strong>โรงเรียน:</strong> {selectedRedemption.user?.school}</p>
-                  <p><strong>ระดับชั้น:</strong> {selectedRedemption.user?.grade}</p>
+                  <div className="space-y-2 text-white/80">
+                    <p><strong>Username:</strong> @{selectedRedemption.user?.username}</p>
+                    {selectedRedemption.user?.displayName && (
+                      <p><strong>ชื่อที่แสดง:</strong> {selectedRedemption.user.displayName}</p>
+                    )}
+                    <p><strong>โรงเรียน:</strong> {selectedRedemption.user?.school}</p>
+                    <p><strong>ระดับชั้น:</strong> {selectedRedemption.user?.grade}</p>
+                  </div>
                 </div>
               </div>
               
@@ -908,12 +1031,12 @@ export default function AdminOrdersPage() {
                       <option value={RedemptionStatus.PROCESSING}>กำลังจัดเตรียม</option>
                       <option value={RedemptionStatus.SHIPPED}>จัดส่งแล้ว</option>
                       <option value={RedemptionStatus.DELIVERED}>ส่งถึงแล้ว</option>
+                      <option value={RedemptionStatus.RECEIVED}>รับของแล้ว</option>
                       <option value={RedemptionStatus.CANCELLED}>ยกเลิก</option>
                     </>
                   ) : (
                     <>
-                      <option value={RedemptionStatus.DELIVERED}>ส่งมอบแล้ว</option>
-                      <option value={RedemptionStatus.CANCELLED}>ยกเลิก</option>
+                      <option value={RedemptionStatus.CANCELLED}>ยกเลิก (คืน EXP)</option>
                     </>
                   )}
                 </select>
@@ -963,7 +1086,16 @@ export default function AdminOrdersPage() {
                 </motion.button>
                 
                 <motion.button
-                  onClick={handleSubmitUpdate}
+                  onClick={() => {
+                    console.log('Submit button clicked');
+                    console.log('Current modal state:', {
+                      showUpdateModal,
+                      selectedRedemption: selectedRedemption?.id,
+                      updateStatus,
+                      updating
+                    });
+                    handleSubmitUpdate();
+                  }}
                   disabled={updating}
                   className="flex-1 py-3 metaverse-button text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
                   whileHover={{ scale: 1.02 }}

@@ -7,6 +7,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import { User } from '@/types';
 import { BarChart3, School, Trophy, Download } from 'lucide-react';
+import AdminAvatarDisplay from '@/components/admin/AdminAvatarDisplay';
 
 interface GradeStats {
   grade: string;
@@ -29,10 +30,19 @@ export default function AdminReportsPage() {
   const [schoolStats, setSchoolStats] = useState<SchoolStats[]>([]);
   const [topStudents, setTopStudents] = useState<User[]>([]);
   const [reportType, setReportType] = useState<'grade' | 'school' | 'top'>('grade');
+  const [selectedGrade, setSelectedGrade] = useState<string>('all'); // เพิ่ม state สำหรับเลือกระดับชั้น
+  const [showAll, setShowAll] = useState(false); // เพิ่ม state สำหรับแสดงทั้งหมด
 
   useEffect(() => {
     loadReportData();
   }, []);
+
+  useEffect(() => {
+    // Update top students when grade filter changes
+    if (students.length > 0) {
+      processTopStudents(students);
+    }
+  }, [selectedGrade, showAll, students]);
 
   const loadReportData = async () => {
     try {
@@ -111,24 +121,24 @@ export default function AdminReportsPage() {
   };
 
   const processTopStudents = (students: User[]) => {
-    const top = students
-      .filter(s => s.isActive)
-      .sort((a, b) => b.totalScore - a.totalScore)
-      .slice(0, 10);
+    let filtered = students.filter(s => s.isActive);
+    
+    // Filter by grade if selected
+    if (selectedGrade !== 'all') {
+      filtered = filtered.filter(s => s.grade === selectedGrade);
+    }
+    
+    // Sort by score
+    filtered.sort((a, b) => b.totalScore - a.totalScore);
+    
+    // Limit to top 10 or show all
+    const top = showAll ? filtered : filtered.slice(0, 10);
     
     setTopStudents(top);
   };
 
-  const getGradeDisplayName = (grade: string): string => {
-    const gradeMap: Record<string, string> = {
-      K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
-      P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
-      P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
-      M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
-      M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
-    };
-    return gradeMap[grade] || grade;
-  };
+  // Get unique grades
+  const uniqueGrades = Array.from(new Set(students.map(s => s.grade))).sort();
 
   const getAvatarEmoji = (avatarId: string): string => {
     const avatarMap: Record<string, string> = {
@@ -141,6 +151,17 @@ export default function AdminReportsPage() {
       'robot': '🤖', 'alien': '👽', 'ghost': '👻', 'zombie': '🧟'
     };
     return avatarMap[avatarId] || '👤';
+  };
+
+  const getGradeDisplayName = (grade: string): string => {
+    const gradeMap: Record<string, string> = {
+      K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
+      P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
+      P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
+      M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
+      M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
+    };
+    return gradeMap[grade] || grade;
   };
 
   if (loading) {
@@ -211,36 +232,36 @@ export default function AdminReportsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-dark rounded-xl overflow-hidden border border-metaverse-purple/20"
         >
-          <h2 className="text-xl font-bold text-white p-6 border-b border-metaverse-purple/30">
+          <h2 className="text-xl font-bold text-white p-4 border-b border-metaverse-purple/30">
             สถิติตามระดับชั้น
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-metaverse-darkPurple/50 border-b border-metaverse-purple/30">
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">ระดับชั้น</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-white/80">จำนวนนักเรียน</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-white/80">Level เฉลี่ย</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-white/80">คะแนนเฉลี่ย</th>
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-white/80 hidden md:table-cell">นักเรียนคะแนนสูงสุด</th>
+                  <th className="px-6 py-2 text-left text-sm font-semibold text-white/80">ระดับชั้น</th>
+                  <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">จำนวนนักเรียน</th>
+                  <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">Level เฉลี่ย</th>
+                  <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">คะแนนเฉลี่ย</th>
+                  <th className="px-6 py-2 text-left text-sm font-semibold text-white/80 hidden md:table-cell">นักเรียนคะแนนสูงสุด</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-metaverse-purple/20">
                 {gradeStats.map((stat) => (
                   <tr key={stat.grade} className="hover:bg-white/5">
-                    <td className="px-6 py-4 font-medium text-white">
+                    <td className="px-6 py-2 font-medium text-white text-sm">
                       {getGradeDisplayName(stat.grade)}
                     </td>
-                    <td className="px-6 py-4 text-center text-white">
+                    <td className="px-6 py-2 text-center text-white text-sm">
                       {stat.studentCount}
                     </td>
-                    <td className="px-6 py-4 text-center text-white">
+                    <td className="px-6 py-2 text-center text-white text-sm">
                       {stat.avgLevel}
                     </td>
-                    <td className="px-6 py-4 text-center font-semibold text-metaverse-pink">
+                    <td className="px-6 py-2 text-center font-semibold text-metaverse-pink text-sm">
                       {stat.avgScore.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 text-white hidden md:table-cell">
+                    <td className="px-6 py-2 text-white hidden md:table-cell text-sm">
                       🏆 {stat.topStudent}
                     </td>
                   </tr>
@@ -257,35 +278,35 @@ export default function AdminReportsPage() {
           animate={{ opacity: 1, y: 0 }}
           className="glass-dark rounded-xl overflow-hidden border border-metaverse-purple/20"
         >
-          <h2 className="text-xl font-bold text-white p-6 border-b border-metaverse-purple/30">
+          <h2 className="text-xl font-bold text-white p-4 border-b border-metaverse-purple/30">
             สถิติตามโรงเรียน
           </h2>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-metaverse-darkPurple/50 border-b border-metaverse-purple/30">
-                  <th className="px-6 py-4 text-left text-sm font-semibold text-white/80">โรงเรียน</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-white/80">จำนวนนักเรียน</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-white/80">คะแนนเฉลี่ย</th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-white/80 hidden md:table-cell">Performance</th>
+                  <th className="px-6 py-2 text-left text-sm font-semibold text-white/80">โรงเรียน</th>
+                  <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">จำนวนนักเรียน</th>
+                  <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">คะแนนเฉลี่ย</th>
+                  <th className="px-6 py-2 text-center text-sm font-semibold text-white/80 hidden md:table-cell">Performance</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-metaverse-purple/20">
                 {schoolStats.map((stat, index) => (
                   <tr key={index} className="hover:bg-white/5">
-                    <td className="px-6 py-4 font-medium text-white">
+                    <td className="px-6 py-2 font-medium text-white text-sm">
                       {stat.school}
                     </td>
-                    <td className="px-6 py-4 text-center text-white">
+                    <td className="px-6 py-2 text-center text-white text-sm">
                       {stat.studentCount}
                     </td>
-                    <td className="px-6 py-4 text-center font-semibold text-metaverse-pink">
+                    <td className="px-6 py-2 text-center font-semibold text-metaverse-pink text-sm">
                       {stat.avgScore.toLocaleString()}
                     </td>
-                    <td className="px-6 py-4 hidden md:table-cell">
-                      <div className="w-32 mx-auto bg-white/10 rounded-full h-3">
+                    <td className="px-6 py-2 hidden md:table-cell">
+                      <div className="w-32 mx-auto bg-white/10 rounded-full h-2">
                         <div
-                          className="bg-gradient-to-r from-metaverse-purple to-metaverse-pink h-3 rounded-full"
+                          className="bg-gradient-to-r from-metaverse-purple to-metaverse-pink h-2 rounded-full"
                           style={{ width: `${Math.min((stat.avgScore / 1000) * 100, 100)}%` }}
                         />
                       </div>
@@ -302,54 +323,103 @@ export default function AdminReportsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-dark rounded-xl overflow-hidden border border-metaverse-purple/20"
+          className="space-y-4"
         >
-          <h2 className="text-xl font-bold text-white p-6 border-b border-metaverse-purple/30 flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-yellow-400" />
-            Top 10 นักเรียนคะแนนสูงสุด
-          </h2>
-          <div className="p-6">
-            <div className="space-y-4">
-              {topStudents.map((student, index) => (
-                <motion.div
-                  key={student.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`flex items-center gap-4 p-4 rounded-lg glass-dark border ${
-                    index === 0 ? 'border-yellow-400/50 bg-yellow-400/5' :
-                    index === 1 ? 'border-gray-400/50 bg-gray-400/5' :
-                    index === 2 ? 'border-orange-400/50 bg-orange-400/5' :
-                    'border-metaverse-purple/20'
-                  }`}
-                >
-                  <div className={`text-3xl font-bold ${
-                    index === 0 ? 'text-yellow-400' :
-                    index === 1 ? 'text-gray-400' :
-                    index === 2 ? 'text-orange-400' :
-                    'text-white/50'
-                  }`}>
-                    #{index + 1}
-                  </div>
-                  <div className="text-3xl">
-                    {getAvatarEmoji(student.avatar)}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-white">
-                      {student.displayName || student.username}
-                    </p>
-                    <p className="text-sm text-white/60">
-                      {student.school} • {getGradeDisplayName(student.grade)} • Level {student.level}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-metaverse-pink">
-                      {student.totalScore.toLocaleString()}
-                    </p>
-                    <p className="text-sm text-white/50">คะแนน</p>
-                  </div>
-                </motion.div>
-              ))}
+          {/* Filter Section */}
+          <div className="glass-dark rounded-xl p-4 border border-metaverse-purple/20 flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-white/80">ระดับชั้น:</label>
+              <select
+                value={selectedGrade}
+                onChange={(e) => setSelectedGrade(e.target.value)}
+                className="px-3 py-1.5 bg-white/10 border border-metaverse-purple/30 rounded-lg focus:outline-none focus:border-metaverse-pink text-white text-sm"
+              >
+                <option value="all">ทั้งหมด</option>
+                {uniqueGrades.map(grade => (
+                  <option key={grade} value={grade}>
+                    {getGradeDisplayName(grade)}
+                  </option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-white/80 flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={showAll}
+                  onChange={(e) => setShowAll(e.target.checked)}
+                  className="w-4 h-4 rounded"
+                />
+                แสดงทั้งหมด
+              </label>
+              <span className="text-xs text-white/60">
+                ({topStudents.length} คน)
+              </span>
+            </div>
+          </div>
+
+          {/* Students List */}
+          <div className="glass-dark rounded-xl overflow-hidden border border-metaverse-purple/20">
+            <h2 className="text-xl font-bold text-white p-4 border-b border-metaverse-purple/30 flex items-center gap-2">
+              <Trophy className="w-6 h-6 text-yellow-400" />
+              {showAll ? 'นักเรียนทั้งหมด' : 'Top 10'} - {selectedGrade === 'all' ? 'ทุกระดับชั้น' : getGradeDisplayName(selectedGrade)}
+            </h2>
+            <div className="p-4">
+              <div className="space-y-2">
+                {topStudents.map((student, index) => (
+                  <motion.div
+                    key={student.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: Math.min(index * 0.05, 0.5) }}
+                    className={`flex items-center gap-3 p-2 rounded-lg glass-dark border ${
+                      index === 0 && !showAll ? 'border-yellow-400/50 bg-yellow-400/5' :
+                      index === 1 && !showAll ? 'border-gray-400/50 bg-gray-400/5' :
+                      index === 2 && !showAll ? 'border-orange-400/50 bg-orange-400/5' :
+                      'border-metaverse-purple/20 hover:bg-white/5'
+                    }`}
+                  >
+                    <div className={`text-lg font-bold min-w-[40px] text-center ${
+                      index === 0 && !showAll ? 'text-yellow-400' :
+                      index === 1 && !showAll ? 'text-gray-400' :
+                      index === 2 && !showAll ? 'text-orange-400' :
+                      'text-white/50'
+                    }`}>
+                      #{index + 1}
+                    </div>
+                    <AdminAvatarDisplay
+                      userId={student.id}
+                      avatarData={student.avatarData}
+                      basicAvatar={student.avatar}
+                      size="tiny"
+                      showAccessories={true}
+                      showEffects={index < 3 && !showAll}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-white text-sm truncate">
+                        {student.displayName || student.username}
+                      </p>
+                      <p className="text-xs text-white/60 truncate">
+                        {student.school} • {getGradeDisplayName(student.grade)} • Level {student.level}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-metaverse-pink">
+                        {student.totalScore.toLocaleString()}
+                      </p>
+                      <p className="text-xs text-white/50">คะแนน</p>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              
+              {topStudents.length === 0 && (
+                <div className="text-center py-8">
+                  <Trophy className="w-12 h-12 text-white/20 mx-auto mb-2" />
+                  <p className="text-white/40">ไม่พบนักเรียนในระดับชั้นนี้</p>
+                </div>
+              )}
             </div>
           </div>
         </motion.div>
