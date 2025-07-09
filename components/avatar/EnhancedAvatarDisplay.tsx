@@ -215,6 +215,9 @@ export default function EnhancedAvatarDisplay({
                 
                 if (!url || !position) return null;
                 
+                // คำนวณ zIndex ครั้งเดียว
+                const zIndexValue = accessoryType === AccessoryType.BACKGROUND ? -1 : 10;
+                
                 // ใช้ logic เดียวกับ admin page
                 let left = '50%';
                 let top = '50%';
@@ -260,7 +263,7 @@ export default function EnhancedAvatarDisplay({
                           `,
                           width: '150px',
                           height: '150px',
-                          zIndex: accessoryType === AccessoryType.BACKGROUND ? -1 : 10
+                          zIndex: zIndexValue
                         }}
                       >
                         <img 
@@ -285,7 +288,7 @@ export default function EnhancedAvatarDisplay({
                           `,
                           width: '150px',
                           height: '150px',
-                          zIndex: accessoryType === AccessoryType.BACKGROUND ? -1 : 10
+                          zIndex: zIndexValue
                         }}
                       >
                         <img 
@@ -328,7 +331,7 @@ export default function EnhancedAvatarDisplay({
                         transform: transform,
                         width: '150px',
                         height: '150px',
-                        zIndex: accessoryType === AccessoryType.BACKGROUND ? -1 : 10
+                        zIndex: zIndexValue
                       }}
                     >
                       <img 
