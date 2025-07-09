@@ -11,10 +11,11 @@ import {
   updateDoc, 
   deleteDoc,
   orderBy,
-  where
+  where,
+  limit
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { saveReward } from '@/lib/firebase/rewards';
+import { saveReward, deleteReward } from '@/lib/firebase/rewards';
 import { uploadImage, deleteImage } from '@/lib/firebase/storage';
 import { Reward, RewardType } from '@/types/avatar';
 import { useDialog } from '@/components/ui/Dialog';
@@ -132,12 +133,30 @@ export default function AdminRewardsPage() {
   const handleDelete = async (rewardId: string) => {
     const reward = rewards.find(r => r.id === rewardId);
     
-    deleteDialog.showDialog('คุณต้องการลบรางวัลนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้', {
+    // Check if reward has been redeemed
+    const redemptionsQuery = query(
+      collection(db, 'redemptions'),
+      where('rewardId', '==', rewardId),
+      limit(1)
+    );
+    const redemptionsSnapshot = await getDocs(redemptionsQuery);
+    const hasRedemptions = !redemptionsSnapshot.empty;
+    
+    const warningMessage = hasRedemptions 
+      ? `⚠️ รางวัลนี้มีผู้แลกไปแล้ว ${redemptionsSnapshot.size} ครั้ง\n\nการลบจะ:\n• ปิดการใช้งานรางวัล\n• ลบออกจาก inventory ของผู้ใช้ทั้งหมด\n• ยกเลิกคำขอที่รอดำเนินการ\n\nคุณแน่ใจหรือไม่?`
+      : 'คุณต้องการลบรางวัลนี้ใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้';
+    
+    deleteDialog.showDialog(warningMessage, {
       onConfirm: async () => {
         try {
-          await deleteDoc(doc(db, 'rewards', rewardId));
-          await loadRewards();
-          successDialog.showDialog('ลบรางวัลเรียบร้อยแล้ว');
+          const result = await deleteReward(rewardId);
+          
+          if (result.success) {
+            await loadRewards();
+            successDialog.showDialog(result.message);
+          } else {
+            errorDialog.showDialog(result.message);
+          }
         } catch (error) {
           console.error('Error deleting reward:', error);
           errorDialog.showDialog('เกิดข้อผิดพลาดในการลบรางวัล');

@@ -14,7 +14,8 @@ import {
   runTransaction,
   serverTimestamp,
   DocumentReference,
-  Timestamp
+  Timestamp,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from './client';
 import { 
@@ -24,7 +25,8 @@ import {
   RedemptionStatus,
   UserInventory,
   ActiveBoost,
-  ShippingAddress 
+  ShippingAddress,
+  AccessoryType
 } from '@/types/avatar';
 
 // Collections
@@ -547,7 +549,7 @@ export const cancelRedemption = async (
 
 // ==================== ADMIN FUNCTIONS ====================
 
-// Create/Update reward (Admin only)
+// Enhanced save reward that handles type changes
 export const saveReward = async (
   reward: Partial<Reward>,
   rewardId?: string
@@ -559,24 +561,45 @@ export const saveReward = async (
       updatedAt: now
     };
     
-    if (!rewardId) {
-      // Create new
+    // If updating existing reward, check for type change
+    if (rewardId) {
+      const existingDoc = await getDoc(doc(db, COLLECTIONS.REWARDS, rewardId));
+      
+      if (existingDoc.exists()) {
+        const existingReward = existingDoc.data() as Reward;
+        const oldItemId = existingReward.itemId || rewardId;
+        const newItemId = data.itemId || rewardId;
+        
+        // Check if type or itemId changed
+        if (existingReward.type !== data.type || oldItemId !== newItemId) {
+          // Need to clean up old data
+          await cleanupRewardTypeChange(
+            rewardId,
+            existingReward,
+            data as Reward
+          );
+        }
+      }
+      
+      // Update the reward
+      await updateDoc(doc(db, COLLECTIONS.REWARDS, rewardId), data);
+      
+      return {
+        success: true,
+        message: 'อัพเดทรางวัลเรียบร้อยแล้ว',
+        id: rewardId
+      };
+    } else {
+      // Create new reward
       data.createdAt = now;
       data.isActive = true;
       const docRef = doc(collection(db, COLLECTIONS.REWARDS));
       await setDoc(docRef, data);
+      
       return {
         success: true,
         message: 'สร้างรางวัลสำเร็จ',
         id: docRef.id
-      };
-    } else {
-      // Update existing
-      await updateDoc(doc(db, COLLECTIONS.REWARDS, rewardId), data);
-      return {
-        success: true,
-        message: 'อัพเดทรางวัลสำเร็จ',
-        id: rewardId
       };
     }
   } catch (error) {
@@ -588,18 +611,419 @@ export const saveReward = async (
   }
 };
 
-// Delete reward (Admin only)
+// Helper function to clean up when reward type changes
+async function cleanupRewardTypeChange(
+  rewardId: string,
+  oldReward: Reward,
+  newReward: Partial<Reward>
+): Promise<void> {
+  const batch = writeBatch(db);
+  const oldItemId = oldReward.itemId || rewardId;
+  const newItemId = newReward.itemId || rewardId;
+  
+  // Skip if reward types that don't affect inventory
+  const inventoryTypes = [
+    RewardType.AVATAR,
+    RewardType.ACCESSORY,
+    RewardType.TITLE_BADGE,
+    RewardType.BADGE
+  ];
+  
+  if (!inventoryTypes.includes(oldReward.type)) {
+    return;
+  }
+  
+  // Get all inventories
+  const inventoryQuery = query(collection(db, COLLECTIONS.USER_INVENTORY));
+  const inventorySnapshot = await getDocs(inventoryQuery);
+  
+  for (const inventoryDoc of inventorySnapshot.docs) {
+    const inventory = inventoryDoc.data();
+    let needsUpdate = false;
+    const updates: any = {};
+    
+    // Remove from old type array
+    switch (oldReward.type) {
+      case RewardType.AVATAR:
+        if (inventory.avatars?.includes(oldItemId)) {
+          updates.avatars = inventory.avatars.filter((id: string) => id !== oldItemId);
+          needsUpdate = true;
+        }
+        break;
+        
+      case RewardType.ACCESSORY:
+        if (inventory.accessories?.includes(oldItemId)) {
+          updates.accessories = inventory.accessories.filter((id: string) => id !== oldItemId);
+          needsUpdate = true;
+        }
+        break;
+        
+      case RewardType.TITLE_BADGE:
+        if (inventory.titleBadges?.includes(oldItemId)) {
+          updates.titleBadges = inventory.titleBadges.filter((id: string) => id !== oldItemId);
+          needsUpdate = true;
+        }
+        break;
+        
+      case RewardType.BADGE:
+        if (inventory.badges?.includes(oldItemId)) {
+          updates.badges = inventory.badges.filter((id: string) => id !== oldItemId);
+          needsUpdate = true;
+        }
+        break;
+    }
+    
+    // Add to new type array if type changed to another inventory type
+    if (newReward.type && inventoryTypes.includes(newReward.type) && newReward.type !== oldReward.type) {
+      switch (newReward.type) {
+        case RewardType.AVATAR:
+          if (!updates.avatars) updates.avatars = inventory.avatars || [];
+          if (!updates.avatars.includes(newItemId)) {
+            updates.avatars.push(newItemId);
+            needsUpdate = true;
+          }
+          break;
+          
+        case RewardType.ACCESSORY:
+          if (!updates.accessories) updates.accessories = inventory.accessories || [];
+          if (!updates.accessories.includes(newItemId)) {
+            updates.accessories.push(newItemId);
+            needsUpdate = true;
+          }
+          break;
+          
+        case RewardType.TITLE_BADGE:
+          if (!updates.titleBadges) updates.titleBadges = inventory.titleBadges || [];
+          if (!updates.titleBadges.includes(newItemId)) {
+            updates.titleBadges.push(newItemId);
+            needsUpdate = true;
+          }
+          break;
+          
+        case RewardType.BADGE:
+          if (!updates.badges) updates.badges = inventory.badges || [];
+          if (!updates.badges.includes(newItemId)) {
+            updates.badges.push(newItemId);
+            needsUpdate = true;
+          }
+          break;
+      }
+    }
+    
+    if (needsUpdate) {
+      batch.update(doc(db, COLLECTIONS.USER_INVENTORY, inventoryDoc.id), updates);
+    }
+  }
+  
+  // Update user avatarData for avatar/accessory changes
+  if ((oldReward.type === RewardType.AVATAR || oldReward.type === RewardType.ACCESSORY) ||
+      (newReward.type === RewardType.AVATAR || newReward.type === RewardType.ACCESSORY)) {
+    
+    const usersQuery = query(collection(db, COLLECTIONS.USERS));
+    const usersSnapshot = await getDocs(usersQuery);
+    
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+      if (!userData.avatarData) continue;
+      
+      let needsUpdate = false;
+      const avatarData = { ...userData.avatarData };
+      
+      // Handle old type removal
+      if (oldReward.type === RewardType.AVATAR) {
+        if (avatarData.unlockedPremiumAvatars?.includes(oldItemId)) {
+          avatarData.unlockedPremiumAvatars = avatarData.unlockedPremiumAvatars.filter(
+            (id: string) => id !== oldItemId
+          );
+          needsUpdate = true;
+        }
+        
+        if (avatarData.currentAvatar?.id === oldItemId && avatarData.currentAvatar?.type === 'premium') {
+          avatarData.currentAvatar = {
+            type: 'basic',
+            id: userData.avatar || 'knight',
+            accessories: avatarData.currentAvatar.accessories || {}
+          };
+          needsUpdate = true;
+        }
+      } else if (oldReward.type === RewardType.ACCESSORY) {
+        if (avatarData.unlockedAccessories?.includes(oldItemId)) {
+          avatarData.unlockedAccessories = avatarData.unlockedAccessories.filter(
+            (id: string) => id !== oldItemId
+          );
+          needsUpdate = true;
+        }
+        
+        // Remove from equipped accessories
+        if (avatarData.currentAvatar?.accessories && oldReward.accessoryType) {
+          if (avatarData.currentAvatar.accessories[oldReward.accessoryType] === oldItemId) {
+            avatarData.currentAvatar.accessories[oldReward.accessoryType] = undefined;
+            needsUpdate = true;
+          }
+        }
+      }
+      
+      // Handle new type addition (if user already owns it)
+      // Need to check from the current inventory document
+      const userInventory = inventorySnapshot.docs.find(doc => doc.id === userDoc.id);
+      const userInventoryData = userInventory?.data();
+      
+      const ownsItem = userInventoryData?.avatars?.includes(newItemId) ||
+                      userInventoryData?.accessories?.includes(newItemId) ||
+                      userInventoryData?.titleBadges?.includes(newItemId) ||
+                      userInventoryData?.badges?.includes(newItemId);
+                      
+      if (ownsItem) {
+        if (newReward.type === RewardType.AVATAR) {
+          if (!avatarData.unlockedPremiumAvatars) {
+            avatarData.unlockedPremiumAvatars = [];
+          }
+          if (!avatarData.unlockedPremiumAvatars.includes(newItemId)) {
+            avatarData.unlockedPremiumAvatars.push(newItemId);
+            needsUpdate = true;
+          }
+        } else if (newReward.type === RewardType.ACCESSORY) {
+          if (!avatarData.unlockedAccessories) {
+            avatarData.unlockedAccessories = [];
+          }
+          if (!avatarData.unlockedAccessories.includes(newItemId)) {
+            avatarData.unlockedAccessories.push(newItemId);
+            needsUpdate = true;
+          }
+        }
+      }
+      
+      if (needsUpdate) {
+        batch.update(doc(db, COLLECTIONS.USERS, userDoc.id), {
+          avatarData: avatarData
+        });
+      }
+    }
+  }
+  
+  // Handle title badge changes
+  if (oldReward.type === RewardType.TITLE_BADGE) {
+    const usersQuery = query(collection(db, COLLECTIONS.USERS));
+    const usersSnapshot = await getDocs(usersQuery);
+    
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+      let needsUpdate = false;
+      const updates: any = {};
+      
+      if (userData.ownedTitleBadges?.includes(oldItemId)) {
+        updates.ownedTitleBadges = userData.ownedTitleBadges.filter(
+          (id: string) => id !== oldItemId
+        );
+        
+        // Add new itemId if type is still title badge
+        if (newReward.type === RewardType.TITLE_BADGE && newItemId !== oldItemId) {
+          updates.ownedTitleBadges.push(newItemId);
+        }
+        
+        needsUpdate = true;
+      }
+      
+      if (userData.currentTitleBadge === oldItemId) {
+        if (newReward.type === RewardType.TITLE_BADGE && newItemId !== oldItemId) {
+          updates.currentTitleBadge = newItemId;
+        } else {
+          updates.currentTitleBadge = null;
+        }
+        needsUpdate = true;
+      }
+      
+      if (needsUpdate) {
+        batch.update(doc(db, COLLECTIONS.USERS, userDoc.id), updates);
+      }
+    }
+  }
+  
+  await batch.commit();
+}
+
+// Enhanced delete reward function that cleans up all related data
 export const deleteReward = async (rewardId: string): Promise<{ success: boolean; message: string }> => {
   try {
-    // Soft delete - just deactivate
-    await updateDoc(doc(db, COLLECTIONS.REWARDS, rewardId), {
+    // First get the reward details
+    const rewardDoc = await getDoc(doc(db, COLLECTIONS.REWARDS, rewardId));
+    if (!rewardDoc.exists()) {
+      return {
+        success: false,
+        message: 'ไม่พบรางวัลนี้'
+      };
+    }
+    
+    const reward = rewardDoc.data() as Reward;
+    const itemId = reward.itemId || rewardId;
+    
+    // Start a batch operation
+    const batch = writeBatch(db);
+    
+    // 1. Soft delete the reward (deactivate)
+    batch.update(doc(db, COLLECTIONS.REWARDS, rewardId), {
       isActive: false,
+      deletedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
     
+    // 2. Clean up based on reward type
+    if (reward.type !== RewardType.PHYSICAL && reward.type !== RewardType.BOOST) {
+      // Get all users who have this item
+      const inventoryQuery = query(collection(db, COLLECTIONS.USER_INVENTORY));
+      const inventorySnapshot = await getDocs(inventoryQuery);
+      
+      for (const inventoryDoc of inventorySnapshot.docs) {
+        const inventory = inventoryDoc.data();
+        let needsUpdate = false;
+        const updates: any = {};
+        
+        // Remove from appropriate array based on type
+        switch (reward.type) {
+          case RewardType.AVATAR:
+            if (inventory.avatars?.includes(itemId)) {
+              updates.avatars = inventory.avatars.filter((id: string) => id !== itemId);
+              needsUpdate = true;
+            }
+            break;
+            
+          case RewardType.ACCESSORY:
+            if (inventory.accessories?.includes(itemId)) {
+              updates.accessories = inventory.accessories.filter((id: string) => id !== itemId);
+              needsUpdate = true;
+            }
+            break;
+            
+          case RewardType.TITLE_BADGE:
+            if (inventory.titleBadges?.includes(itemId)) {
+              updates.titleBadges = inventory.titleBadges.filter((id: string) => id !== itemId);
+              needsUpdate = true;
+            }
+            break;
+            
+          case RewardType.BADGE:
+            if (inventory.badges?.includes(itemId)) {
+              updates.badges = inventory.badges.filter((id: string) => id !== itemId);
+              needsUpdate = true;
+            }
+            break;
+        }
+        
+        if (needsUpdate) {
+          batch.update(doc(db, COLLECTIONS.USER_INVENTORY, inventoryDoc.id), updates);
+        }
+      }
+      
+      // 3. Update user avatarData if needed
+      if (reward.type === RewardType.AVATAR || reward.type === RewardType.ACCESSORY) {
+        const usersQuery = query(collection(db, COLLECTIONS.USERS));
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        for (const userDoc of usersSnapshot.docs) {
+          const userData = userDoc.data();
+          if (!userData.avatarData) continue;
+          
+          let needsUpdate = false;
+          const avatarData = { ...userData.avatarData };
+          
+          if (reward.type === RewardType.AVATAR) {
+            // Remove from unlocked avatars
+            if (avatarData.unlockedPremiumAvatars?.includes(itemId)) {
+              avatarData.unlockedPremiumAvatars = avatarData.unlockedPremiumAvatars.filter(
+                (id: string) => id !== itemId
+              );
+              needsUpdate = true;
+            }
+            
+            // If currently using this avatar, switch to basic
+            if (avatarData.currentAvatar?.id === itemId && avatarData.currentAvatar?.type === 'premium') {
+              avatarData.currentAvatar = {
+                type: 'basic',
+                id: userData.avatar || 'knight',
+                accessories: avatarData.currentAvatar.accessories || {}
+              };
+              needsUpdate = true;
+            }
+          } else if (reward.type === RewardType.ACCESSORY) {
+            // Remove from unlocked accessories
+            if (avatarData.unlockedAccessories?.includes(itemId)) {
+              avatarData.unlockedAccessories = avatarData.unlockedAccessories.filter(
+                (id: string) => id !== itemId
+              );
+              needsUpdate = true;
+            }
+            
+            // Remove from current avatar if equipped
+            if (avatarData.currentAvatar?.accessories) {
+              const accessoryType = reward.accessoryType;
+              if (accessoryType && avatarData.currentAvatar.accessories[accessoryType] === itemId) {
+                avatarData.currentAvatar.accessories[accessoryType] = undefined;
+                needsUpdate = true;
+              }
+            }
+          }
+          
+          if (needsUpdate) {
+            batch.update(doc(db, COLLECTIONS.USERS, userDoc.id), {
+              avatarData: avatarData
+            });
+          }
+        }
+      }
+      
+      // 4. Update title badges in users
+      if (reward.type === RewardType.TITLE_BADGE) {
+        const usersQuery = query(collection(db, COLLECTIONS.USERS));
+        const usersSnapshot = await getDocs(usersQuery);
+        
+        for (const userDoc of usersSnapshot.docs) {
+          const userData = userDoc.data();
+          let needsUpdate = false;
+          const updates: any = {};
+          
+          // Remove from owned title badges
+          if (userData.ownedTitleBadges?.includes(itemId)) {
+            updates.ownedTitleBadges = userData.ownedTitleBadges.filter(
+              (id: string) => id !== itemId
+            );
+            needsUpdate = true;
+          }
+          
+          // Remove if currently selected
+          if (userData.currentTitleBadge === itemId) {
+            updates.currentTitleBadge = null;
+            needsUpdate = true;
+          }
+          
+          if (needsUpdate) {
+            batch.update(doc(db, COLLECTIONS.USERS, userDoc.id), updates);
+          }
+        }
+      }
+    }
+    
+    // 5. Cancel pending redemptions for this reward
+    const redemptionsQuery = query(
+      collection(db, COLLECTIONS.REDEMPTIONS),
+      where('rewardId', '==', rewardId),
+      where('status', '==', RedemptionStatus.PENDING)
+    );
+    const redemptionsSnapshot = await getDocs(redemptionsQuery);
+    
+    for (const redemptionDoc of redemptionsSnapshot.docs) {
+      batch.update(doc(db, COLLECTIONS.REDEMPTIONS, redemptionDoc.id), {
+        status: RedemptionStatus.CANCELLED,
+        cancelReason: 'รางวัลถูกลบออกจากระบบ',
+        updatedAt: new Date().toISOString()
+      });
+    }
+    
+    // Commit all changes
+    await batch.commit();
+    
     return {
       success: true,
-      message: 'ลบรางวัลสำเร็จ'
+      message: 'ลบรางวัลและข้อมูลที่เกี่ยวข้องเรียบร้อยแล้ว'
     };
   } catch (error) {
     console.error('Delete reward error:', error);
