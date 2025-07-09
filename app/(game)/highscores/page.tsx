@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { User, LevelScore } from '@/types';
-import { ArrowLeft, Trophy, Star, TrendingUp, Calendar, Target, Zap, Pi } from 'lucide-react';
+import { LevelScore } from '@/types';
+import { ArrowLeft, Trophy, Star, TrendingUp, Calendar, Target, Zap } from 'lucide-react';
 import { getQuestionCount, getLevelConfig } from '@/lib/game/config';
 
 interface ScoreWithDescription extends LevelScore {
