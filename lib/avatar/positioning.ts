@@ -26,10 +26,10 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
     zIndex: ACCESSORY_LAYERS.hat,
     defaultPosition: { 
       x: 0, 
-      y: -35,  // ขยับขึ้นบน 35px จาก anchor point (top-center)
+      y: -5,  // เปลี่ยนเป็นเหมือนแว่น (จาก -35 เป็น -5)
       scale: 1.2 
     },
-    anchorPoint: 'top-center',
+    anchorPoint: 'top-center',  // เปลี่ยนเป็น center เหมือนแว่น (จาก top-center)
     affectsContainerSize: true,
     animation: {
       type: 'float',
@@ -49,7 +49,7 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
     defaultPosition: { 
       x: 0, 
       y: -5,   // ระดับตา (ขึ้นมาจากกลาง avatar นิดหน่อย)
-      scale: 1.0
+      scale: 1.2  // เปลี่ยนเป็น 1.2 เหมือนหมวก
     },
     anchorPoint: 'center',
     affectsContainerSize: false,
@@ -204,45 +204,24 @@ export function calculateAccessoryPosition(
   let left = '50%';
   let top = '50%';
   
-  // Adjust based on anchor point
-  switch (config.anchorPoint) {
-    case 'top-left':
+  // Adjust based on anchor point - simplified to match admin page
+  if (config.anchorPoint) {
+    if (config.anchorPoint.includes('left')) {
       left = '0%';
-      top = '0%';
-      break;
-    case 'top-center':
-      left = '50%';
-      top = '0%';
-      break;
-    case 'top-right':
+    } else if (config.anchorPoint.includes('right')) {
       left = '100%';
+    }
+    
+    if (config.anchorPoint.includes('top')) {
       top = '0%';
-      break;
-    case 'center-left':
-      left = '0%';
-      top = '50%';
-      break;
-    case 'center-right':
-      left = '100%';
-      top = '50%';
-      break;
-    case 'bottom-left':
-      left = '0%';
+    } else if (config.anchorPoint.includes('bottom')) {
       top = '100%';
-      break;
-    case 'bottom-center':
-      left = '50%';
-      top = '100%';
-      break;
-    case 'bottom-right':
-      left = '100%';
-      top = '100%';
-      break;
+    }
   }
   
-  // Build transform string
+  // Build transform string - always use translate(-50%, -50%) for consistency
   const transforms = [
-    `translate(-50%, -50%)`, // Center the element
+    `translate(-50%, -50%)`, // Always center first
     `translateX(${position.x || 0}px)`,
     `translateY(${position.y || 0}px)`,
     `scale(${position.scale || 1})`,

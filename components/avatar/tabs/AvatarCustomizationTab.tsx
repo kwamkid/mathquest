@@ -80,6 +80,8 @@ export default function AvatarCustomizationTab({
                 size="xlarge"
                 showEffects={true}
                 showAccessories={true}
+                  debug={true}  // <-- เพิ่มบรรทัดนี้
+
               />
             </motion.div>
           </div>
