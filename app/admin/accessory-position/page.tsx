@@ -98,7 +98,9 @@ export default function AccessoryPositionPage() {
         const anchorPoint = config?.anchorPoint || 'center';
         
         setPosition({
-          ...defaultPos,
+          x: defaultPos.x || 0,
+          y: defaultPos.y || 0,
+          scale: defaultPos.scale || 1,
           rotation: defaultPos.rotation || 0,
           anchorPoint: anchorPoint
         });
@@ -210,10 +212,13 @@ export default function AccessoryPositionPage() {
       const anchorPoint = config?.anchorPoint || 'center';
       
       setPosition({
-        ...defaultPos,
+        x: defaultPos.x || 0,
+        y: defaultPos.y || 0,
+        scale: defaultPos.scale || 1,
         rotation: defaultPos.rotation || 0,
         anchorPoint: anchorPoint
       });
+
     }
   };
 
