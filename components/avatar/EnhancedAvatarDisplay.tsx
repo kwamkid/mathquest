@@ -1,15 +1,10 @@
 // components/avatar/EnhancedAvatarDisplay.tsx
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useAvatarData } from '@/hooks/useAvatarData';
-import { UserAvatarData, AccessoryType, AvatarSizeConfig } from '@/types/avatar';
+import { UserAvatarData, AccessoryType } from '@/types/avatar';
 import { 
-  getAvatarContainerSize, 
-  calculateAccessoryPosition, 
-  getAccessoryAnimation,
-  shouldExpandContainer,
-  AVATAR_SIZE_CONFIG,
   getAccessoryPosition,
   getAccessoryConfig
 } from '@/lib/avatar/positioning';
@@ -20,7 +15,7 @@ interface EnhancedAvatarDisplayProps {
   userId: string;
   avatarData?: UserAvatarData;
   basicAvatar?: string;
-  size?: keyof AvatarSizeConfig;
+  size?: 'tiny' | 'small' | 'medium' | 'large' | 'xlarge';
   showAccessories?: boolean;
   showEffects?: boolean;
   showTitle?: boolean;
@@ -28,7 +23,7 @@ interface EnhancedAvatarDisplayProps {
   titleColor?: string;
   className?: string;
   onClick?: () => void;
-  debug?: boolean; // Add debug prop
+  debug?: boolean;
 }
 
 export default function EnhancedAvatarDisplay({
@@ -43,7 +38,7 @@ export default function EnhancedAvatarDisplay({
   titleColor = '#FFD700',
   className = '',
   onClick,
-  debug = false // Default false
+  debug = false
 }: EnhancedAvatarDisplayProps) {
   // Load avatar and accessory URLs
   const { avatarUrl, accessoryUrls, loading } = useAvatarData(userId, avatarData, basicAvatar);
@@ -58,53 +53,38 @@ export default function EnhancedAvatarDisplay({
     return avatar?.emoji || '👤';
   };
   
-  // Check if container should expand (e.g., for hat)
-  const hasHat = showAccessories && avatarData?.currentAvatar.accessories.hat;
-  const shouldExpand = showAccessories && shouldExpandContainer(avatarData?.currentAvatar.accessories || {});
-  
-  // Get container size - for xlarge, always use 300x300 like admin page
-  const containerSize = size === 'xlarge' 
-    ? { width: 300, height: 300 }
-    : getAvatarContainerSize(size, shouldExpand);
-  
-  // Get size classes
-  const sizeClasses = {
-    small: 'text-2xl',
-    medium: 'text-4xl',
-    large: 'text-6xl',
-    xlarge: 'text-8xl'
+  // Size mapping - แต่ใช้ admin page structure เสมอ
+  const getSizeMultiplier = () => {
+    switch (size) {
+      case 'tiny': return 0.33;   // 100x100 - สำหรับ header
+      case 'small': return 0.5;   // 150x150
+      case 'medium': return 0.67; // 200x200  
+      case 'large': return 0.83;  // 250x250
+      case 'xlarge': return 1;    // 300x300 (เหมือน admin page)
+      default: return 0.67;
+    }
   };
   
-  // Container styles
-  const containerStyle = {
-    width: `${containerSize.width}px`,
-    height: `${containerSize.height}px`,
-    transition: 'all 0.3s ease-in-out'
-  };
-  
-  // Avatar scale when wearing hat
-  const avatarScale = hasHat ? 0.9 : 1;
-  
-  // Calculate proper container size for accessories
-  const accessoryContainerSize = {
-    small: 150,
-    medium: 200,
-    large: 250,
-    xlarge: 300  // เปลี่ยนเป็น 300 เหมือน admin page
-  };
+  const sizeMultiplier = getSizeMultiplier();
+  const finalSize = 300 * sizeMultiplier;
   
   return (
     <div 
       className={`relative inline-block ${className} ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
     >
-      {/* Debug info */}
+      {/* Debug info - เพิ่มข้อมูลเปรียบเทียบ */}
       {debug && (
-        <div className="absolute -top-20 left-0 bg-black/80 text-white text-xs p-2 rounded z-50">
-          <div>Container: {containerSize.width}x{containerSize.height}</div>
-          <div>Accessory Container: {accessoryContainerSize[size]}px</div>
-          <div>Has Hat: {hasHat ? 'Yes' : 'No'}</div>
-          <div>Should Expand: {shouldExpand ? 'Yes' : 'No'}</div>
+        <div className="absolute -top-20 left-0 bg-black/90 text-white text-xs p-3 rounded z-50 w-80">
+          <div className="font-bold text-yellow-400 mb-2">🔍 Debug Info (Admin Style)</div>
+          <div>Final Size: {finalSize}x{finalSize}</div>
+          <div>Multiplier: {sizeMultiplier}</div>
+          <div>Avatar: {avatarId} ({isBasicAvatar ? 'basic' : 'premium'})</div>
+          <div>Accessories: {Object.keys(accessoryUrls).length}</div>
+          <div className="mt-2 text-green-300">
+            <div className="font-semibold">Container: 300x300 (fixed)</div>
+            <div>ใช้โครงสร้างเดียวกับ admin page 100%</div>
+          </div>
         </div>
       )}
       
@@ -129,34 +109,61 @@ export default function EnhancedAvatarDisplay({
         </motion.div>
       )}
       
-      {/* Avatar Container with border for debug */}
+      {/* Main Container - ขนาดตาม size prop แต่ใช้โครงสร้างเหมือน admin page */}
       <div 
         className={`relative ${debug ? 'border-2 border-red-500' : ''}`} 
-        style={containerStyle}
+        style={{ 
+          width: `${finalSize}px`, 
+          height: `${finalSize}px` 
+        }}
       >
         {/* Center guides for debug */}
         {debug && (
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-1/2 left-0 right-0 h-px bg-green-500"></div>
-            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-green-500"></div>
+            <div className="absolute top-1/2 left-0 right-0 h-px bg-red-500/20"></div>
+            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-red-500/20"></div>
           </div>
         )}
         
-        {/* Inner positioning container - FIXED center positioning */}
+        {/* Admin Page Style Container - แก้ไข scale เมื่อ xlarge */}
         <div 
-          className={`${debug ? 'border-2 border-blue-500' : ''}`}
-          style={{ 
-            position: 'absolute',
+          className={`relative ${debug ? 'border-2 border-blue-500' : ''}`}
+          style={ size === 'xlarge' ? {
+            // xlarge: ไม่ scale เลย เหมือน admin page
             width: '300px',
             height: '300px',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            margin: 'auto'
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            marginLeft: '-150px',
+            marginTop: '-150px'
+          } : size === 'tiny' ? {
+            // tiny: ใช้ scale และปรับ avatar ให้เล็กมาก
+            width: '300px',
+            height: '300px',
+            transform: `scale(${sizeMultiplier})`,
+            transformOrigin: 'center center',
+            margin: 'auto',
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            marginLeft: '-150px',
+            marginTop: '-150px'
+          } : {
+            // size อื่นๆ: ใช้ scale
+            width: '300px',
+            height: '300px',
+            transform: `scale(${sizeMultiplier})`,
+            transformOrigin: 'center center',
+            margin: 'auto',
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            marginLeft: '-150px',
+            marginTop: '-150px'
           }}
         >
-          {/* Center guides for debug */}
+          {/* Center guides for inner container */}
           {debug && (
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-1/2 left-0 right-0 h-px bg-blue-500"></div>
@@ -164,40 +171,15 @@ export default function EnhancedAvatarDisplay({
             </div>
           )}
           
-          {/* Background Accessory Layer */}
-          {showAccessories && accessoryUrls.background && (
-            <AccessoryLayer
-              type={AccessoryType.BACKGROUND}
-              url={accessoryUrls.background}
-              avatarId={avatarId}
-              containerSize={containerSize}
-              debug={debug}
-            />
-          )}
-          
-          {/* Avatar at center */}
+          {/* Avatar - ใช้โครงสร้างเดียวกับ admin page */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <motion.div
-              className={`relative z-10 ${debug ? 'border border-green-500' : ''}`}
-              animate={showEffects ? {
-                scale: [avatarScale, avatarScale * 1.05, avatarScale],
-              } : {}}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-              style={{ transform: `scale(${avatarScale})` }}
-            >
+            <div className="relative">
               {isBasicAvatar ? (
-                <div className={`${sizeClasses[size]} select-none`}>
+                <div className="text-[120px] select-none">
                   {getAvatarEmoji(avatarId)}
                 </div>
               ) : (
-                <div className={`relative overflow-hidden rounded-full`} style={{
-                  width: AVATAR_SIZE_CONFIG[size].base,
-                  height: AVATAR_SIZE_CONFIG[size].base
-                }}>
+                <div className="w-48 h-48 relative overflow-hidden rounded-full">
                   <img 
                     src={avatarUrl} 
                     alt="Avatar"
@@ -224,75 +206,164 @@ export default function EnhancedAvatarDisplay({
                   )}
                 </div>
               )}
-            </motion.div>
+              
+              {/* Accessories - ใช้วิธีเดียวกับ admin page 100% */}
+              {showAccessories && Object.entries(accessoryUrls).map(([type, url]) => {
+                const accessoryType = type as AccessoryType;
+                const position = getAccessoryPosition(accessoryType, avatarId);
+                const config = getAccessoryConfig(accessoryType);
+                
+                if (!url || !position) return null;
+                
+                // ใช้ logic เดียวกับ admin page
+                let left = '50%';
+                let top = '50%';
+                
+                if (config.anchorPoint) {
+                  if (config.anchorPoint.includes('left')) {
+                    left = '0%';
+                  } else if (config.anchorPoint.includes('right')) {
+                    left = '100%';
+                  }
+                  
+                  if (config.anchorPoint.includes('top')) {
+                    top = '0%';
+                  } else if (config.anchorPoint.includes('bottom')) {
+                    top = '100%';
+                  }
+                }
+                
+                const transform = `
+                  translate(-50%, -50%)
+                  translateX(${position.x || 0}px)
+                  translateY(${position.y || 0}px)
+                  scale(${position.scale || 1})
+                  rotate(${position.rotation || 0}deg)
+                `;
+                
+                // Special handling for earrings
+                if (accessoryType === AccessoryType.EARRING) {
+                  return (
+                    <div key={type}>
+                      {/* Left earring */}
+                      <div 
+                        className={`absolute pointer-events-none ${debug ? 'border border-yellow-500' : ''}`}
+                        style={{
+                          left: left,
+                          top: top,
+                          transform: `
+                            translate(-50%, -50%)
+                            translateX(${-Math.abs(position.x || 35)}px)
+                            translateY(${position.y || 0}px)
+                            scale(${position.scale || 1})
+                            rotate(${position.rotation || 0}deg)
+                          `,
+                          width: '150px',
+                          height: '150px',
+                          zIndex: accessoryType === AccessoryType.BACKGROUND ? -1 : 10
+                        }}
+                      >
+                        <img 
+                          src={url} 
+                          alt={`${type} accessory`}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      
+                      {/* Right earring */}
+                      <div 
+                        className={`absolute pointer-events-none ${debug ? 'border border-yellow-500' : ''}`}
+                        style={{
+                          left: left,
+                          top: top,
+                          transform: `
+                            translate(-50%, -50%)
+                            translateX(${Math.abs(position.x || 35)}px)
+                            translateY(${position.y || 0}px)
+                            scale(${position.scale || 1})
+                            rotate(${position.rotation || 0}deg)
+                          `,
+                          width: '150px',
+                          height: '150px',
+                          zIndex: accessoryType === AccessoryType.BACKGROUND ? -1 : 10
+                        }}
+                      >
+                        <img 
+                          src={url} 
+                          alt={`${type} accessory`}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                      
+                      {/* Debug info for earrings */}
+                      {debug && (
+                        <div 
+                          className="absolute bg-yellow-500/90 text-black text-[10px] p-1 rounded pointer-events-none z-50 font-mono"
+                          style={{
+                            left: left,
+                            top: top,
+                            transform: `${transform} translateY(-70px)`,
+                          }}
+                        >
+                          <div className="font-bold">{type} (both ears)</div>
+                          <div>Pos: {left}, {top}</div>
+                          <div>XY: ±{Math.abs(position.x || 35)}, {position.y || 0}</div>
+                          <div>Scale: {position.scale || 1}</div>
+                          <div>Anchor: {config.anchorPoint}</div>
+                          <div className="text-red-600 font-bold">ID: {avatarId}</div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                
+                // Regular accessories
+                return (
+                  <div key={type}>
+                    <div 
+                      className={`absolute pointer-events-none ${debug ? 'border border-yellow-500' : ''}`}
+                      style={{
+                        left: left,
+                        top: top,
+                        transform: transform,
+                        width: '150px',
+                        height: '150px',
+                        zIndex: accessoryType === AccessoryType.BACKGROUND ? -1 : 10
+                      }}
+                    >
+                      <img 
+                        src={url} 
+                        alt={`${type} accessory`}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          console.error(`Failed to load ${type}:`, url);
+                        }}
+                      />
+                    </div>
+                    
+                    {/* Debug info */}
+                    {debug && (
+                      <div 
+                        className="absolute bg-yellow-500/90 text-black text-[10px] p-1 rounded pointer-events-none z-50 font-mono"
+                        style={{
+                          left: left,
+                          top: top,
+                          transform: `${transform} translateY(-70px)`,
+                        }}
+                      >
+                        <div className="font-bold">{type}</div>
+                        <div>Pos: {left}, {top}</div>
+                        <div>XY: {position.x || 0}, {position.y || 0}</div>
+                        <div>Scale: {position.scale || 1}</div>
+                        <div>Anchor: {config.anchorPoint}</div>
+                        <div className="text-red-600 font-bold">ID: {avatarId}</div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          
-          {/* Accessory Layers */}
-          {showAccessories && (
-            <>
-              {/* All accessories rendered here */}
-              {accessoryUrls.necklace && (
-                <AccessoryLayer
-                  type={AccessoryType.NECKLACE}
-                  url={accessoryUrls.necklace}
-                  avatarId={avatarId}
-                  containerSize={containerSize}
-                  debug={debug}
-                />
-              )}
-              
-              {accessoryUrls.glasses && (
-                <AccessoryLayer
-                  type={AccessoryType.GLASSES}
-                  url={accessoryUrls.glasses}
-                  avatarId={avatarId}
-                  containerSize={containerSize}
-                  debug={debug}
-                />
-              )}
-              
-              {accessoryUrls.mask && (
-                <AccessoryLayer
-                  type={AccessoryType.MASK}
-                  url={accessoryUrls.mask}
-                  avatarId={avatarId}
-                  containerSize={containerSize}
-                  debug={debug}
-                />
-              )}
-              
-              {accessoryUrls.hat && (
-                <AccessoryLayer
-                  type={AccessoryType.HAT}
-                  url={accessoryUrls.hat}
-                  avatarId={avatarId}
-                  containerSize={containerSize}
-                  debug={debug}
-                />
-              )}
-              
-              {accessoryUrls.earring && (
-                <>
-                  <AccessoryLayer
-                    type={AccessoryType.EARRING}
-                    url={accessoryUrls.earring}
-                    avatarId={avatarId}
-                    containerSize={containerSize}
-                    side="left"
-                    debug={debug}
-                  />
-                  <AccessoryLayer
-                    type={AccessoryType.EARRING}
-                    url={accessoryUrls.earring}
-                    avatarId={avatarId}
-                    containerSize={containerSize}
-                    side="right"
-                    debug={debug}
-                  />
-                </>
-              )}
-            </>
-          )}
         </div>
         
         {/* Glow Effect */}
@@ -343,146 +414,5 @@ export default function EnhancedAvatarDisplay({
         </div>
       )}
     </div>
-  );
-}
-
-// Accessory Layer Component
-interface AccessoryLayerProps {
-  type: AccessoryType;
-  url: string;
-  avatarId: string;
-  containerSize: { width: number; height: number };
-  side?: 'left' | 'right'; // For earrings
-  debug?: boolean;
-}
-
-function AccessoryLayer({ type, url, avatarId, containerSize, side, debug }: AccessoryLayerProps) {
-  // Get accessory position from positioning.ts
-  const config = getAccessoryConfig(type);
-  const position = getAccessoryPosition(type, avatarId);
-  
-  // Extract values with defaults to avoid undefined
-  const x = position?.x || 0;
-  const y = position?.y || 0;
-  const scale = position?.scale || 1;
-  const rotation = position?.rotation || 0;
-  
-  // Determine position exactly like admin page
-  let left = '50%';
-  let top = '50%';
-  
-  if (config.anchorPoint) {
-    if (config.anchorPoint.includes('left')) {
-      left = '0%';
-    } else if (config.anchorPoint.includes('right')) {
-      left = '100%';
-    }
-    
-    if (config.anchorPoint.includes('top')) {
-      top = '0%';
-    } else if (config.anchorPoint.includes('bottom')) {
-      top = '100%';
-    }
-  }
-  
-  // Build transform exactly like admin page
-  let transform = `
-    translate(-50%, -50%)
-    translateX(${x}px)
-    translateY(${y}px)
-    scale(${scale})
-    rotate(${rotation}deg)
-  `;
-  
-  // Special handling for earrings
-  if (type === AccessoryType.EARRING && side) {
-    const xOffset = side === 'left' ? -Math.abs(x || 35) : Math.abs(x || 35);
-    transform = `
-      translate(-50%, -50%)
-      translateX(${xOffset}px)
-      translateY(${y}px)
-      scale(${scale})
-      rotate(${rotation}deg)
-    `;
-  }
-  
-  // Debug log - ย้ายมาหลังจากประกาศ transform
-  if (type === AccessoryType.HAT || type === AccessoryType.GLASSES) {
-    console.log(`🎯 ${type} Final Style:`, {
-      left: left,
-      top: top,
-      transform: transform.trim(),
-      width: '150px',
-      height: '150px',
-      zIndex: 20 + (type === AccessoryType.BACKGROUND ? -15 : 0)
-    });
-  }
-  
-  // Animation
-  const animation = getAccessoryAnimation(type);
-  const animationKeyframes: any = {};
-  
-  if (animation) {
-    switch (animation.split(' ')[0]) {
-      case 'float':
-        animationKeyframes.y = [-5, 5, -5];
-        break;
-      case 'rotate':
-        animationKeyframes.rotate = [0, 360];
-        break;
-      case 'pulse':
-        animationKeyframes.scale = [1, 1.1, 1];
-        break;
-      case 'bounce':
-        animationKeyframes.y = [0, -10, 0];
-        break;
-    }
-  }
-  
-  return (
-    <>
-      <div
-        className={`${debug ? 'border border-yellow-500' : ''}`}
-        style={{
-          position: 'absolute',
-          pointerEvents: 'none',
-          left: left,
-          top: top,
-          transform: transform,
-          width: '150px',
-          height: '150px',
-          zIndex: 20 + (type === AccessoryType.BACKGROUND ? -15 : 0),
-          // Force no margin/padding
-          margin: 0,
-          padding: 0,
-          boxSizing: 'border-box'
-        }}
-      >
-        <img 
-          src={url} 
-          alt={`${type} accessory`}
-          className="w-full h-full object-contain"
-          onError={(e) => {
-            console.error(`Failed to load ${type}:`, url);
-          }}
-        />
-      </div>
-      
-      {/* Debug info */}
-      {debug && (
-        <div 
-          className="absolute bg-yellow-500/80 text-black text-[10px] p-1 rounded pointer-events-none z-50"
-          style={{
-            left: left,
-            top: top,
-            transform: `${transform} translateY(-60px)`,
-          }}
-        >
-          {type}: {left}, {top}
-          <br />X: {x}, Y: {y}, Scale: {scale}
-          <br />Anchor: {config.anchorPoint}
-        </div>
-      )}
-    </>
   );
 }

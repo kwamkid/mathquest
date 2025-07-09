@@ -75,20 +75,21 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
   return (
     <>
       <header className="glass-dark border-b border-metaverse-purple/30 sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-3 md:py-4">
+        <div className="container mx-auto px-4 py-2 md:py-3">
           {/* Mobile Layout - 2 rows */}
           <div className="md:hidden">
             {/* Row 1: User Info + Actions */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
                 {hideActions ? (
                   <div className="cursor-not-allowed opacity-60">
                     <EnhancedAvatarDisplay
                       userId={user.id}
                       avatarData={user.avatarData}
                       basicAvatar={user.avatar}
-                      size="small"
+                      size="tiny"
                       showEffects={false}
+                      showAccessories={true}
                     />
                   </div>
                 ) : (
@@ -98,8 +99,9 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                         userId={user.id}
                         avatarData={user.avatarData}
                         basicAvatar={user.avatar}
-                        size="small"
+                        size="tiny"
                         showEffects={false}
+                        showAccessories={true}
                       />
                     </motion.div>
                   </Link>
@@ -125,7 +127,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                       </span>
                     </div>
                   )}
-                  <div className="flex items-center gap-2 text-xs text-white/70 mt-1">
+                  <div className="flex items-center gap-2 text-xs text-white/70 mt-0.5">
                     <span>{getGradeDisplayName(user.grade)}</span>
                     <span className="text-metaverse-purple font-semibold">Lv.{user.level}</span>
                     <span className="flex items-center gap-1">
@@ -169,18 +171,18 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
             {/* Row 2: Stats */}
             <div className="flex items-center gap-2">
               <motion.div 
-                className="flex-1 glass-dark px-3 py-2 rounded-lg border border-metaverse-purple/20"
+                className="flex-1 glass-dark px-2 py-1.5 rounded-lg border border-metaverse-purple/20"
                 whileHover={{ scale: 1.02 }}
               >
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-white/60">คะแนนรวม</span>
-                  <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
+                  <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
                     {user.totalScore.toLocaleString()}
                   </p>
                 </div>
               </motion.div>
               <motion.div 
-                className="flex-1 glass-dark px-3 py-2 rounded-lg border border-yellow-400/30 relative cursor-pointer bg-gradient-to-br from-yellow-400/5 to-orange-400/5"
+                className="flex-1 glass-dark px-2 py-1.5 rounded-lg border border-yellow-400/30 relative cursor-pointer bg-gradient-to-br from-yellow-400/5 to-orange-400/5"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => !hideActions && setShowExpModal(true)}
@@ -188,7 +190,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-white/60">EXP</span>
                   <div className="flex items-center gap-1">
-                    <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
+                    <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                       {user.experience.toLocaleString()}
                     </p>
                     {!hideActions && (
@@ -202,14 +204,14 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                           ease: "easeInOut"
                         }}
                       >
-                        <Info className="w-4 h-4 text-yellow-400" />
+                        <Info className="w-3 h-3 text-yellow-400" />
                       </motion.div>
                     )}
                   </div>
                 </div>
                 {!hideActions && (
                   <motion.div
-                    className="absolute -top-1 -right-1 bg-yellow-400 text-metaverse-black rounded-full px-1.5 py-0.5 text-[10px] font-bold shadow-lg"
+                    className="absolute -top-0.5 -right-0.5 bg-yellow-400 text-metaverse-black rounded-full px-1 py-0.5 text-[9px] font-bold shadow-lg"
                     animate={{ 
                       scale: [1, 1.1, 1],
                     }}
@@ -229,18 +231,17 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
           {/* Desktop Layout - Original */}
           <div className="hidden md:flex items-center justify-between">
             {/* User Info */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {hideActions ? (
                 <div className="cursor-not-allowed opacity-60">
                   <EnhancedAvatarDisplay
                     userId={user.id}
                     avatarData={user.avatarData}
                     basicAvatar={user.avatar}
-                    size="medium"
-                    showEffects={true}
-                    showTitle={true}
-                    titleBadge={user.currentTitleBadge}
-                    titleColor={user.currentTitleBadge ? getTitleColor(user.currentTitleBadge) : undefined}
+                    size="tiny"
+                    showEffects={false}
+                    showTitle={false}
+                    showAccessories={true}
                   />
                 </div>
               ) : (
@@ -250,11 +251,10 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                       userId={user.id}
                       avatarData={user.avatarData}
                       basicAvatar={user.avatar}
-                      size="medium"
-                      showEffects={true}
-                      showTitle={true}
-                      titleBadge={user.currentTitleBadge}
-                      titleColor={user.currentTitleBadge ? getTitleColor(user.currentTitleBadge) : undefined}
+                      size="tiny"
+                      showEffects={false}
+                      showTitle={false}
+                      showAccessories={true}
                     />
                   </motion.div>
                 </Link>
@@ -281,24 +281,24 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
               {/* Stats */}
               <div className="flex items-center gap-3">
                 <motion.div 
-                  className="text-center glass-dark px-4 py-2 rounded-xl border border-metaverse-purple/20"
+                  className="text-center glass-dark px-3 py-1.5 rounded-xl border border-metaverse-purple/20"
                   whileHover={{ scale: 1.05 }}
                 >
                   <div>
-                    <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
+                    <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
                       {user.totalScore.toLocaleString()}
                     </p>
                     <p className="text-xs text-white/60">คะแนนรวม</p>
                   </div>
                 </motion.div>
                 <motion.div 
-                  className="text-center glass-dark px-4 py-2 rounded-xl border border-yellow-400/30 relative cursor-pointer bg-gradient-to-br from-yellow-400/5 to-orange-400/5"
+                  className="text-center glass-dark px-3 py-1.5 rounded-xl border border-yellow-400/30 relative cursor-pointer bg-gradient-to-br from-yellow-400/5 to-orange-400/5"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => !hideActions && setShowExpModal(true)}
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
+                  <div className="flex items-center justify-center gap-1">
+                    <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                       {user.experience}
                     </p>
                     {!hideActions && (
@@ -312,7 +312,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                           ease: "easeInOut"
                         }}
                       >
-                        <Info className="w-5 h-5 text-yellow-400" />
+                        <Info className="w-4 h-4 text-yellow-400" />
                       </motion.div>
                     )}
                   </div>

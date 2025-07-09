@@ -26,8 +26,8 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
     zIndex: ACCESSORY_LAYERS.hat,
     defaultPosition: { 
       x: 0, 
-      y: -5,  // เปลี่ยนเป็นเหมือนแว่น (จาก -35 เป็น -5)
-      scale: 1.2 
+      y: 50,  // เปลี่ยนเป็นเหมือนแว่น (จาก -35 เป็น -5)
+      scale: 0.9
     },
     anchorPoint: 'top-center',  // เปลี่ยนเป็น center เหมือนแว่น (จาก top-center)
     affectsContainerSize: true,
@@ -48,8 +48,8 @@ export const ACCESSORY_POSITIONS: Record<AccessoryType, AccessoryConfig> = {
     zIndex: ACCESSORY_LAYERS.glasses,
     defaultPosition: { 
       x: 0, 
-      y: -5,   // ระดับตา (ขึ้นมาจากกลาง avatar นิดหน่อย)
-      scale: 1.2  // เปลี่ยนเป็น 1.2 เหมือนหมวก
+      y: 7,   // ระดับตา (ขึ้นมาจากกลาง avatar นิดหน่อย)
+      scale: 1  // เปลี่ยนเป็น 1.2 เหมือนหมวก
     },
     anchorPoint: 'center',
     affectsContainerSize: false,

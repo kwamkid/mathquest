@@ -61,7 +61,7 @@ export default function AvatarCustomizationTab({
                        h-[350px] md:h-[450px] lg:h-[600px] flex flex-col">
           <h3 className="text-lg lg:text-xl font-bold text-white mb-3 lg:mb-4 text-center">ตัวอย่าง Avatar</h3>
           
-          {/* Large Avatar Preview */}
+          {/* Large Avatar Preview - ใช้ xlarge และเปิด debug */}
           <div className="flex-1 flex items-center justify-center">
             <motion.div
               key={JSON.stringify(avatarData)}
@@ -80,8 +80,7 @@ export default function AvatarCustomizationTab({
                 size="xlarge"
                 showEffects={true}
                 showAccessories={true}
-                  debug={true}  // <-- เพิ่มบรรทัดนี้
-
+                debug={false}  // ปิด debug mode
               />
             </motion.div>
           </div>
@@ -108,6 +107,8 @@ export default function AvatarCustomizationTab({
                 </div>
               )
             ))}
+            
+            {/* Debug Info - ลบออก */}
           </div>
         </div>
       </div>
