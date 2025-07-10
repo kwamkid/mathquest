@@ -27,12 +27,12 @@ interface RewardFormProps {
 }
 
 export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormProps) {
-  // Form state
+  // Form state - Initialize with empty values first
   const [formData, setFormData] = useState<Partial<Reward>>({
     type: RewardType.AVATAR,
     name: '',
     description: '',
-    price: 100,
+    price: 1000,
     stock: undefined,
     requiredLevel: undefined,
     limitPerUser: undefined,
@@ -53,7 +53,15 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
   // Initialize form with reward data if editing
   useEffect(() => {
     if (reward) {
-      setFormData(reward);
+      setFormData({
+        ...reward,
+        // Ensure these fields have proper defaults
+        price: reward.price || 1000,
+        boostDuration: reward.boostDuration || 60,
+        boostMultiplier: reward.boostMultiplier || 2,
+        accessoryType: reward.accessoryType || AccessoryType.HAT,
+        badgeCategory: reward.badgeCategory || 'achievement'
+      });
     }
   }, [reward]);
 
@@ -494,7 +502,7 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
           className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
             errors.price ? 'border-red-400' : 'border-metaverse-purple/30'
           }`}
-          placeholder="100"
+          placeholder="1000"
         />
         {errors.price && (
           <p className="mt-1 text-sm text-red-400">{errors.price}</p>
@@ -589,6 +597,9 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
             className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40"
             placeholder="ไม่จำกัด"
           />
+          <p className="mt-1 text-xs text-white/50">
+            จำนวนครั้งสูงสุดที่ผู้ใช้ 1 คนสามารถแลกรางวัลนี้ได้
+          </p>
         </div>
       </div>
 

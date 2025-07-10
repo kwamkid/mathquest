@@ -170,6 +170,8 @@ export interface Reward {
   isActive: boolean;
   createdAt: string;
   updatedAt?: string;
+    deletedAt?: string;  // เพิ่ม field นี้สำหรับ soft delete
+
 }
 
 // Redemption (การแลกรางวัล)

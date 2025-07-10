@@ -79,7 +79,12 @@ export default function AdminRewardsPage() {
       const rewardsList = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      } as Reward));
+      } as Reward))
+      // Filter out soft-deleted rewards (where isActive is explicitly false and has deletedAt)
+      .filter(reward => {
+        // Show all rewards except those that have been soft deleted
+        return !(reward.deletedAt && !reward.isActive);
+      });
       setRewards(rewardsList);
     } catch (error) {
       console.error('Error loading rewards:', error);
@@ -506,6 +511,7 @@ export default function AdminRewardsPage() {
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.3 }}
               className="glass-dark rounded-3xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-metaverse-purple/30"
               onClick={(e) => e.stopPropagation()}
             >
