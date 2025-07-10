@@ -111,12 +111,25 @@ export default function UserDisplayName({
     loadTitleData();
   }, [user.currentTitleBadge, showTitle]);
 
+  // Helper function to check if color is gradient
+  const isGradient = (color: string) => {
+    return color.includes('linear-gradient') || color.includes('radial-gradient');
+  };
+
   return (
     <span className={`inline-flex items-center gap-1.5 ${className}`}>
       {titleData && (
         <span 
           className={`font-bold ${titleClassName}`}
-          style={{ color: titleData.color }}
+          style={isGradient(titleData.color) ? {
+            background: titleData.color,
+            backgroundClip: 'text',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            color: 'transparent'
+          } : {
+            color: titleData.color
+          }}
         >
           {titleData.name}
         </span>

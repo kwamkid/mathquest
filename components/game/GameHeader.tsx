@@ -1,7 +1,7 @@
 // components/game/GameHeader.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
@@ -13,19 +13,93 @@ import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import { useBackgroundMusic } from '@/lib/game/backgroundMusicManager';
 import Link from 'next/link';
 import { TITLE_BADGES } from '@/lib/data/items';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 interface GameHeaderProps {
   user: User;
   hideActions?: boolean;
 }
 
+// Cache for title data to avoid repeated Firebase calls
+const titleCache = new Map<string, { name: string; color: string }>();
+
 export default function GameHeader({ user, hideActions = false }: GameHeaderProps) {
   const router = useRouter();
   const [showExpModal, setShowExpModal] = useState(false);
+  const [titleData, setTitleData] = useState<{ name: string; color: string } | null>(null);
 
   const handleSignOut = async () => {
     await signOut();
     router.push('/');
+  };
+
+  // Load title badge data
+  useEffect(() => {
+    const loadTitleData = async () => {
+      if (!user.currentTitleBadge) {
+        setTitleData(null);
+        return;
+      }
+      
+      // Check cache first
+      if (titleCache.has(user.currentTitleBadge)) {
+        setTitleData(titleCache.get(user.currentTitleBadge)!);
+        return;
+      }
+      
+      // Try local data first
+      const localData = TITLE_BADGES[user.currentTitleBadge];
+      if (localData) {
+        const data = {
+          name: localData.name,
+          color: localData.color || '#FFD700'
+        };
+        titleCache.set(user.currentTitleBadge, data);
+        setTitleData(data);
+        return;
+      }
+      
+      // Try Firebase
+      try {
+        const rewardsQuery = query(
+          collection(db, 'rewards'),
+          where('itemId', '==', user.currentTitleBadge),
+          where('type', '==', 'titleBadge'),
+          limit(1)
+        );
+        
+        const snapshot = await getDocs(rewardsQuery);
+        
+        if (!snapshot.empty) {
+          const rewardData = snapshot.docs[0].data();
+          const data = {
+            name: rewardData.name || user.currentTitleBadge,
+            color: rewardData.color || '#FFD700'
+          };
+          titleCache.set(user.currentTitleBadge, data);
+          setTitleData(data);
+          return;
+        }
+      } catch (error) {
+        console.error('Error loading title badge:', error);
+      }
+      
+      // Use default
+      const defaultData = {
+        name: user.currentTitleBadge.replace(/title-/g, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        color: '#FFD700'
+      };
+      titleCache.set(user.currentTitleBadge, defaultData);
+      setTitleData(defaultData);
+    };
+    
+    loadTitleData();
+  }, [user.currentTitleBadge]);
+
+  // Helper function to check if color is gradient
+  const isGradient = (color: string) => {
+    return color.includes('linear-gradient') || color.includes('radial-gradient');
   };
 
   // Get grade display name
@@ -60,28 +134,6 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
       return percentage > 85;
     }).length;
   };
-
-  // Get title badge data
-  const getTitleBadgeData = (titleId: string | undefined) => {
-    if (!titleId) return null;
-    
-    // ลองหาจาก local data ก่อน
-    const localData = TITLE_BADGES[titleId];
-    if (localData) {
-      return {
-        name: localData.name,
-        color: localData.color || '#FFD700'
-      };
-    }
-    
-    // ถ้าไม่มีใน local data ให้ใช้ default
-    return {
-      name: titleId.replace(/title-/g, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      color: '#FFD700'
-    };
-  };
-
-  const titleData = getTitleBadgeData(user.currentTitleBadge);
 
   return (
     <>
@@ -124,7 +176,15 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                       {titleData && (
                         <span 
                           className="font-bold"
-                          style={{ color: titleData.color }}
+                          style={isGradient(titleData.color) ? {
+                            background: titleData.color,
+                            backgroundClip: 'text',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            color: 'transparent'
+                          } : {
+                            color: titleData.color
+                          }}
                         >
                           {titleData.name}
                         </span>
@@ -274,7 +334,15 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                   {titleData && (
                     <span 
                       className="font-bold"
-                      style={{ color: titleData.color }}
+                      style={isGradient(titleData.color) ? {
+                        background: titleData.color,
+                        backgroundClip: 'text',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        color: 'transparent'
+                      } : {
+                        color: titleData.color
+                      }}
                     >
                       {titleData.name}
                     </span>

@@ -10,6 +10,10 @@ import {
 } from '@/lib/avatar/positioning';
 import { Crown, Sparkles } from 'lucide-react';
 import { basicAvatars } from '@/lib/data/avatars';
+import { useEffect, useState } from 'react';
+import { TITLE_BADGES } from '@/lib/data/items';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { db } from '@/lib/firebase/client';
 
 interface EnhancedAvatarDisplayProps {
   userId: string;
@@ -25,6 +29,9 @@ interface EnhancedAvatarDisplayProps {
   onClick?: () => void;
   debug?: boolean;
 }
+
+// Cache for title data
+const titleCache = new Map<string, { name: string; color: string }>();
 
 export default function EnhancedAvatarDisplay({
   userId,
@@ -42,6 +49,77 @@ export default function EnhancedAvatarDisplay({
 }: EnhancedAvatarDisplayProps) {
   // Load avatar and accessory URLs
   const { avatarUrl, accessoryUrls, loading } = useAvatarData(userId, avatarData, basicAvatar);
+  
+  // State for title badge data
+  const [titleData, setTitleData] = useState<{ name: string; color: string } | null>(null);
+  
+  // Load title badge data
+  useEffect(() => {
+    const loadTitleData = async () => {
+      if (!titleBadge || !showTitle) {
+        setTitleData(null);
+        return;
+      }
+      
+      // Check cache first
+      if (titleCache.has(titleBadge)) {
+        setTitleData(titleCache.get(titleBadge)!);
+        return;
+      }
+      
+      // Try local data first
+      const localData = TITLE_BADGES[titleBadge];
+      if (localData) {
+        const data = {
+          name: localData.name,
+          color: localData.color || '#FFD700'
+        };
+        titleCache.set(titleBadge, data);
+        setTitleData(data);
+        return;
+      }
+      
+      // Try Firebase
+      try {
+        const rewardsQuery = query(
+          collection(db, 'rewards'),
+          where('itemId', '==', titleBadge),
+          where('type', '==', 'titleBadge'),
+          limit(1)
+        );
+        
+        const snapshot = await getDocs(rewardsQuery);
+        
+        if (!snapshot.empty) {
+          const rewardData = snapshot.docs[0].data();
+          const data = {
+            name: rewardData.name || titleBadge,
+            color: rewardData.color || '#FFD700'
+          };
+          titleCache.set(titleBadge, data);
+          setTitleData(data);
+          return;
+        }
+      } catch (error) {
+        console.error('Error loading title badge:', error);
+      }
+      
+      // Use default
+      const defaultData = {
+        name: titleBadge.replace(/title-/g, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        color: titleColor || '#FFD700'
+      };
+      titleCache.set(titleBadge, defaultData);
+      setTitleData(defaultData);
+    };
+    
+    loadTitleData();
+  }, [titleBadge, showTitle, titleColor]);
+  
+  // Helper function to check if color is gradient
+  const isGradient = (color: string) => {
+    return color.includes('linear-gradient') || color.includes('radial-gradient');
+  };
   
   // ✅ Safe access to avatarData with fallbacks
   const currentAvatar = avatarData?.currentAvatar;
@@ -94,7 +172,7 @@ export default function EnhancedAvatarDisplay({
       )}
       
       {/* Title Badge */}
-      {showTitle && titleBadge && (
+      {showTitle && titleData && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -102,14 +180,30 @@ export default function EnhancedAvatarDisplay({
         >
           <div 
             className="px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1"
-            style={{
-              backgroundColor: `${titleColor}20`,
-              color: titleColor,
-              border: `1px solid ${titleColor}50`
+            style={isGradient(titleData.color) ? {
+              backgroundColor: `rgba(255, 255, 255, 0.1)`,
+              border: '1px solid rgba(255, 255, 255, 0.3)',
+              backdropFilter: 'blur(10px)'
+            } : {
+              backgroundColor: `${titleData.color}20`,
+              color: titleData.color,
+              border: `1px solid ${titleData.color}50`
             }}
           >
-            <Crown className="w-3 h-3" />
-            {titleBadge.replace(/title-/g, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            <Crown className="w-3 h-3" style={{ color: isGradient(titleData.color) ? '#FFD700' : titleData.color }} />
+            <span
+              style={isGradient(titleData.color) ? {
+                background: titleData.color,
+                backgroundClip: 'text',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                color: 'transparent'
+              } : {
+                color: titleData.color
+              }}
+            >
+              {titleData.name}
+            </span>
           </div>
         </motion.div>
       )}
