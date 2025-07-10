@@ -43,6 +43,9 @@ export default function PlayPage() {
   const [showExitModal, setShowExitModal] = useState(false);
   const [gameStartTime, setGameStartTime] = useState<number>(0);
   
+  // Force level from query parameter
+  const [forceLevel, setForceLevel] = useState<number | null>(null);
+  
   // Game session state
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [questionNumber, setQuestionNumber] = useState(0);
@@ -103,33 +106,36 @@ export default function PlayPage() {
     }
   };
 
-  // Check if we need to play specific level
+  // Check for level parameter from URL - ต้องอ่านก่อน clear
   useEffect(() => {
-    if (user) {
-      const forceLevel = localStorage.getItem('forceLevel');
-      if (forceLevel) {
-        const level = parseInt(forceLevel);
-        if (!isNaN(level) && level >= 1 && level <= 100) {
-          // Note: Can't directly modify user from auth context
-          // This would need to be handled differently
-          localStorage.removeItem('forceLevel');
-        }
+    const levelParam = searchParams.get('level');
+    if (levelParam) {
+      const level = parseInt(levelParam);
+      if (!isNaN(level) && level >= 1 && level <= 100) {
+        setForceLevel(level);
+        console.log('Force level set to:', level);
       }
     }
-  }, [user]);
+  }, [searchParams]);
 
   // Auto start game if coming from summary
   useEffect(() => {
     if (searchParams.get('autoStart') === 'true' && !loading && user && gameState === 'ready') {
-      // Clear the parameter to prevent re-triggering
-      const url = new URL(window.location.href);
-      url.searchParams.delete('autoStart');
-      window.history.replaceState({}, '', url);
-      
       // Start game immediately
       startGame();
+      
+      // Clear only autoStart parameter, keep level parameter
+      const url = new URL(window.location.href);
+      url.searchParams.delete('autoStart');
+      // Keep the level parameter if it exists
+      window.history.replaceState({}, '', url);
     }
   }, [searchParams, loading, user, gameState]);
+
+  // Get actual level to play
+  const getPlayLevel = () => {
+    return forceLevel || user?.level || 1;
+  };
 
   // Get grade display name
   const getGradeDisplayName = (grade: string): string => {
@@ -169,8 +175,7 @@ export default function PlayPage() {
   const generateNewQuestion = () => {
     if (!user) return;
     
-    const forceLevel = localStorage.getItem('forceLevel');
-    const levelToPlay = forceLevel ? parseInt(forceLevel) : user.level;
+    const levelToPlay = getPlayLevel();
     
     const question = generateQuestion(user.grade, levelToPlay);
     setCurrentQuestion(question);
@@ -227,11 +232,12 @@ export default function PlayPage() {
     
     if (user) {
       try {
+        const playLevel = getPlayLevel();
         const { playStreak, isFirstToday } = await updatePlayStreak(user.id);
         
         const { scoreDiff, isNewHighScore, oldHighScore } = await calculateScoreDifference(
           user.id,
-          user.level,
+          playLevel,
           actualScore
         );
         
@@ -241,21 +247,22 @@ export default function PlayPage() {
           scoreDiff: scoreDiff
         });
         
-        let newLevel = user.level;
-        if (levelChange === 'increase' && user.level < 100) {
-          newLevel = user.level + 1;
-        } else if (levelChange === 'decrease' && user.level > 1) {
-          newLevel = user.level - 1;
+        // Calculate new level based on the level we just played
+        let newLevel = playLevel;
+        if (levelChange === 'increase' && playLevel < 100) {
+          newLevel = playLevel + 1;
+        } else if (levelChange === 'decrease' && playLevel > 1) {
+          newLevel = playLevel - 1;
         }
         
-        const playCount = (user.levelScores?.[user.level.toString()]?.playCount || 0) + 1;
+        const playCount = (user.levelScores?.[playLevel.toString()]?.playCount || 0) + 1;
         
         // Calculate EXP with boost
         const expCalc = calculateExpGained(
           actualScore,
           totalQuestions,
           percentage,
-          user.level,
+          playLevel,
           playStreak,
           isFirstToday,
           playCount
@@ -267,23 +274,29 @@ export default function PlayPage() {
         const newTotalScore = user.totalScore + scoreDiff;
         
         const levelScores = user.levelScores || {};
-        const levelKey = user.level.toString();
+        const levelKey = playLevel.toString();
         levelScores[levelKey] = {
-          level: user.level,
+          level: playLevel,
           highScore: Math.max(actualScore, oldHighScore),
           lastPlayed: new Date().toISOString(),
           playCount: playCount
         };
         
-        // Update user data
-        await updateUserGameData(user.id, {
-          level: newLevel,
+        // Update user data - only update level if not forced
+        const updateData: any = {
           totalScore: newTotalScore,
           experience: user.experience + boostedExp,
           lastPlayedAt: new Date().toISOString(),
           levelScores: levelScores,
           playStreak: playStreak
-        });
+        };
+        
+        // Only update level if we're not playing a forced level
+        if (!forceLevel) {
+          updateData.level = newLevel;
+        }
+        
+        await updateUserGameData(user.id, updateData);
         
         // Refresh user data in auth context
         await refreshUser();
@@ -298,7 +311,7 @@ export default function PlayPage() {
           percentage: percentage.toString(),
           levelChange: levelChange,
           newLevel: newLevel.toString(),
-          oldLevel: user.level.toString(),
+          oldLevel: playLevel.toString(),
           exp: boostedExp.toString(),
           highScore: isNewHighScore.toString(),
           oldHighScore: oldHighScore.toString(),
@@ -374,6 +387,8 @@ export default function PlayPage() {
       </div>
     );
   }
+
+  const displayLevel = getPlayLevel();
 
   return (
     <div className="min-h-screen bg-metaverse-black">
@@ -482,14 +497,23 @@ export default function PlayPage() {
                     <span className="font-medium">ระดับชั้น:</span>{' '}
                     <span className="text-metaverse-pink">{getGradeDisplayName(user?.grade || '')}</span>
                   </p>
-                  <p className="text-xl text-white/80">
-                    <span className="font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
-                      Level {user?.level}
-                    </span>{' '}
-                    <span className="text-white/60">
-                      {user && getLevelDescription(user.grade, user.level)}
-                    </span>
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-xl text-white/80">
+                      <span className="font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
+                        Level {displayLevel}
+                      </span>{' '}
+                      <span className="text-white/60">
+                        {user && getLevelDescription(user.grade, displayLevel)}
+                      </span>
+                    </p>
+                    {forceLevel && forceLevel !== user.level && (
+                      <div className="glass bg-yellow-400/10 border border-yellow-400/30 rounded-lg px-4 py-2 inline-block">
+                        <span className="text-yellow-400 font-medium">
+                          🔁 กำลังเล่น Level {forceLevel} ซ้ำ (ปกติคุณอยู่ Level {user.level})
+                        </span>
+                      </div>
+                    )}
+                  </div>
                   <p className="text-xl text-white/80">
                     <span className="font-medium">จำนวน:</span>{' '}
                     <span className="text-metaverse-glow">{totalQuestions} ข้อ</span>
@@ -781,8 +805,12 @@ export default function PlayPage() {
                 onClick={() => {
                   playSound('click');
                   setTempTotalScore(user?.totalScore || 0);
-                  localStorage.removeItem('forceLevel');
-                  router.push('/play');
+                  setForceLevel(null);
+                  // Clear all query parameters when exiting
+                  const url = new URL(window.location.href);
+                  url.search = '';
+                  window.history.replaceState({}, '', url);
+                  
                   setGameState('ready');
                   setScore(0);
                   setQuestionNumber(0);

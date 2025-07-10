@@ -80,7 +80,8 @@ export async function fixDigitalRewardsStatus() {
     
   } catch (error) {
     console.error('💥 Error in fix script:', error);
-    return { success: false, error: error.message };
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage };
   }
 }
 
@@ -126,37 +127,48 @@ export async function checkDigitalRewardsStatus() {
 export async function runFixFromConsole() {
   console.log('🚀 Running fix from browser console...');
   
-  // ตรวจสอบก่อน
-  const report = await checkDigitalRewardsStatus();
-  const total = Object.values(report).reduce((sum, count) => sum + count, 0);
-  
-  if (total === 0) {
-    console.log('✨ No digital rewards need fixing!');
-    return;
-  }
-  
-  // ขอ confirmation
-  const confirmed = confirm(`Found ${total} digital rewards to fix. Continue?`);
-  if (!confirmed) {
-    console.log('❌ Fix cancelled by user');
-    return;
-  }
-  
-  // รันการแก้ไข
-  const result = await fixDigitalRewardsStatus();
-  
-  if (result.success) {
-    console.log(`🎉 Successfully fixed ${result.fixed} items!`);
-    alert(`Fixed ${result.fixed} digital rewards successfully!`);
-  } else {
-    console.error(`💥 Fix failed: ${result.error}`);
-    alert(`Fix failed: ${result.error}`);
+  try {
+    // ตรวจสอบก่อน
+    const report = await checkDigitalRewardsStatus();
+    const total = Object.values(report).reduce((sum, count) => sum + count, 0);
+    
+    if (total === 0) {
+      console.log('✨ No digital rewards need fixing!');
+      return;
+    }
+    
+    // ขอ confirmation
+    const confirmed = confirm(`Found ${total} digital rewards to fix. Continue?`);
+    if (!confirmed) {
+      console.log('❌ Fix cancelled by user');
+      return;
+    }
+    
+    // รันการแก้ไข
+    const result = await fixDigitalRewardsStatus();
+    
+    if (result.success) {
+      console.log(`🎉 Successfully fixed ${result.fixed} items!`);
+      alert(`Fixed ${result.fixed} digital rewards successfully!`);
+    } else {
+      console.error(`💥 Fix failed: ${result.error}`);
+      alert(`Fix failed: ${result.error}`);
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    console.error(`💥 Unexpected error: ${errorMessage}`);
+    alert(`Unexpected error: ${errorMessage}`);
   }
 }
 
 // สำหรับรันใน Admin Panel
 export async function adminRunFix() {
-  return await fixDigitalRewardsStatus();
+  try {
+    return await fixDigitalRewardsStatus();
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return { success: false, error: errorMessage };
+  }
 }
 
 // Export สำหรับใช้ใน browser console
