@@ -15,6 +15,7 @@ import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import { generateQuestion } from '@/lib/game/questionGenerator';
 import { getQuestionCount, calculateLevelChange, getLevelConfig } from '@/lib/game/config';
 import { useSound } from '@/lib/game/soundManager';
+import { useBackgroundMusic } from '@/lib/game/backgroundMusicManager';
 import { 
   Sparkles, 
   Rocket, 
@@ -63,12 +64,22 @@ export default function PlayPage() {
   
   // Sound hook
   const { playSound } = useSound();
+  
+  // Background music hook
+  const { resumeMusic, isEnabled: musicEnabled, isPlaying, fadeIn, setGameplayVolume, restoreNormalVolume } = useBackgroundMusic();
 
   // Initialize game when user is loaded
   useEffect(() => {
     if (user) {
       setTotalQuestions(getQuestionCount(user.grade));
       setTempTotalScore(user.totalScore);
+      
+      // Start background music if enabled and not playing
+      if (musicEnabled && !isPlaying) {
+        setTimeout(() => {
+          resumeMusic();
+        }, 1000); // Delay 1 second to ensure page is loaded
+      }
       
       // Check for active boosts
       getActiveBoosts(user.id).then(boosts => {
@@ -83,7 +94,14 @@ export default function PlayPage() {
       
       setLoading(false);
     }
-  }, [user]);
+  }, [user, musicEnabled, isPlaying, resumeMusic]);
+
+  // Auto-start music on first interaction
+  const startMusicOnInteraction = () => {
+    if (musicEnabled && !isPlaying) {
+      fadeIn(2000);
+    }
+  };
 
   // Check if we need to play specific level
   useEffect(() => {
@@ -133,12 +151,17 @@ export default function PlayPage() {
 
   // Start game
   const startGame = () => {
+    startMusicOnInteraction();
     playSound('gameStart');
     setGameState('playing');
     setQuestionNumber(1);
     setScore(0);
     setAnswers([]);
     setGameStartTime(Date.now());
+    
+    // ลดเสียงเพลงตอนเล่นเกม
+    setGameplayVolume();
+    
     generateNewQuestion();
   };
 
@@ -475,7 +498,10 @@ export default function PlayPage() {
                 <div className="text-center">
                   <motion.button
                     onClick={startGame}
-                    onMouseDown={() => playSound('click')}
+                    onMouseDown={() => {
+                      startMusicOnInteraction();
+                      playSound('click');
+                    }}
                     className="px-12 py-6 metaverse-button text-white font-bold text-2xl rounded-full shadow-lg hover:shadow-xl relative overflow-hidden"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
@@ -495,7 +521,10 @@ export default function PlayPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
-                  onClick={() => router.push('/ranking')}
+                  onClick={() => {
+                    startMusicOnInteraction();
+                    router.push('/ranking');
+                  }}
                   className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -520,7 +549,10 @@ export default function PlayPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.3 }}
-                  onClick={() => router.push('/highscores')}
+                  onClick={() => {
+                    startMusicOnInteraction();
+                    router.push('/highscores');
+                  }}
                   className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -550,7 +582,10 @@ export default function PlayPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
-                  onClick={() => router.push('/my-avatar')}
+                  onClick={() => {
+                    startMusicOnInteraction();
+                    router.push('/my-avatar');
+                  }}
                   className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -575,7 +610,10 @@ export default function PlayPage() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.5 }}
-                  onClick={() => router.push('/rewards')}
+                  onClick={() => {
+                    startMusicOnInteraction();
+                    router.push('/rewards');
+                  }}
                   className="glass-dark rounded-2xl p-6 border border-metaverse-purple/30 hover:border-metaverse-purple/60 cursor-pointer transition-all hover:shadow-lg group"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}

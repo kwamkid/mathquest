@@ -16,7 +16,7 @@ import { P1Generator, P2Generator, P3Generator, P4Generator, P5Generator, P6Gene
 
 // Secondary generators
 export * from './secondary';
-import { M1Generator, M2Generator, M3Generator } from './secondary';
+import { M1Generator, M2Generator, M3Generator, M4Generator, M5Generator, M6Generator } from './secondary';
 
 // Grade generator interface
 import { GradeGenerator } from './types';
@@ -39,15 +39,13 @@ export const gradeGenerators: Record<string, GradeGenerator> = {
   P5: new P5Generator(),
   P6: new P6Generator(),
   
-  // Secondary (มัธยม) - M1-M3 implemented, M4-M6 TODO
+  // Secondary (มัธยม)
   M1: new M1Generator(),
   M2: new M2Generator(),
   M3: new M3Generator(),
-  
-  // TODO: implement M4-M6
-  // M4: new M4Generator(),
-  // M5: new M5Generator(),
-  // M6: new M6Generator(),
+  M4: new M4Generator(),
+  M5: new M5Generator(),
+  M6: new M6Generator(),
 };
 
 /**
@@ -129,5 +127,5 @@ export const DEBUG_INFO = {
   elementaryGrades: Object.keys(gradeGenerators).filter(g => g.startsWith('P')),
   secondaryGrades: Object.keys(gradeGenerators).filter(g => g.startsWith('M')),
   implementedGrades: Object.keys(gradeGenerators),
-  pendingGrades: ['M4', 'M5', 'M6'] // TODO: remove when implemented
+  pendingGrades: [] // All grades implemented!
 };

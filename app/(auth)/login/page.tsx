@@ -5,13 +5,16 @@ import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { signIn } from '@/lib/firebase/auth';
-import { Pi, User, Lock, Eye, EyeOff, LogIn } from 'lucide-react';
+import { Pi, User, Lock, Eye, EyeOff, LogIn, Volume2, VolumeX } from 'lucide-react';
 import { suppressConsoleError } from '@/lib/utils/suppressConsoleError';
+import { useBackgroundMusic } from '@/lib/game/backgroundMusicManager';
 
 // Login form component wrapped with search params
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { fadeIn, toggleMusic, isEnabled: musicEnabled, isPlaying } = useBackgroundMusic();
+  
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -20,7 +23,8 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true); // Default to true
+  const [rememberMe, setRememberMe] = useState(true);
+  const [musicStarted, setMusicStarted] = useState(false);
 
   useEffect(() => {
     // Show success message if just registered
@@ -30,7 +34,17 @@ function LoginForm() {
     }
   }, [searchParams]);
 
+  // Start music on first user interaction
+  const startMusicOnInteraction = () => {
+    if (!musicStarted && musicEnabled) {
+      fadeIn(3000); // Fade in over 3 seconds
+      setMusicStarted(true);
+    }
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    startMusicOnInteraction();
+    
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     // Clear error when user types
@@ -56,6 +70,7 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    startMusicOnInteraction();
     
     if (!validateForm()) return;
     
@@ -69,7 +84,7 @@ function LoginForm() {
       // Firebase authentication with remember me option
       await signIn(formData.username, formData.password, rememberMe);
       
-      // Success - redirect to game
+      // Success - redirect to game (music will continue)
       router.push('/play');
     } catch (error: unknown) {
         // Get error message
@@ -84,6 +99,13 @@ function LoginForm() {
       setIsLoading(false);
       // Restore console.error
       restoreConsoleError();
+    }
+  };
+
+  const handleMusicToggle = () => {
+    const newState = toggleMusic();
+    if (newState && !musicStarted) {
+      setMusicStarted(true);
     }
   };
 
@@ -120,6 +142,21 @@ function LoginForm() {
         />
       </div>
 
+      {/* Music Control - Top Right */}
+      <motion.button
+        onClick={handleMusicToggle}
+        className="fixed top-4 right-4 z-50 p-3 glass-dark rounded-full border border-metaverse-purple/30 hover:border-metaverse-purple/60 transition-all group"
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.95 }}
+        title={musicEnabled ? 'ปิดเพลง' : 'เปิดเพลง'}
+      >
+        {musicEnabled ? (
+          <Volume2 className={`w-5 h-5 ${isPlaying ? 'text-green-400' : 'text-white'} group-hover:text-metaverse-purple transition`} />
+        ) : (
+          <VolumeX className="w-5 h-5 text-red-400 group-hover:text-metaverse-purple transition" />
+        )}
+      </motion.button>
+
       {/* Login Card */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -154,6 +191,23 @@ function LoginForm() {
             <p className="text-white/70 mt-2">
               เข้าสู่ระบบเพื่อเริ่มการผจญภัย
             </p>
+
+            {/* Music Status */}
+            {isPlaying && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mt-3 inline-flex items-center gap-2 px-3 py-1 glass border border-green-400/30 rounded-full"
+              >
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                >
+                  <Volume2 className="w-4 h-4 text-green-400" />
+                </motion.div>
+                <span className="text-xs text-green-400 font-medium">♪ เพลงพื้นหลัง</span>
+              </motion.div>
+            )}
           </motion.div>
 
           {/* Login Form */}
@@ -183,6 +237,7 @@ function LoginForm() {
                   name="username"
                   value={formData.username}
                   onChange={handleInputChange}
+                  onFocus={startMusicOnInteraction}
                   className={`w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition-all ${
                     errors.username ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-purple'
                   } text-white placeholder-white/50`}
@@ -215,6 +270,7 @@ function LoginForm() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
+                  onFocus={startMusicOnInteraction}
                   className={`w-full pl-12 pr-12 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition-all ${
                     errors.password ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-purple'
                   } text-white placeholder-white/50`}
@@ -223,7 +279,10 @@ function LoginForm() {
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() => {
+                    startMusicOnInteraction();
+                    setShowPassword(!showPassword);
+                  }}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-white/60 hover:text-white transition"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -246,12 +305,19 @@ function LoginForm() {
                 <input
                   type="checkbox"
                   checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  onChange={(e) => {
+                    startMusicOnInteraction();
+                    setRememberMe(e.target.checked);
+                  }}
                   className="w-4 h-4 bg-white/10 border-metaverse-purple/50 rounded focus:ring-metaverse-purple accent-metaverse-purple"
                 />
                 <span className="ml-2 text-sm text-white/70">จดจำฉัน</span>
               </label>
-              <Link href="#" className="text-sm text-metaverse-purple hover:text-metaverse-pink transition">
+              <Link 
+                href="#" 
+                className="text-sm text-metaverse-purple hover:text-metaverse-pink transition"
+                onClick={startMusicOnInteraction}
+              >
                 ลืมรหัสผ่าน?
               </Link>
             </div>
@@ -271,6 +337,7 @@ function LoginForm() {
             <motion.button
               type="submit"
               disabled={isLoading}
+              onMouseDown={startMusicOnInteraction}
               className="w-full py-4 metaverse-button text-white font-bold text-lg rounded-xl shadow-lg hover:shadow-xl transition disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden"
               whileHover={{ scale: isLoading ? 1 : 1.02 }}
               whileTap={{ scale: isLoading ? 1 : 0.98 }}
@@ -312,6 +379,7 @@ function LoginForm() {
               <Link 
                 href="/register" 
                 className="text-metaverse-purple hover:text-metaverse-pink font-medium transition"
+                onClick={startMusicOnInteraction}
               >
                 สมัครสมาชิก
               </Link>
@@ -324,6 +392,7 @@ function LoginForm() {
           <Link 
             href="/" 
             className="text-white/60 hover:text-white transition inline-flex items-center gap-2"
+            onClick={startMusicOnInteraction}
           >
             ← กลับหน้าหลัก
           </Link>

@@ -16,9 +16,9 @@ export default function BadgesTab({ badges }: BadgesTabProps) {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.2 }}
-      className="h-full glass-dark rounded-2xl p-4 md:p-6 border border-metaverse-purple/30 overflow-y-auto"
+      className="glass-dark rounded-xl p-4 border border-metaverse-purple/30"
     >
-      <h3 className="text-lg md:text-xl font-bold text-white mb-4">Achievement Badges</h3>
+      <h3 className="text-lg font-bold text-white mb-4">Achievement Badges</h3>
       
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {badges.map(badge => (

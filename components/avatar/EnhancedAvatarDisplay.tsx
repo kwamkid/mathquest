@@ -43,9 +43,12 @@ export default function EnhancedAvatarDisplay({
   // Load avatar and accessory URLs
   const { avatarUrl, accessoryUrls, loading } = useAvatarData(userId, avatarData, basicAvatar);
   
-  // Determine if we're using basic or premium avatar
-  const isBasicAvatar = !avatarData || avatarData.currentAvatar.type === 'basic' || !avatarUrl;
-  const avatarId = avatarData?.currentAvatar.id || basicAvatar || 'knight';
+  // ✅ Safe access to avatarData with fallbacks
+  const currentAvatar = avatarData?.currentAvatar;
+  const isBasicAvatar = !currentAvatar || currentAvatar.type === 'basic' || !avatarUrl;
+  
+  // ✅ Get avatar ID with multiple fallbacks
+  const avatarId = currentAvatar?.id || basicAvatar || 'knight';
   
   // Get emoji for basic avatar
   const getAvatarEmoji = (id: string): string => {
@@ -81,6 +84,8 @@ export default function EnhancedAvatarDisplay({
           <div>Multiplier: {sizeMultiplier}</div>
           <div>Avatar: {avatarId} ({isBasicAvatar ? 'basic' : 'premium'})</div>
           <div>Accessories: {Object.keys(accessoryUrls).length}</div>
+          <div>AvatarData: {avatarData ? 'exists' : 'undefined'}</div>
+          <div>CurrentAvatar: {currentAvatar ? 'exists' : 'undefined'}</div>
           <div className="mt-2 text-green-300">
             <div className="font-semibold">Container: 300x300 (fixed)</div>
             <div>ใช้โครงสร้างเดียวกับ admin page 100%</div>
@@ -208,7 +213,8 @@ export default function EnhancedAvatarDisplay({
               )}
               
               {/* Accessories - ใช้วิธีเดียวกับ admin page 100% */}
-              {showAccessories && Object.entries(accessoryUrls).map(([type, url]) => {
+              {/* ✅ เช็คให้แน่ใจว่ามี currentAvatar และ accessories ก่อนแสดง */}
+              {showAccessories && currentAvatar?.accessories && Object.entries(accessoryUrls).map(([type, url]) => {
                 const accessoryType = type as AccessoryType;
                 const position = getAccessoryPosition(accessoryType, avatarId);
                 const config = getAccessoryConfig(accessoryType);

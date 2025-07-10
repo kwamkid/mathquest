@@ -83,10 +83,15 @@ export function useAvatarData(
 
   // Load avatar URL
   const loadAvatarUrl = async () => {
-    if (!avatarData) return;
+    // ✅ เช็คให้แน่ใจว่า avatarData มีอยู่และมี currentAvatar
+    if (!avatarData?.currentAvatar) {
+      console.log('No avatarData or currentAvatar found for user:', userId);
+      return;
+    }
 
     const { currentAvatar } = avatarData;
     
+    // ✅ เช็คว่ามี id ก่อนใช้
     if (currentAvatar.type === 'premium' && currentAvatar.id) {
       const url = await getUrlWithCache(currentAvatar.id, 'avatar');
       if (url) {
@@ -97,9 +102,20 @@ export function useAvatarData(
 
   // Load accessory URLs
   const loadAccessoryUrls = async () => {
-    if (!avatarData) return;
+    // ✅ เช็คให้แน่ใจว่า avatarData มีอยู่และมี currentAvatar
+    if (!avatarData?.currentAvatar) {
+      console.log('No avatarData or currentAvatar found for accessories:', userId);
+      return;
+    }
 
     const { currentAvatar } = avatarData;
+    
+    // ✅ เช็คว่ามี accessories object ก่อนใช้
+    if (!currentAvatar.accessories) {
+      console.log('No accessories found for user:', userId);
+      return;
+    }
+
     const urls: Partial<Record<AccessoryType, string>> = {};
 
     // Load all accessories in parallel
@@ -124,6 +140,13 @@ export function useAvatarData(
     setError(null);
 
     try {
+      // ✅ เพิ่มการตรวจสอบก่อนโหลดข้อมูล
+      if (!userId) {
+        console.log('No userId provided');
+        setLoading(false);
+        return;
+      }
+
       // Load both avatar and accessories in parallel
       await Promise.all([
         loadAvatarUrl(),
@@ -139,18 +162,21 @@ export function useAvatarData(
 
   // Refresh function to force reload
   const refresh = async () => {
-    // Clear cache for current items
-    if (avatarData?.currentAvatar.id) {
+    // ✅ เช็คก่อนลบ cache
+    if (avatarData?.currentAvatar?.id) {
       urlCache.delete(avatarData.currentAvatar.id);
       cacheTimestamps.delete(avatarData.currentAvatar.id);
     }
     
-    Object.values(avatarData?.currentAvatar.accessories || {}).forEach(id => {
-      if (id) {
-        urlCache.delete(id);
-        cacheTimestamps.delete(id);
-      }
-    });
+    // ✅ เช็คก่อนลบ accessories cache
+    if (avatarData?.currentAvatar?.accessories) {
+      Object.values(avatarData.currentAvatar.accessories).forEach(id => {
+        if (id) {
+          urlCache.delete(id);
+          cacheTimestamps.delete(id);
+        }
+      });
+    }
 
     // Reload
     await loadAllData();
@@ -158,16 +184,21 @@ export function useAvatarData(
 
   // Load data when avatarData changes
   useEffect(() => {
-    if (avatarData && userId) {
+    if (userId) {
+      // ✅ โหลดแม้ว่า avatarData จะไม่มี (สำหรับ basic avatar)
       loadAllData();
     } else {
       setLoading(false);
     }
-  }, [userId, avatarData?.currentAvatar.id, avatarData?.currentAvatar.type]);
+  }, [
+    userId, 
+    avatarData?.currentAvatar?.id, 
+    avatarData?.currentAvatar?.type
+  ]);
 
   // Also reload when accessories change
   useEffect(() => {
-    if (avatarData && userId) {
+    if (avatarData?.currentAvatar?.accessories && userId) {
       const accessoryIds = Object.values(avatarData.currentAvatar.accessories)
         .filter(id => id)
         .join(',');
@@ -178,12 +209,12 @@ export function useAvatarData(
     }
   }, [
     userId,
-    avatarData?.currentAvatar.accessories.hat,
-    avatarData?.currentAvatar.accessories.glasses,
-    avatarData?.currentAvatar.accessories.mask,
-    avatarData?.currentAvatar.accessories.earring,
-    avatarData?.currentAvatar.accessories.necklace,
-    avatarData?.currentAvatar.accessories.background
+    avatarData?.currentAvatar?.accessories?.hat,
+    avatarData?.currentAvatar?.accessories?.glasses,
+    avatarData?.currentAvatar?.accessories?.mask,
+    avatarData?.currentAvatar?.accessories?.earring,
+    avatarData?.currentAvatar?.accessories?.necklace,
+    avatarData?.currentAvatar?.accessories?.background
   ]);
 
   return {
@@ -224,13 +255,14 @@ export function useMultipleAvatarData(
             refresh: async () => {}
           };
 
-          if (user.avatarData?.currentAvatar.type === 'premium') {
+          // ✅ เช็คว่ามี avatarData และ currentAvatar ก่อน
+          if (user.avatarData?.currentAvatar?.type === 'premium' && user.avatarData.currentAvatar.id) {
             const url = await getUrlWithCache(user.avatarData.currentAvatar.id, 'avatar');
             if (url) result.avatarUrl = url;
           }
 
           // Load accessories
-          if (user.avatarData) {
+          if (user.avatarData?.currentAvatar?.accessories) {
             const accessoryUrls: Partial<Record<AccessoryType, string>> = {};
             
             await Promise.all(
@@ -259,6 +291,8 @@ export function useMultipleAvatarData(
 
     if (users.length > 0) {
       loadAll();
+    } else {
+      setLoading(false);
     }
   }, [users]);
 

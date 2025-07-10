@@ -38,7 +38,9 @@ import {
   Check,
   RefreshCw,
   Palette,
-  X
+  X,
+  Menu,
+  ChevronLeft
 } from 'lucide-react';
 
 export default function MyAvatarPage() {
@@ -46,6 +48,7 @@ export default function MyAvatarPage() {
   const { user, refreshUser } = useAuth();
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'avatar' | 'title' | 'badges'>('avatar');
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   
   // Avatar data
   const [currentAvatarData, setCurrentAvatarData] = useState<UserAvatarData | null>(null);
@@ -451,19 +454,112 @@ export default function MyAvatarPage() {
   if (!user || !tempAvatarData) return null;
 
   return (
-    <div className="min-h-screen max-h-screen bg-metaverse-black flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-metaverse-black">
       {/* Background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-metaverse-gradient opacity-20"></div>
         <div className="absolute inset-0 grid-pattern opacity-10"></div>
       </div>
 
-      <div className="relative z-10 flex-1 flex flex-col p-4 max-w-6xl mx-auto w-full">
-        {/* Header - Compact */}
+      <div className="relative z-10 flex flex-col h-screen">
+        {/* Mobile Header */}
+        <div className="md:hidden glass-dark border-b border-metaverse-purple/30">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push('/play')}
+                className="p-2 glass rounded-full hover:bg-white/10 transition"
+              >
+                <ChevronLeft className="w-5 h-5 text-white" />
+              </button>
+              <div>
+                <h1 className="text-lg font-bold text-white">My Avatar</h1>
+                <p className="text-xs text-white/60">จัดการตัวละคร</p>
+              </div>
+            </div>
+            
+            {/* Mobile Action Buttons */}
+            {hasChanges && (
+              <div className="flex items-center gap-2">
+                <motion.button
+                  onClick={handleReset}
+                  className="p-2 glass rounded-lg hover:bg-white/10 transition"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <RefreshCw className="w-4 h-4 text-white/70" />
+                </motion.button>
+                <motion.button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="px-4 py-2 metaverse-button text-white font-bold rounded-lg shadow-lg flex items-center gap-2"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {saving ? (
+                    <>
+                      <motion.span
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      >
+                        ⏳
+                      </motion.span>
+                      <span className="text-sm">บันทึก</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span className="text-sm">บันทึก</span>
+                    </>
+                  )}
+                </motion.button>
+              </div>
+            )}
+          </div>
+          
+          {/* Mobile Tabs */}
+          <div className="flex border-t border-metaverse-purple/30">
+            <button
+              onClick={() => setActiveTab('avatar')}
+              className={`flex-1 px-3 py-3 font-medium transition flex items-center justify-center gap-1 text-xs ${
+                activeTab === 'avatar'
+                  ? 'bg-metaverse-purple/20 text-white border-b-2 border-metaverse-purple'
+                  : 'text-white/60'
+              }`}
+            >
+              <Palette className="w-4 h-4" />
+              Avatar
+            </button>
+            <button
+              onClick={() => setActiveTab('title')}
+              className={`flex-1 px-3 py-3 font-medium transition flex items-center justify-center gap-1 text-xs ${
+                activeTab === 'title'
+                  ? 'bg-metaverse-purple/20 text-white border-b-2 border-metaverse-purple'
+                  : 'text-white/60'
+              }`}
+            >
+              <Crown className="w-4 h-4" />
+              Title
+            </button>
+            <button
+              onClick={() => setActiveTab('badges')}
+              className={`flex-1 px-3 py-3 font-medium transition flex items-center justify-center gap-1 text-xs ${
+                activeTab === 'badges'
+                  ? 'bg-metaverse-purple/20 text-white border-b-2 border-metaverse-purple'
+                  : 'text-white/60'
+              }`}
+            >
+              <Award className="w-4 h-4" />
+              Badges
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-3"
+          className="hidden md:block mb-3 p-4"
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -482,7 +578,7 @@ export default function MyAvatarPage() {
               </div>
             </div>
             
-            {/* Save/Reset Buttons - Compact */}
+            {/* Desktop Save/Reset Buttons */}
             <div className="h-10 flex items-center gap-2">
               {/* Refresh Button */}
               <motion.button
@@ -505,17 +601,17 @@ export default function MyAvatarPage() {
                   >
                     <motion.button
                       onClick={handleReset}
-                      className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-1 text-sm"
+                      className="px-4 py-2 glass rounded-xl text-white font-bold hover:bg-white/10 transition flex items-center gap-2"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
-                      <RefreshCw className="w-4 h-4" />
-                      <span className="hidden sm:inline">ยกเลิก</span>
+                      <RefreshCw className="w-5 h-5" />
+                      <span>ยกเลิก</span>
                     </motion.button>
                     <motion.button
                       onClick={handleSave}
                       disabled={saving}
-                      className="px-4 py-1.5 metaverse-button text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center gap-1 text-sm"
+                      className="px-6 py-2 metaverse-button text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center gap-2 text-base"
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                     >
@@ -524,16 +620,16 @@ export default function MyAvatarPage() {
                           <motion.span
                             animate={{ rotate: 360 }}
                             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            className="text-base"
+                            className="text-lg"
                           >
                             ⏳
                           </motion.span>
-                          <span className="hidden sm:inline">กำลังบันทึก...</span>
+                          <span>กำลังบันทึก...</span>
                         </>
                       ) : (
                         <>
-                          <Save className="w-4 h-4" />
-                          <span className="hidden sm:inline">บันทึก</span>
+                          <Save className="w-5 h-5" />
+                          <span>บันทึกการเปลี่ยนแปลง</span>
                         </>
                       )}
                     </motion.button>
@@ -544,8 +640,8 @@ export default function MyAvatarPage() {
           </div>
         </motion.div>
 
-        {/* Tab Navigation - Compact */}
-        <div className="glass-dark rounded-xl p-1 mb-3 border border-metaverse-purple/30">
+        {/* Desktop Tab Navigation */}
+        <div className="hidden md:block glass-dark rounded-xl p-1 mb-3 mx-4 border border-metaverse-purple/30">
           <div className="flex">
             <button
               onClick={() => setActiveTab('avatar')}
@@ -556,8 +652,7 @@ export default function MyAvatarPage() {
               }`}
             >
               <Palette className="w-4 h-4" />
-              <span className="hidden sm:inline">Avatar & Accessories</span>
-              <span className="sm:hidden">Avatar</span>
+              Avatar & Accessories
             </button>
             <button
               onClick={() => setActiveTab('title')}
@@ -568,8 +663,7 @@ export default function MyAvatarPage() {
               }`}
             >
               <Crown className="w-4 h-4" />
-              <span className="hidden sm:inline">Title Badges</span>
-              <span className="sm:hidden">Title</span>
+              Title Badges
             </button>
             <button
               onClick={() => setActiveTab('badges')}
@@ -585,8 +679,8 @@ export default function MyAvatarPage() {
           </div>
         </div>
 
-        {/* Content - Scrollable */}
-        <div className="flex-1 overflow-hidden">
+        {/* Content Area - Full height without nested scroll */}
+        <div className="flex-1 overflow-y-auto px-4 pb-24 md:pb-4 md:px-4">
           <AnimatePresence mode="wait">
             {activeTab === 'avatar' && (
               <AvatarCustomizationTab
@@ -614,7 +708,56 @@ export default function MyAvatarPage() {
         </div>
       </div>
       
-      {/* Success Dialog - Compact */}
+      {/* Mobile Floating Save Button - Always visible when has changes */}
+      {hasChanges && (
+        <motion.div
+          initial={{ y: 100, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 100, opacity: 0 }}
+          className="md:hidden fixed bottom-4 left-4 right-4 z-50"
+        >
+          <div className="glass-dark rounded-2xl p-3 border border-metaverse-purple/30 shadow-2xl">
+            <div className="flex gap-3">
+              <motion.button
+                onClick={handleReset}
+                className="flex-1 py-3 glass rounded-xl text-white font-medium hover:bg-white/10 transition flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <RefreshCw className="w-5 h-5" />
+                ยกเลิก
+              </motion.button>
+              <motion.button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-1 py-3 metaverse-button text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {saving ? (
+                  <>
+                    <motion.span
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="text-lg"
+                    >
+                      ⏳
+                    </motion.span>
+                    <span>กำลังบันทึก...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    <span className="text-base">บันทึกการเปลี่ยนแปลง</span>
+                  </>
+                )}
+              </motion.button>
+            </div>
+          </div>
+        </motion.div>
+      )}
+      
+      {/* Success Dialog */}
       <AnimatePresence>
         {showSuccessDialog && (
           <motion.div
@@ -662,7 +805,7 @@ export default function MyAvatarPage() {
         )}
       </AnimatePresence>
       
-      {/* Error Dialog - Compact */}
+      {/* Error Dialog */}
       <AnimatePresence>
         {showErrorDialog && (
           <motion.div

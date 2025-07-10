@@ -32,12 +32,10 @@ export default function TitleBadgesTab({
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.2 }}
-      className="h-full glass-dark rounded-2xl p-4 md:p-6 border border-metaverse-purple/30 overflow-y-auto"
+      className="space-y-4"
     >
-      <h3 className="text-lg md:text-xl font-bold text-white mb-4">Title Badges</h3>
-      
       {/* Current Title */}
-      <div className="mb-4">
+      <div className="glass-dark rounded-xl p-4 border border-metaverse-purple/30">
         <p className="text-white/60 mb-2 text-sm">ฉายาปัจจุบัน:</p>
         <div className="glass rounded-lg p-3 border border-metaverse-purple/30">
           {selectedTitle ? (
@@ -65,49 +63,53 @@ export default function TitleBadgesTab({
       </div>
       
       {/* Available Titles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {titleBadges.map(title => (
-          <motion.button
-            key={title.id}
-            onClick={() => onTitleChange(title.id)}
-            className={`glass rounded-lg p-3 border transition-all text-left ${
-              selectedTitle === title.id
-                ? 'border-yellow-400/50 bg-yellow-400/10'
-                : 'border-metaverse-purple/30 hover:bg-white/5'
-            }`}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <div className="flex items-start justify-between">
-              <div>
-                <h4 
-                  className="text-base font-bold mb-0.5"
-                  style={{ color: title.color || '#FFD700' }}
-                >
-                  {title.name}
-                </h4>
-                <p className="text-xs text-white/60">{title.description}</p>
-                <div className="flex items-center gap-0.5 mt-1">
-                  {Array.from({ length: getRarityStars(title.rarity) }).map((_, i) => (
-                    <Star key={i} className="w-3 h-3 text-yellow-400 fill-yellow-400" />
-                  ))}
+      <div className="glass-dark rounded-xl p-4 border border-metaverse-purple/30">
+        <h3 className="text-lg font-bold text-white mb-4">Title Badges ที่มี</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {titleBadges.map(title => (
+            <motion.button
+              key={title.id}
+              onClick={() => onTitleChange(title.id)}
+              className={`glass rounded-lg p-3 border transition-all text-left ${
+                selectedTitle === title.id
+                  ? 'border-yellow-400/50 bg-yellow-400/10'
+                  : 'border-metaverse-purple/30 hover:bg-white/5'
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h4 
+                    className="text-base font-bold mb-0.5"
+                    style={{ color: title.color || '#FFD700' }}
+                  >
+                    {title.name}
+                  </h4>
+                  <p className="text-xs text-white/60">{title.description}</p>
+                  <div className="flex items-center gap-0.5 mt-1">
+                    {Array.from({ length: getRarityStars(title.rarity) }).map((_, i) => (
+                      <Star key={i} className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+                    ))}
+                  </div>
                 </div>
+                {selectedTitle === title.id && (
+                  <Check className="w-4 h-4 text-green-400" />
+                )}
               </div>
-              {selectedTitle === title.id && (
-                <Check className="w-4 h-4 text-green-400" />
-              )}
-            </div>
-          </motion.button>
-        ))}
-      </div>
-      
-      {titleBadges.length === 0 && (
-        <div className="text-center py-8">
-          <Crown className="w-12 h-12 text-white/20 mx-auto mb-3" />
-          <p className="text-white/40">ยังไม่มี Title Badge</p>
-          <p className="text-xs text-white/30 mt-1">แลกรางวัลเพื่อปลดล็อค Title Badge พิเศษ!</p>
+            </motion.button>
+          ))}
         </div>
-      )}
+        
+        {titleBadges.length === 0 && (
+          <div className="text-center py-8">
+            <Crown className="w-12 h-12 text-white/20 mx-auto mb-3" />
+            <p className="text-white/40">ยังไม่มี Title Badge</p>
+            <p className="text-xs text-white/30 mt-1">แลกรางวัลเพื่อปลดล็อค Title Badge พิเศษ!</p>
+          </div>
+        )}
+      </div>
     </motion.div>
   );
 }

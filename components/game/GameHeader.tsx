@@ -7,9 +7,10 @@ import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Settings, LogOut, Trophy, Zap, X, Gift, Info, Crown } from 'lucide-react';
-import SoundToggle from './SoundToggle';
+import EnhancedSoundToggle from './EnhancedSoundToggle';
 import { getQuestionCount } from '@/lib/game/config';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
+import { useBackgroundMusic } from '@/lib/game/backgroundMusicManager';
 import Link from 'next/link';
 
 interface GameHeaderProps {
@@ -147,7 +148,9 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                   >
                     <Gift className="w-4 h-4" />
                   </Link>
-                  <SoundToggle />
+                  
+                  <EnhancedSoundToggle />
+                  
                   <motion.button
                     onClick={() => router.push('/profile')}
                     className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
@@ -226,6 +229,9 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 )}
               </motion.div>
             </div>
+
+            {/* Music Status Indicator */}
+            {/* Remove the music status indicator since it's now in the dialog */}
           </div>
 
           {/* Desktop Layout - Original */}
@@ -338,7 +344,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                       </span>
                     </Link>
                     
-                    <SoundToggle />
+                    <EnhancedSoundToggle />
                     
                     <motion.button
                       onClick={() => router.push('/profile')}

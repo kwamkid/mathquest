@@ -6,13 +6,7 @@ import { BaseGenerator } from '../types';
 import { 
   random, 
   generateChoices, 
-  getRandomColor, 
-  getRandomFruit, 
-  getRandomAnimal,
-  getRandomToy,
-  getRandomName,
-  randomChoice,
-  generateDivisibleNumbers
+  randomChoice
 } from '../utils';
 
 export class K3Generator extends BaseGenerator {
@@ -21,132 +15,111 @@ export class K3Generator extends BaseGenerator {
   }
 
   generateQuestion(level: number, config: LevelConfig): Question {
-    const questionType = randomChoice(this.getAvailableQuestionTypes(level));
-    
-    switch (questionType) {
-      case QuestionType.ADDITION:
-        return this.generateAddition(level, config);
-      case QuestionType.SUBTRACTION:
-        return this.generateSubtraction(level, config);
-      case QuestionType.MULTIPLICATION:
-        return this.generateMultiplication(level, config);
-      case QuestionType.MIXED:
-        return this.generateMixed(level, config);
-      case QuestionType.WORD_PROBLEM:
-        return this.generateWordProblem(level, config);
-      default:
-        return this.generateCounting(level, config);
-    }
+    // K3 จะเน้นแค่โจทย์ตัวเลขง่ายๆ ไม่มีคำถามยาวๆ
+    return this.generateMixed(level, config);
   }
 
   generateWordProblem(level: number, config: LevelConfig): Question {
-    const problemTypes = [
-      () => this.generateAdditionProblem(level, config),
-      () => this.generateSubtractionProblem(level, config),
-      () => this.generateMultiplicationProblem(level, config),
-      () => this.generateSharingProblem(level, config),
-      () => this.generateTimeProblem(level, config)
-    ];
-    
-    const generator = randomChoice(problemTypes);
-    return generator();
+    // ไม่ทำ word problem - return โจทย์ตัวเลขแทน
+    return this.generateMixed(level, config);
   }
 
   getAvailableQuestionTypes(level: number): QuestionType[] {
-    if (level <= 30) {
-      return [QuestionType.ADDITION, QuestionType.MIXED];
-    } else if (level <= 60) {
+    if (level <= 25) {
+      return [QuestionType.ADDITION];
+    } else if (level <= 50) {
+      return [QuestionType.ADDITION, QuestionType.SUBTRACTION];
+    } else if (level <= 75) {
       return [QuestionType.ADDITION, QuestionType.SUBTRACTION, QuestionType.MIXED];
-    } else if (level <= 85) {
-      return [QuestionType.ADDITION, QuestionType.SUBTRACTION, QuestionType.MULTIPLICATION, QuestionType.MIXED];
     } else {
-      return [QuestionType.ADDITION, QuestionType.SUBTRACTION, QuestionType.MULTIPLICATION, QuestionType.MIXED, QuestionType.WORD_PROBLEM];
+      return [QuestionType.ADDITION, QuestionType.SUBTRACTION, QuestionType.MULTIPLICATION, QuestionType.MIXED];
     }
   }
 
-  private generateCounting(level: number, config: LevelConfig): Question {
-    const max = Math.min(config.numberRange.max, 20); // K3 นับไม่เกิน 20
-    const count = random(10, max);
-    
-    const items = [getRandomFruit(), getRandomAnimal(), getRandomToy()];
-    const item = randomChoice(items);
-    const color = getRandomColor();
-    
-    return this.createQuestion(
-      `นับ${item}สี${color}ที่อยู่ในรูป มีทั้งหมด ${count} ตัว ถูกหรือผิด? (ตอบ 1=ถูก, 0=ผิด)`,
-      1, // สมมติว่าถูก
-      QuestionType.MIXED,
-      level,
-      [0, 1]
-    );
+  private generateMixed(level: number, config: LevelConfig): Question {
+    if (level <= 25) {
+      // Level 1-25: บวกเลข 1-10
+      return this.generateAddition(level, config);
+    } else if (level <= 50) {
+      // Level 26-50: ลบเลข (ไม่เกิน 10)
+      const types = [
+        () => this.generateAddition(level, config),
+        () => this.generateSubtraction(level, config)
+      ];
+      return randomChoice(types)();
+    } else if (level <= 75) {
+      // Level 51-75: บวกเลขได้ผลลัพธ์เกิน 10
+      const types = [
+        () => this.generateLargerAddition(level, config),
+        () => this.generateSubtraction(level, config),
+        () => this.generateNumberBonds(level, config)
+      ];
+      return randomChoice(types)();
+    } else {
+      // Level 76-100: บวกลบผสม และคูณง่ายๆ
+      const types = [
+        () => this.generateLargerAddition(level, config),
+        () => this.generateSubtraction(level, config),
+        () => this.generateSimpleMultiplication(level, config),
+        () => this.generateComparison(level, config),
+        () => this.generatePattern(level, config)
+      ];
+      return randomChoice(types)();
+    }
   }
 
   private generateAddition(level: number, config: LevelConfig): Question {
-    const max = Math.min(config.numberRange.max, 20);
+    // Level 1-25: บวกเลข 1-10
+    const max = Math.min(10, 5 + Math.floor(level / 5));
+    const a = random(1, Math.floor(max * 0.7));
+    const b = random(1, Math.floor(max * 0.7));
+    const answer = a + b;
     
-    if (level <= 40) {
-      // ผลบวกไม่เกิน 10
-      const a = random(1, 6);
-      const b = random(1, Math.min(10 - a, 6));
-      const answer = a + b;
-      
-      return this.createQuestion(
-        `${a} + ${b} = ?`,
-        answer,
-        QuestionType.ADDITION,
-        level,
-        generateChoices(answer, 4, 3)
-      );
-    } else {
-      // ผลบวกไม่เกิน 20
-      const a = random(3, 12);
-      const b = random(2, Math.min(20 - a, 10));
-      const answer = a + b;
-      
-      return this.createQuestion(
-        `${a} + ${b} = ?`,
-        answer,
-        QuestionType.ADDITION,
-        level,
-        generateChoices(answer, 4, 4)
-      );
-    }
+    return this.createQuestion(
+      `${a} + ${b} = ?`,
+      answer,
+      QuestionType.ADDITION,
+      level,
+      generateChoices(answer, 4, 3)
+    );
+  }
+
+  private generateLargerAddition(level: number, config: LevelConfig): Question {
+    // Level 51+: บวกเลขให้ได้ผลลัพธ์ 10-20
+    const targetMin = 10;
+    const targetMax = Math.min(20, 10 + Math.floor((level - 50) / 10));
+    const target = random(targetMin, targetMax);
+    const a = random(Math.floor(target * 0.3), Math.floor(target * 0.7));
+    const b = target - a;
+    
+    return this.createQuestion(
+      `${a} + ${b} = ?`,
+      target,
+      QuestionType.ADDITION,
+      level,
+      generateChoices(target, 4, 4)
+    );
   }
 
   private generateSubtraction(level: number, config: LevelConfig): Question {
-    const max = Math.min(config.numberRange.max, 20);
+    const maxNum = level <= 50 ? 10 : 20;
+    const a = random(5, maxNum);
+    const b = random(1, Math.min(a - 1, Math.floor(a * 0.6)));
+    const answer = a - b;
     
-    if (level <= 40) {
-      const a = random(3, 10);
-      const b = random(1, a - 1);
-      const answer = a - b;
-      
-      return this.createQuestion(
-        `${a} - ${b} = ?`,
-        answer,
-        QuestionType.SUBTRACTION,
-        level,
-        generateChoices(answer, 4, 3)
-      );
-    } else {
-      const a = random(5, max);
-      const b = random(1, a - 1);
-      const answer = a - b;
-      
-      return this.createQuestion(
-        `${a} - ${b} = ?`,
-        answer,
-        QuestionType.SUBTRACTION,
-        level,
-        generateChoices(answer, 4, 4)
-      );
-    }
+    return this.createQuestion(
+      `${a} - ${b} = ?`,
+      answer,
+      QuestionType.SUBTRACTION,
+      level,
+      generateChoices(answer, 4, 3)
+    );
   }
 
-  private generateMultiplication(level: number, config: LevelConfig): Question {
-    // เริ่มด้วยสูตรคูณง่าย ๆ
-    const multiplicands = [2, 3, 4, 5];
-    const a = randomChoice(multiplicands);
+  private generateSimpleMultiplication(level: number, config: LevelConfig): Question {
+    // คูณง่ายๆ แม่ 2, 5, 10
+    const multipliers = [2, 5, 10];
+    const a = randomChoice(multipliers);
     const b = random(1, 5);
     const answer = a * b;
     
@@ -159,46 +132,45 @@ export class K3Generator extends BaseGenerator {
     );
   }
 
-  private generateMixed(level: number, config: LevelConfig): Question {
-    if (level <= 30) {
-      return this.generateAddition(level, config);
-    } else if (level <= 60) {
-      return random(0, 1) === 0 
-        ? this.generateAddition(level, config)
-        : this.generateSubtraction(level, config);
-    } else {
-      const types = [
-        () => this.generateAddition(level, config),
-        () => this.generateSubtraction(level, config),
-        () => this.generateMultiplication(level, config),
-        () => this.generateComparison(level, config),
-        () => this.generatePattern(level, config),
-        () => this.generateNumberBonds(level, config)
-      ];
-      return randomChoice(types)();
-    }
-  }
-
-  private generateComparison(level: number, config: LevelConfig): Question {
-    const max = Math.min(config.numberRange.max, 20);
-    const a = random(5, max);
-    const b = random(5, max);
-    
-    const symbols = ['>', '<', '='];
-    let correctSymbol: string;
-    
-    if (a > b) correctSymbol = '>';
-    else if (a < b) correctSymbol = '<';
-    else correctSymbol = '=';
-    
-    const answer = symbols.indexOf(correctSymbol);
+  private generateNumberBonds(level: number, config: LevelConfig): Question {
+    // a + ? = c (หาตัวที่หาย)
+    const c = random(8, 15);
+    const a = random(2, c - 2);
+    const answer = c - a;
     
     return this.createQuestion(
-      `${a} __ ${b} ใส่เครื่องหมายที่ถูกต้อง (0=>, 1=<, 2==)`,
+      `${a} + ? = ${c}`,
       answer,
       QuestionType.MIXED,
       level,
-      [0, 1, 2]
+      generateChoices(answer, 4, 3)
+    );
+  }
+
+  private generateComparison(level: number, config: LevelConfig): Question {
+    const a = random(5, 20);
+    const b = random(5, 20);
+    
+    if (a === b) {
+      // ถ้าเท่ากัน ถามว่าเท่ากันใช่ไหม (1 = ใช่, 0 = ไม่ใช่)
+      return this.createQuestion(
+        `${a} = ${b} ?`,
+        1,
+        QuestionType.MIXED,
+        level,
+        [0, 1]
+      );
+    }
+    
+    // ถามว่าอันไหนมากกว่า
+    const answer = Math.max(a, b);
+    
+    return this.createQuestion(
+      `${a} ? ${b}`, // เครื่องหมาย ? คือถามว่าอันไหนมากกว่า
+      answer,
+      QuestionType.MIXED,
+      level,
+      [a, b]
     );
   }
 
@@ -209,25 +181,34 @@ export class K3Generator extends BaseGenerator {
         const start = random(2, 8);
         const missing = start + 4;
         return {
-          question: `${start}, ${start + 2}, ?, ${start + 6} ตัวเลขที่หายไปคือ?`,
+          question: `${start}, ${start + 2}, ?, ${start + 6}`,
           answer: missing
         };
       },
       // เพิ่มทีละ 5
       () => {
-        const start = random(1, 5);
+        const start = random(0, 5);
         const missing = start + 10;
         return {
-          question: `${start}, ${start + 5}, ?, ${start + 15} ตัวเลขที่หายไปคือ?`,
+          question: `${start}, ${start + 5}, ?, ${start + 15}`,
           answer: missing
         };
       },
-      // ลดทีละ 1
+      // ลดทีละ 2
       () => {
-        const start = random(10, 15);
-        const missing = start - 2;
+        const start = random(10, 20);
+        const missing = start - 4;
         return {
-          question: `${start}, ${start - 1}, ?, ${start - 3} ตัวเลขที่หายไปคือ?`,
+          question: `${start}, ${start - 2}, ?, ${start - 6}`,
+          answer: missing
+        };
+      },
+      // เลขคู่
+      () => {
+        const start = random(1, 4) * 2;
+        const missing = start + 4;
+        return {
+          question: `${start}, ${start + 2}, ?, ${start + 6}`,
           answer: missing
         };
       }
@@ -241,109 +222,6 @@ export class K3Generator extends BaseGenerator {
       QuestionType.MIXED,
       level,
       generateChoices(pattern.answer, 4, 3)
-    );
-  }
-
-  private generateNumberBonds(level: number, config: LevelConfig): Question {
-    // Number bonds เช่น 5 = 2 + ?
-    const total = random(5, 15);
-    const part1 = random(1, total - 1);
-    const part2 = total - part1;
-    
-    return this.createQuestion(
-      `${total} = ${part1} + ?`,
-      part2,
-      QuestionType.MIXED,
-      level,
-      generateChoices(part2, 4, 3)
-    );
-  }
-
-  private generateAdditionProblem(level: number, config: LevelConfig): Question {
-    const a = random(3, 8);
-    const b = random(3, 8);
-    const fruit = getRandomFruit();
-    const name1 = getRandomName();
-    const name2 = getRandomName();
-    
-    return this.createQuestion(
-      `${name1}มี${fruit} ${a} ลูก ${name2}มี ${b} ลูก รวมกันมีกี่ลูก?`,
-      a + b,
-      QuestionType.WORD_PROBLEM,
-      level,
-      generateChoices(a + b, 4, 4)
-    );
-  }
-
-  private generateSubtractionProblem(level: number, config: LevelConfig): Question {
-    const total = random(10, 20);
-    const taken = random(3, total - 2);
-    const remaining = total - taken;
-    const toy = getRandomToy();
-    const name = getRandomName();
-    
-    return this.createQuestion(
-      `${name}มี${toy} ${total} ชิ้น เล่นหายไป ${taken} ชิ้น เหลือกี่ชิ้น?`,
-      remaining,
-      QuestionType.WORD_PROBLEM,
-      level,
-      generateChoices(remaining, 4, 4)
-    );
-  }
-
-  private generateMultiplicationProblem(level: number, config: LevelConfig): Question {
-    const groups = random(2, 5);
-    const itemsPerGroup = random(2, 4);
-    const total = groups * itemsPerGroup;
-    const animal = getRandomAnimal();
-    
-    return this.createQuestion(
-      `มี${animal} ${groups} กลุ่ม กลุ่มละ ${itemsPerGroup} ตัว รวมกันมีกี่ตัว?`,
-      total,
-      QuestionType.WORD_PROBLEM,
-      level,
-      generateChoices(total, 4, 5)
-    );
-  }
-
-  private generateSharingProblem(level: number, config: LevelConfig): Question {
-    const people = random(2, 5);
-    const totalItems = generateDivisibleNumbers(people, 6, 20);
-    const itemsPerPerson = totalItems / people;
-    const item = getRandomFruit();
-    
-    return this.createQuestion(
-      `มี${item} ${totalItems} ลูก จะแบ่งให้ ${people} คน คนละเท่า ๆ กัน คนละกี่ลูก?`,
-      itemsPerPerson,
-      QuestionType.WORD_PROBLEM,
-      level,
-      generateChoices(itemsPerPerson, 4, 3)
-    );
-  }
-
-  private generateTimeProblem(level: number, config: LevelConfig): Question {
-    const hour = random(1, 12);
-    const nextHour = hour === 12 ? 1 : hour + 1;
-    
-    const timeProblems = [
-      {
-        question: `ตอนนี้เวลา ${hour} โมง อีก 1 ชั่วโมงจะเป็นเวลากี่โมง?`,
-        answer: nextHour
-      },
-      {
-        question: `ถ้าเข้านอนเวลา ${hour} โมง ตื่นเวลา ${nextHour} โมง นอนกี่ชั่วโมง?`,
-        answer: 1
-      }
-    ];
-    
-    const problem = randomChoice(timeProblems);
-    
-    return this.createQuestion(
-      problem.question,
-      problem.answer,
-      QuestionType.WORD_PROBLEM,
-      level,
-      generateChoices(problem.answer, 4, 2)
     );
   }
 }
