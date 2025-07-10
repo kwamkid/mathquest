@@ -136,6 +136,8 @@ export enum RewardType {
   BADGE = 'badge'             // เหรียญตรา
 }
 
+// types/avatar.ts (ส่วนที่แก้ไข)
+
 export interface Reward {
   id: string;
   type: RewardType;
@@ -149,6 +151,9 @@ export interface Reward {
   itemId?: string;            // ID ของ avatar/accessory/boost
   boostDuration?: number;     // สำหรับ boost (minutes)
   boostMultiplier?: number;   // 1.5x, 2x, etc.
+  
+  // Title Badge specific
+  color?: string;             // สีหรือ gradient สำหรับ title badge
   
   // Accessory specific
   accessoryType?: AccessoryType;  // ประเภทของ accessory (hat, glasses, etc.)
@@ -170,8 +175,7 @@ export interface Reward {
   isActive: boolean;
   createdAt: string;
   updatedAt?: string;
-    deletedAt?: string;  // เพิ่ม field นี้สำหรับ soft delete
-
+  deletedAt?: string;  // สำหรับ soft delete
 }
 
 // Redemption (การแลกรางวัล)

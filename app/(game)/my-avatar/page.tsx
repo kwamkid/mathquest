@@ -21,6 +21,7 @@ import {
 import AvatarCustomizationTab from '@/components/avatar/tabs/AvatarCustomizationTab';
 import TitleBadgesTab from '@/components/avatar/tabs/TitleBadgesTab';
 import BadgesTab from '@/components/avatar/tabs/BadgesTab';
+import UserDisplayName from '@/components/user/UserDisplayName';
 
 // Import item database
 import { 

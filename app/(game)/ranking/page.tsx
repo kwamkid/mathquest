@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
+import UserDisplayName from '@/components/user/UserDisplayName';
 import { 
   Trophy, 
   Medal, 
@@ -86,21 +87,19 @@ export default function RankingPage() {
       let q;
       
       if (grade === 'ALL') {
-        // รวมทุกระดับ
         q = query(
           usersRef,
           where('isActive', '==', true),
           orderBy(rankingType === 'score' ? 'totalScore' : 'experience', 'desc'),
-          limit(50) // เพิ่มจำนวนสำหรับ ranking รวม
+          limit(50)
         );
       } else {
-        // แยกตามระดับ
         q = query(
           usersRef,
           where('grade', '==', grade),
           where('isActive', '==', true),
           orderBy(rankingType === 'score' ? 'totalScore' : 'experience', 'desc'),
-          limit(30) // จำกัดแค่ 30 อันดับแรก
+          limit(30)
         );
       }
       
@@ -111,7 +110,6 @@ export default function RankingPage() {
       let currentUserRank = null;
       let currentUserInList = false;
       
-      // Process users
       snapshot.docs.forEach((doc, index) => {
         const data = doc.data();
         
@@ -137,10 +135,8 @@ export default function RankingPage() {
         }
       });
       
-      // Sort by rank
       users.sort((a, b) => (a.rank || 0) - (b.rank || 0));
       
-      // ถ้า user ไม่อยู่ใน top และดูระดับชั้นตัวเอง ให้คำนวณอันดับจริง
       if (!currentUserInList && (grade === user?.grade || grade === 'ALL') && userId) {
         try {
           let countQuery;
@@ -179,20 +175,17 @@ export default function RankingPage() {
     }
   };
 
-  // Change grade
   const handleGradeChange = (grade: Grade | 'ALL') => {
     setSelectedGrade(grade);
     setShowGradeDropdown(false);
     setUserRank(null);
   };
 
-  // Get grade display info
   const getGradeInfo = (grade: Grade | 'ALL') => {
     const gradeInfo = grades.find(g => g.value === grade);
     return gradeInfo || { value: grade, label: String(grade), icon: '📚' };
   };
 
-  // Get rank medal
   const getRankMedal = (rank: number) => {
     switch (rank) {
       case 1:
@@ -210,7 +203,6 @@ export default function RankingPage() {
     }
   };
 
-  // Get rank color
   const getRankColor = (rank: number) => {
     switch (rank) {
       case 1:
@@ -226,19 +218,6 @@ export default function RankingPage() {
     }
   };
 
-  // Get title color
-  const getTitleColor = (titleId: string): string => {
-    const colors: Record<string, string> = {
-      'title-legend': '#FFD700',
-      'title-champion': '#FF6B6B',
-      'title-math-master': '#9333EA',
-      'title-speed-demon': '#3B82F6',
-      'title-perfect-scorer': '#10B981',
-      'title-dedication-hero': '#F59E0B'
-    };
-    return colors[titleId] || '#FFD700';
-  };
-
   if (!user) return null;
 
   const selectedGradeInfo = getGradeInfo(selectedGrade);
@@ -252,14 +231,13 @@ export default function RankingPage() {
       </div>
 
       <div className="relative z-10 flex flex-col p-3 md:p-4 max-w-6xl mx-auto w-full h-screen">
-        {/* Header - Compact */}
+        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-3 flex-shrink-0"
         >
           <div className="flex items-center justify-between">
-            {/* Left side */}
             <div className="flex items-center gap-2 md:gap-3">
               <button
                 onClick={() => router.push('/play')}
@@ -288,7 +266,6 @@ export default function RankingPage() {
                   <ChevronDown className={`w-3 h-3 md:w-4 md:h-4 transition-transform ${showGradeDropdown ? 'rotate-180' : ''}`} />
                 </button>
                 
-                {/* Grade Dropdown */}
                 <AnimatePresence>
                   {showGradeDropdown && (
                     <motion.div
@@ -325,7 +302,6 @@ export default function RankingPage() {
               </div>
             </div>
             
-            {/* Right side - User Rank */}
             {userRank && (selectedGrade === user?.grade || selectedGrade === 'ALL') && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -341,7 +317,7 @@ export default function RankingPage() {
           </div>
         </motion.div>
 
-        {/* Filter Tabs - Compact */}
+        {/* Filter Tabs */}
         <div className="glass-dark rounded-xl p-1 mb-3 border border-metaverse-purple/30 flex-shrink-0">
           <div className="flex">
             <button
@@ -371,9 +347,8 @@ export default function RankingPage() {
           </div>
         </div>
 
-        {/* Rankings List - Fixed Height Container */}
+        {/* Rankings List */}
         <div className="flex-1 glass-dark rounded-2xl p-3 md:p-4 border border-metaverse-purple/30 flex flex-col overflow-hidden">
-          {/* Header */}
           <div className="flex items-center justify-between mb-3 flex-shrink-0">
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-metaverse-purple" />
@@ -386,7 +361,6 @@ export default function RankingPage() {
             </div>
           </div>
 
-          {/* Loading State */}
           {loadingRankings ? (
             <div className="flex-1 flex items-center justify-center">
               <motion.div
@@ -415,12 +389,12 @@ export default function RankingPage() {
                     }`}
                   >
                     <div className="flex items-center gap-2 md:gap-3">
-                      {/* Rank - Compact */}
+                      {/* Rank */}
                       <div className="w-6 md:w-7 text-center flex-shrink-0">
                         {getRankMedal(player.rank || index + 1)}
                       </div>
                       
-                      {/* Avatar - Proper container */}
+                      {/* Avatar */}
                       <div className="flex-shrink-0">
                         <EnhancedAvatarDisplay
                           userId={player.id}
@@ -434,42 +408,50 @@ export default function RankingPage() {
                       
                       {/* Player Name + Level */}
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-white text-base md:text-lg truncate leading-tight">
-                          {player.displayName || player.username}
+                        <h3 className="font-bold text-base md:text-lg truncate leading-tight">
+                          <UserDisplayName 
+                            user={{
+                              id: player.id,
+                              username: player.username,
+                              displayName: player.displayName,
+                              currentTitleBadge: player.currentTitleBadge,
+                              avatar: player.avatar,
+                              grade: player.grade as Grade,
+                              level: player.level,
+                              experience: player.experience,
+                              totalScore: player.totalScore,
+                              dailyStreak: 0,
+                              lastLoginDate: '',
+                              registrationCode: '',
+                              createdAt: '',
+                              isActive: true,
+                              school: ''
+                            }}
+                            className=""
+                            showTitle={true}
+                          />
                         </h3>
                         <div className="text-xs md:text-sm text-white/60 leading-none">
                           Level {player.level}
                         </div>
                       </div>
                       
-                      {/* Compact Info */}
+                      {/* Info */}
                       <div className="flex items-center gap-1.5 md:gap-2 flex-shrink-0">
-                        {/* User indicator */}
                         {isCurrentUser && (
                           <span className="text-xs px-1.5 py-0.5 bg-white/25 text-white rounded-full font-bold">
                             ME
                           </span>
                         )}
                         
-                        {/* Grade for ALL view */}
                         {selectedGrade === 'ALL' && (
                           <span className="text-xs px-1 py-0.5 bg-metaverse-purple/25 text-metaverse-purple rounded font-bold">
                             {player.grade}
                           </span>
                         )}
-                        
-                        {/* Title Badge - Ultra compact */}
-                        {player.currentTitleBadge && (
-                          <span 
-                            className="text-xs font-bold truncate max-w-12 md:max-w-16 hidden sm:inline"
-                            style={{ color: getTitleColor(player.currentTitleBadge) }}
-                          >
-                            {player.currentTitleBadge.replace(/title-/g, '').replace(/-/g, '').slice(0, 6)}
-                          </span>
-                        )}
                       </div>
                       
-                      {/* Score/EXP - Much bigger font */}
+                      {/* Score/EXP */}
                       <div className="text-right flex-shrink-0 min-w-0">
                         <p className="text-lg md:text-xl font-black text-white leading-none">
                           {(rankingType === 'score' 
@@ -501,7 +483,6 @@ export default function RankingPage() {
             </div>
           )}
 
-          {/* Show message if user not in top - Fixed */}
           {rankings.length > 0 && userRank && 
            ((selectedGrade === 'ALL' && userRank > 50) || 
             (selectedGrade !== 'ALL' && userRank > 30)) && 
@@ -526,7 +507,6 @@ export default function RankingPage() {
           )}
         </div>
 
-        {/* Info Box - Only on desktop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

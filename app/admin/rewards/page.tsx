@@ -197,7 +197,27 @@ export default function AdminRewardsPage() {
   };
 
   const getRewardImage = (reward: Reward) => {
-    if (reward.imageUrl) {
+    if (reward.type === RewardType.TITLE_BADGE) {
+      // แสดงเป็นข้อความพร้อมสี
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center p-1">
+          <Crown className="w-5 h-5 mb-1" style={{ color: reward.color || '#FFD700' }} />
+          <span className="text-[10px] font-bold text-center leading-tight" style={{ color: reward.color || '#FFD700' }}>
+            {reward.name.slice(0, 8)}
+          </span>
+        </div>
+      );
+    } else if (reward.type === RewardType.BOOST) {
+      // แสดงเป็น xN เท่า
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center">
+          <Zap className="w-6 h-6 text-yellow-400 mb-1" />
+          <span className="text-sm font-bold text-yellow-400">
+            x{reward.boostMultiplier || 2}
+          </span>
+        </div>
+      );
+    } else if (reward.imageUrl) {
       return (
         <img 
           src={reward.imageUrl} 
@@ -308,6 +328,57 @@ export default function AdminRewardsPage() {
         </motion.div>
       </div>
 
+      {/* Type Filter Tabs */}
+      <div className="mb-6">
+        <div className="flex flex-wrap gap-2">
+          <motion.button
+            onClick={() => setFilterType('all')}
+            className={`px-4 py-2 rounded-xl font-medium transition-all ${
+              filterType === 'all'
+                ? 'bg-metaverse-purple text-white shadow-lg'
+                : 'glass-dark border border-metaverse-purple/30 text-white/60 hover:text-white hover:border-metaverse-purple/50'
+            }`}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <div className="flex items-center gap-2">
+              <span>🎁</span>
+              <span>ทั้งหมด</span>
+              <span className="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                {rewards.length}
+              </span>
+            </div>
+          </motion.button>
+
+          {rewardTypes.map(type => {
+            const count = rewards.filter(r => r.type === type.value).length;
+            return (
+              <motion.button
+                key={type.value}
+                onClick={() => setFilterType(type.value)}
+                className={`px-4 py-2 rounded-xl font-medium transition-all ${
+                  filterType === type.value
+                    ? 'bg-metaverse-purple text-white shadow-lg'
+                    : 'glass-dark border border-metaverse-purple/30 text-white/60 hover:text-white hover:border-metaverse-purple/50'
+                }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <div className="flex items-center gap-2">
+                  <span>{type.icon}</span>
+                  <span>{type.label}</span>
+                  {count > 0 && (
+                    <span className="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-xs">
+                      {count}
+                    </span>
+                  )}
+                </div>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Filters & Actions */}
       <div className="glass-dark rounded-xl p-4 mb-6 border border-metaverse-purple/30">
         <div className="flex flex-col lg:flex-row gap-4">
@@ -324,20 +395,6 @@ export default function AdminRewardsPage() {
               />
             </div>
           </div>
-
-          {/* Type Filter */}
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink text-white"
-          >
-            <option value="all">ทุกประเภท</option>
-            {rewardTypes.map(type => (
-              <option key={type.value} value={type.value}>
-                {type.icon} {type.label}
-              </option>
-            ))}
-          </select>
 
           {/* Active Filter */}
           <select

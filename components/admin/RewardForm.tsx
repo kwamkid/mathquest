@@ -17,7 +17,9 @@ import {
   Smile,
   Gem,
   Link,
-  Square
+  Square,
+  Palette,
+  Hash
 } from 'lucide-react';
 
 interface RewardFormProps {
@@ -25,6 +27,22 @@ interface RewardFormProps {
   onSuccess: () => void;
   onCancel: () => void;
 }
+
+// Predefined colors for Title Badge
+const TITLE_COLORS = [
+  { value: '#FFD700', label: 'ทอง', gradient: false },
+  { value: '#FF6B6B', label: 'แดง', gradient: false },
+  { value: '#9333EA', label: 'ม่วง', gradient: false },
+  { value: '#3B82F6', label: 'น้ำเงิน', gradient: false },
+  { value: '#10B981', label: 'เขียว', gradient: false },
+  { value: '#F59E0B', label: 'ส้ม', gradient: false },
+  { value: '#EC4899', label: 'ชมพู', gradient: false },
+  { value: '#6B7280', label: 'เทา', gradient: false },
+  { value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', label: 'Gradient ม่วง', gradient: true },
+  { value: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', label: 'Gradient ชมพู', gradient: true },
+  { value: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', label: 'Gradient ฟ้า', gradient: true },
+  { value: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', label: 'Gradient Sunset', gradient: true },
+];
 
 export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormProps) {
   // Form state - Initialize with empty values first
@@ -44,11 +62,14 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
     imagePath: undefined,
     itemId: undefined,
     accessoryType: AccessoryType.HAT,
-    badgeCategory: 'achievement'
+    badgeCategory: 'achievement',
+    color: '#FFD700'
   });
   
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [useCustomColor, setUseCustomColor] = useState(false);
+  const [customColor, setCustomColor] = useState('#FFD700');
 
   // Initialize form with reward data if editing
   useEffect(() => {
@@ -60,8 +81,15 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
         boostDuration: reward.boostDuration || 60,
         boostMultiplier: reward.boostMultiplier || 2,
         accessoryType: reward.accessoryType || AccessoryType.HAT,
-        badgeCategory: reward.badgeCategory || 'achievement'
+        badgeCategory: reward.badgeCategory || 'achievement',
+        color: reward.color || '#FFD700'
       });
+      
+      // Check if using custom color
+      if (reward.color && !TITLE_COLORS.find(c => c.value === reward.color)) {
+        setUseCustomColor(true);
+        setCustomColor(reward.color);
+      }
     }
   }, [reward]);
 
@@ -153,6 +181,12 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
       } else {
         // Set default badge category
         newData.badgeCategory = 'achievement';
+      }
+      if (type !== RewardType.TITLE_BADGE) {
+        newData.color = undefined;
+      } else {
+        // Set default color for title badge
+        newData.color = '#FFD700';
       }
       
       return newData;
@@ -266,6 +300,11 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
 
       // Set requiresShipping based on type
       cleanedData.requiresShipping = cleanedData.type === RewardType.PHYSICAL;
+      
+      // Set color for title badge
+      if (cleanedData.type === RewardType.TITLE_BADGE && useCustomColor) {
+        cleanedData.color = customColor;
+      }
 
       // If editing and image changed, delete old image
       if (reward && reward.imagePath && reward.imagePath !== formData.imagePath) {
@@ -285,6 +324,11 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
     } finally {
       setSaving(false);
     }
+  };
+
+  // Check if should show image upload
+  const shouldShowImageUpload = () => {
+    return ![RewardType.TITLE_BADGE, RewardType.BOOST].includes(formData.type as RewardType);
   };
 
   // Data
@@ -321,28 +365,10 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
         </div>
       )}
 
-      {/* Image Upload */}
+      {/* Type - Moved to top */}
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2">
-          รูปภาพรางวัล
-        </label>
-        <ImageUpload
-          value={formData.imageUrl}
-          onChange={(url) => setFormData({ ...formData, imageUrl: url, imagePath: url })}
-          onUpload={handleImageUpload}
-          maxSize={2}
-          placeholder="คลิกเพื่ออัพโหลดรูปรางวัล"
-          allowUrl={true}
-        />
-        <p className="mt-2 text-xs text-white/40">
-          * สามารถอัพโหลดรูปหรือใส่ URL รูปภาพก็ได้ (แนะนำ SVG สำหรับ accessories)
-        </p>
-      </div>
-
-      {/* Type */}
-      <div>
-        <label className="block text-sm font-medium text-white/80 mb-2">
-          ประเภทรางวัล
+          ประเภทรางวัล <span className="text-red-400">*</span>
         </label>
         <select
           value={formData.type}
@@ -356,6 +382,112 @@ export default function RewardForm({ reward, onSuccess, onCancel }: RewardFormPr
           ))}
         </select>
       </div>
+
+      {/* Image Upload - Only show for types that need it */}
+      {shouldShowImageUpload() && (
+        <div>
+          <label className="block text-sm font-medium text-white/80 mb-2">
+            รูปภาพรางวัล
+          </label>
+          <ImageUpload
+            value={formData.imageUrl}
+            onChange={(url) => setFormData({ ...formData, imageUrl: url, imagePath: url })}
+            onUpload={handleImageUpload}
+            maxSize={2}
+            placeholder="คลิกเพื่ออัพโหลดรูปรางวัล"
+            allowUrl={true}
+          />
+          <p className="mt-2 text-xs text-white/40">
+            * สามารถอัพโหลดรูปหรือใส่ URL รูปภาพก็ได้ (แนะนำ SVG สำหรับ accessories)
+          </p>
+        </div>
+      )}
+
+      {/* Color Picker - For Title Badge only */}
+      {formData.type === RewardType.TITLE_BADGE && (
+        <div>
+          <label className="block text-sm font-medium text-white/80 mb-2">
+            สีของ Title Badge <span className="text-red-400">*</span>
+          </label>
+          
+          {/* Predefined colors */}
+          <div className="grid grid-cols-4 md:grid-cols-6 gap-2 mb-3">
+            {TITLE_COLORS.map(color => (
+              <motion.button
+                key={color.value}
+                type="button"
+                onClick={() => {
+                  setFormData({ ...formData, color: color.value });
+                  setUseCustomColor(false);
+                }}
+                className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
+                  formData.color === color.value && !useCustomColor
+                    ? 'border-white shadow-lg scale-105'
+                    : 'border-white/30 hover:border-white/60'
+                }`}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <div 
+                  className="w-full h-8 rounded"
+                  style={{ 
+                    background: color.value,
+                    boxShadow: formData.color === color.value ? '0 0 10px rgba(255,255,255,0.5)' : ''
+                  }}
+                />
+                <span className="text-xs text-white/80">{color.label}</span>
+              </motion.button>
+            ))}
+          </div>
+
+          {/* Custom color option */}
+          <div className="glass rounded-lg p-3 border border-metaverse-purple/30">
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="useCustomColor"
+                checked={useCustomColor}
+                onChange={(e) => {
+                  setUseCustomColor(e.target.checked);
+                  if (e.target.checked) {
+                    setFormData({ ...formData, color: customColor });
+                  } else {
+                    setFormData({ ...formData, color: '#FFD700' });
+                  }
+                }}
+                className="w-4 h-4"
+              />
+              <label htmlFor="useCustomColor" className="text-sm text-white/80 font-medium">
+                ใช้สีกำหนดเอง
+              </label>
+            </div>
+            
+            {useCustomColor && (
+              <div className="mt-3 flex items-center gap-3">
+                <input
+                  type="color"
+                  value={customColor}
+                  onChange={(e) => {
+                    setCustomColor(e.target.value);
+                    setFormData({ ...formData, color: e.target.value });
+                  }}
+                  className="w-12 h-12 rounded cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={customColor}
+                  onChange={(e) => {
+                    setCustomColor(e.target.value);
+                    setFormData({ ...formData, color: e.target.value });
+                  }}
+                  placeholder="#FFD700"
+                  className="flex-1 px-3 py-2 bg-white/10 border border-metaverse-purple/30 rounded-lg text-white placeholder-white/40 font-mono"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Accessory Type - For Accessories only */}
       {formData.type === RewardType.ACCESSORY && (

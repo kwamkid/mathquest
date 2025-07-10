@@ -12,10 +12,11 @@ import { getQuestionCount } from '@/lib/game/config';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import { useBackgroundMusic } from '@/lib/game/backgroundMusicManager';
 import Link from 'next/link';
+import { TITLE_BADGES } from '@/lib/data/items';
 
 interface GameHeaderProps {
   user: User;
-  hideActions?: boolean; // เพิ่ม prop สำหรับซ่อน action buttons
+  hideActions?: boolean;
 }
 
 export default function GameHeader({ user, hideActions = false }: GameHeaderProps) {
@@ -49,7 +50,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
     return gradeMap[grade] || grade;
   };
 
-  // คำนวณจำนวน level ที่ผ่านแล้ว (คะแนน > 85%)
+  // คำนวณจำนวน level ที่ผ่านแล้ว
   const getPassedLevels = (): number => {
     if (!user.levelScores) return 0;
     
@@ -60,24 +61,33 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
     }).length;
   };
 
-  // Get title color from user's current title badge
-  const getTitleColor = (titleId: string): string => {
-    const colors: Record<string, string> = {
-      'title-legend': '#FFD700',
-      'title-champion': '#FF6B6B',
-      'title-math-master': '#9333EA',
-      'title-speed-demon': '#3B82F6',
-      'title-perfect-scorer': '#10B981',
-      'title-dedication-hero': '#F59E0B'
+  // Get title badge data
+  const getTitleBadgeData = (titleId: string | undefined) => {
+    if (!titleId) return null;
+    
+    // ลองหาจาก local data ก่อน
+    const localData = TITLE_BADGES[titleId];
+    if (localData) {
+      return {
+        name: localData.name,
+        color: localData.color || '#FFD700'
+      };
+    }
+    
+    // ถ้าไม่มีใน local data ให้ใช้ default
+    return {
+      name: titleId.replace(/title-/g, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      color: '#FFD700'
     };
-    return colors[titleId] || '#FFD700';
   };
+
+  const titleData = getTitleBadgeData(user.currentTitleBadge);
 
   return (
     <>
       <header className="glass-dark border-b border-metaverse-purple/30 sticky top-0 z-40">
         <div className="container mx-auto px-4 py-2 md:py-3">
-          {/* Mobile Layout - 2 rows */}
+          {/* Mobile Layout */}
           <div className="md:hidden">
             {/* Row 1: User Info + Actions */}
             <div className="flex items-center justify-between mb-1">
@@ -109,25 +119,21 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 )}
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base text-white">
-                      {user.displayName || user.username}
+                    {/* แสดง Title Badge เป็นส่วนหนึ่งของชื่อ */}
+                    <h3 className="font-bold text-base text-white flex items-center gap-1.5">
+                      {titleData && (
+                        <span 
+                          className="font-bold"
+                          style={{ color: titleData.color }}
+                        >
+                          {titleData.name}
+                        </span>
+                      )}
+                      <span className={titleData ? 'text-white' : ''}>
+                        {user.displayName || user.username}
+                      </span>
                     </h3>
                   </div>
-                  {user.currentTitleBadge && (
-                    <div className="mt-1">
-                      <span 
-                        className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border"
-                        style={{
-                          backgroundColor: `${getTitleColor(user.currentTitleBadge)}20`,
-                          color: getTitleColor(user.currentTitleBadge),
-                          borderColor: `${getTitleColor(user.currentTitleBadge)}30`
-                        }}
-                      >
-                        <Crown className="w-3 h-3" />
-                        {user.currentTitleBadge.replace(/title-/g, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                      </span>
-                    </div>
-                  )}
                   <div className="flex items-center gap-2 text-xs text-white/70 mt-0.5">
                     <span>{getGradeDisplayName(user.grade)}</span>
                     <span className="text-metaverse-purple font-semibold">Lv.{user.level}</span>
@@ -139,7 +145,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 </div>
               </div>
               
-              {/* Actions - ซ่อนเมื่อ hideActions = true */}
+              {/* Actions */}
               {!hideActions && (
                 <div className="flex items-center gap-1">
                   <Link
@@ -229,12 +235,9 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 )}
               </motion.div>
             </div>
-
-            {/* Music Status Indicator */}
-            {/* Remove the music status indicator since it's now in the dialog */}
           </div>
 
-          {/* Desktop Layout - Original */}
+          {/* Desktop Layout */}
           <div className="hidden md:flex items-center justify-between">
             {/* User Info */}
             <div className="flex items-center gap-3">
@@ -266,8 +269,19 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 </Link>
               )}
               <div>
-                <h3 className="font-bold text-lg text-white">
-                  {user.displayName || user.username}
+                {/* แสดง Title Badge เป็นส่วนหนึ่งของชื่อ */}
+                <h3 className="font-bold text-lg text-white flex items-center gap-2">
+                  {titleData && (
+                    <span 
+                      className="font-bold"
+                      style={{ color: titleData.color }}
+                    >
+                      {titleData.name}
+                    </span>
+                  )}
+                  <span className={titleData ? 'text-white' : ''}>
+                    {user.displayName || user.username}
+                  </span>
                 </h3>
                 <div className="flex items-center gap-4 text-sm text-white/70">
                   <span>{getGradeDisplayName(user.grade)}</span>
@@ -326,13 +340,10 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 </motion.div>
               </div>
 
-              {/* Actions - ซ่อนเมื่อ hideActions = true */}
+              {/* Actions */}
               {!hideActions && (
                 <>
-                  {/* Divider */}
                   <div className="w-px h-8 bg-white/20" />
-
-                  {/* Actions */}
                   <div className="flex items-center gap-2">
                     <Link
                       href="/rewards"
