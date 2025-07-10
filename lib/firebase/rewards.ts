@@ -307,7 +307,7 @@ const processDigitalRewardInTransaction = (
   
   // Process based on reward type
   switch (reward.type) {
-          case RewardType.AVATAR:
+    case RewardType.AVATAR:
       // Use reward.id if itemId not available
       const avatarId = reward.itemId || reward.id;
       if (avatarId && !inventory.avatars.includes(avatarId)) {
@@ -397,6 +397,21 @@ const processDigitalRewardInTransaction = (
     transaction.update(userRef, {
       avatarData: currentAvatarData
     });
+  }
+  
+  // Update title badges in user document
+  if (reward.type === RewardType.TITLE_BADGE) {
+    const userRef = doc(db, COLLECTIONS.USERS, userId);
+    const titleId = reward.itemId || reward.id;
+    
+    let ownedTitleBadges = userData.ownedTitleBadges || [];
+    if (titleId && !ownedTitleBadges.includes(titleId)) {
+      ownedTitleBadges.push(titleId);
+      
+      transaction.update(userRef, {
+        ownedTitleBadges: ownedTitleBadges
+      });
+    }
   }
 };
 
@@ -1313,7 +1328,7 @@ export const deleteReward = async (rewardId: string): Promise<{ success: boolean
   }
 };
 
-// Update redemption status (Admin only)
+// Update redemption status (Admin only) - FIXED VERSION
 export const updateRedemptionStatus = async (
   redemptionId: string,
   status: RedemptionStatus,
@@ -1321,25 +1336,98 @@ export const updateRedemptionStatus = async (
   adminNotes?: string
 ): Promise<{ success: boolean; message: string }> => {
   try {
-    const updateData: any = {
-      status,
-      updatedAt: new Date().toISOString()
-    };
-    
-    if (trackingNumber) updateData.trackingNumber = trackingNumber;
-    if (adminNotes) updateData.adminNotes = adminNotes;
-    
-    await updateDoc(doc(db, COLLECTIONS.REDEMPTIONS, redemptionId), updateData);
-    
-    return {
-      success: true,
-      message: 'อัพเดทสถานะสำเร็จ'
-    };
+    return await runTransaction(db, async (transaction) => {
+      // 1. Get redemption data first
+      const redemptionRef = doc(db, COLLECTIONS.REDEMPTIONS, redemptionId);
+      const redemptionDoc = await transaction.get(redemptionRef);
+      
+      if (!redemptionDoc.exists()) {
+        throw new Error('ไม่พบข้อมูลการแลกรางวัล');
+      }
+      
+      const redemption = redemptionDoc.data() as Redemption;
+      
+      // 2. Get user data for digital rewards processing
+      let userDoc, inventoryDoc, rewardDoc;
+      let needsDigitalProcessing = false;
+      
+      // Check if this is a digital reward being set to DELIVERED
+      if (status === RedemptionStatus.DELIVERED && 
+          redemption.rewardType !== RewardType.PHYSICAL &&
+          redemption.status !== RedemptionStatus.DELIVERED) {
+        
+        needsDigitalProcessing = true;
+        
+        // Get user data
+        const userRef = doc(db, COLLECTIONS.USERS, redemption.userId);
+        userDoc = await transaction.get(userRef);
+        
+        if (!userDoc.exists()) {
+          throw new Error('ไม่พบข้อมูลผู้ใช้');
+        }
+        
+        // Get inventory
+        const inventoryRef = doc(db, COLLECTIONS.USER_INVENTORY, redemption.userId);
+        inventoryDoc = await transaction.get(inventoryRef);
+        
+        // Get reward data for boost processing
+        if (redemption.rewardType === RewardType.BOOST) {
+          const rewardRef = doc(db, COLLECTIONS.REWARDS, redemption.rewardId);
+          rewardDoc = await transaction.get(rewardRef);
+        }
+      }
+      
+      // 3. Prepare update data
+      const updateData: any = {
+        status,
+        updatedAt: new Date().toISOString()
+      };
+      
+      if (trackingNumber) updateData.trackingNumber = trackingNumber;
+      if (adminNotes) updateData.adminNotes = adminNotes;
+      
+      // 4. Update redemption status
+      transaction.update(redemptionRef, updateData);
+      
+      // 5. Process digital rewards if needed
+      if (needsDigitalProcessing && userDoc && inventoryDoc !== undefined) {
+        const userData = userDoc.data();
+        
+        // Create a mock reward object for processing
+        const mockReward: Partial<Reward> = {
+          id: redemption.rewardId,
+          type: redemption.rewardType,
+          name: redemption.rewardName,
+          itemId: redemption.itemId || redemption.rewardId,
+          boostDuration: rewardDoc?.data()?.boostDuration,
+          boostMultiplier: rewardDoc?.data()?.boostMultiplier
+        };
+        
+        // Process the digital reward
+        processDigitalRewardInTransaction(
+          transaction,
+          redemption.userId,
+          mockReward as Reward,
+          redemptionId,
+          inventoryDoc,
+          userData
+        );
+        
+        console.log(`✅ Processed digital reward for redemption ${redemptionId}`);
+      }
+      
+      return {
+        success: true,
+        message: needsDigitalProcessing 
+          ? 'อัพเดทสถานะและส่งมอบรางวัลดิจิทัลสำเร็จ'
+          : 'อัพเดทสถานะสำเร็จ'
+      };
+    });
   } catch (error) {
     console.error('Update redemption error:', error);
     return {
       success: false,
-      message: 'ไม่สามารถอัพเดทสถานะได้'
+      message: error instanceof Error ? error.message : 'ไม่สามารถอัพเดทสถานะได้'
     };
   }
 };

@@ -356,7 +356,7 @@ export const GRADE_CONFIGS: Record<string, LevelConfig[]> = {
     }
   ],
 
-  // มัธยม 1
+  // มัธยม 1 (existing)
   M1: [
     {
       minLevel: 1,
@@ -400,19 +400,185 @@ export const GRADE_CONFIGS: Record<string, LevelConfig[]> = {
     }
   ],
 
-  // มัธยม 2-6 (ตัวอย่าง)
+  // มัธยม 2
   M2: [
     {
       minLevel: 1,
-      maxLevel: 100,
-      description: 'พีชคณิตขั้นสูง',
+      maxLevel: 25,
+      description: 'สมการเชิงเส้น 2 ตัวแปร',
       questionTypes: [QuestionType.MIXED],
-      numberRange: { min: -100, max: 100 },
-      features: ['advancedAlgebra']
+      numberRange: { min: -50, max: 50 },
+      features: ['linearEquations', 'twoVariables']
+    },
+    {
+      minLevel: 26,
+      maxLevel: 50,
+      description: 'ฟังก์ชันเชิงเส้น',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -20, max: 20 },
+      features: ['linearFunctions']
+    },
+    {
+      minLevel: 51,
+      maxLevel: 75,
+      description: 'ความน่าจะเป็นเบื้องต้น',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: 1, max: 10 },
+      features: ['probability', 'basicProbability']
+    },
+    {
+      minLevel: 76,
+      maxLevel: 100,
+      description: 'สถิติเบื้องต้น',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: 1, max: 100 },
+      features: ['statistics', 'meanMedianMode']
     }
   ],
-  
-  // ... เพิ่มเติมสำหรับ M3-M6 ตามความเหมาะสม
+
+  // มัธยม 3
+  M3: [
+    {
+      minLevel: 1,
+      maxLevel: 25,
+      description: 'สมการกำลังสอง',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -10, max: 10 },
+      features: ['quadraticEquations']
+    },
+    {
+      minLevel: 26,
+      maxLevel: 50,
+      description: 'ฟังก์ชันกำลังสอง',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -15, max: 15 },
+      features: ['quadraticFunctions']
+    },
+    {
+      minLevel: 51,
+      maxLevel: 75,
+      description: 'เรขาคณิตเบื้องต้น',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: 1, max: 50 },
+      features: ['geometry', 'area', 'perimeter']
+    },
+    {
+      minLevel: 76,
+      maxLevel: 100,
+      description: 'ตรีโกณมิติเบื้องต้น',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: 1, max: 90 },
+      features: ['trigonometry', 'basicTrig']
+    }
+  ],
+
+  // มัธยม 4
+  M4: [
+    {
+      minLevel: 1,
+      maxLevel: 25,
+      description: 'ลอการิทึม',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: 1, max: 100 },
+      features: ['logarithms']
+    },
+    {
+      minLevel: 26,
+      maxLevel: 50,
+      description: 'เมทริกซ์เบื้องต้น',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -10, max: 10 },
+      features: ['matrices']
+    },
+    {
+      minLevel: 51,
+      maxLevel: 75,
+      description: 'ตรีโกณมิติขั้นสูง',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: 0, max: 360 },
+      features: ['trigonometry', 'advancedTrig']
+    },
+    {
+      minLevel: 76,
+      maxLevel: 100,
+      description: 'เวกเตอร์เบื้องต้น',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -20, max: 20 },
+      features: ['vectors']
+    }
+  ],
+
+  // มัธยม 5
+  M5: [
+    {
+      minLevel: 1,
+      maxLevel: 25,
+      description: 'แคลคูลัสเบื้องต้น (ลิมิต)',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -10, max: 10 },
+      features: ['calculus', 'limits']
+    },
+    {
+      minLevel: 26,
+      maxLevel: 50,
+      description: 'อนุพันธ์',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -5, max: 5 },
+      features: ['calculus', 'derivatives']
+    },
+    {
+      minLevel: 51,
+      maxLevel: 75,
+      description: 'การประยุกต์อนุพันธ์',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -20, max: 20 },
+      features: ['calculus', 'derivativeApplications']
+    },
+    {
+      minLevel: 76,
+      maxLevel: 100,
+      description: 'ปริพันธ์เบื้องต้น',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -10, max: 10 },
+      features: ['calculus', 'integrals']
+    }
+  ],
+
+  // มัธยม 6
+  M6: [
+    {
+      minLevel: 1,
+      maxLevel: 25,
+      description: 'ปริพันธ์ขั้นสูง',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -15, max: 15 },
+      features: ['calculus', 'advancedIntegrals']
+    },
+    {
+      minLevel: 26,
+      maxLevel: 50,
+      description: 'การประยุกต์ปริพันธ์',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -25, max: 25 },
+      features: ['calculus', 'integralApplications']
+    },
+    {
+      minLevel: 51,
+      maxLevel: 75,
+      description: 'สมการเชิงอนุพันธ์เบื้องต้น',
+      questionTypes: [QuestionType.MIXED],
+      numberRange: { min: -10, max: 10 },
+      features: ['calculus', 'differentialEquations']
+    },
+    {
+      minLevel: 76,
+      maxLevel: 100,
+      description: 'โจทย์รวมคณิตศาสตร์',
+      questionTypes: [QuestionType.MIXED, QuestionType.WORD_PROBLEM],
+      numberRange: { min: -50, max: 50 },
+      features: ['comprehensiveMath', 'examPrep']
+    }
+  ]
 };
 
 // Get level config for specific grade and level

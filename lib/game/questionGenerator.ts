@@ -1,6 +1,14 @@
 // lib/game/questionGenerator.ts
+// Updated to use new generator system
+
 import { Question, QuestionType } from '@/types';
 import { getLevelConfig, LevelConfig } from './config';
+import { 
+  getGeneratorForGrade, 
+  isSupportedGrade,
+  getGradeCategory,
+  DEBUG_INFO 
+} from './generators';
 
 // Generate unique ID for question
 const generateId = () => {
@@ -36,398 +44,127 @@ const generateChoices = (correctAnswer: number, count: number = 4): number[] => 
   return Array.from(choices).sort(() => Math.random() - 0.5);
 };
 
-// Main question generator using config
+/**
+ * Main question generator using new generator system
+ * 
+ * @param grade - Grade level (K1-K3, P1-P6, M1-M6)
+ * @param level - Difficulty level (1-100)
+ * @returns Generated question
+ */
 export const generateQuestion = (grade: string, level: number): Question => {
-  const config = getLevelConfig(grade, level);
+  // Debug logging
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`🎯 Generating question for ${grade} Level ${level}`);
+    console.log(`📊 Generator status:`, DEBUG_INFO);
+  }
   
+  // Get level configuration
+  const config = getLevelConfig(grade, level);
   if (!config) {
-    // Fallback if no config found
+    console.warn(`⚠️ No config found for ${grade} Level ${level}, using fallback`);
     return generateFallbackQuestion(grade, level);
   }
   
-  // Select random question type from available types
-  const questionType = config.questionTypes[random(0, config.questionTypes.length - 1)];
-  
-  // Generate question based on type and config
-  switch (questionType) {
-    case QuestionType.ADDITION:
-      return generateAdditionQuestion(config, level);
-    case QuestionType.SUBTRACTION:
-      return generateSubtractionQuestion(config, level);
-    case QuestionType.MULTIPLICATION:
-      return generateMultiplicationQuestion(config, level);
-    case QuestionType.DIVISION:
-      return generateDivisionQuestion(config, level);
-    case QuestionType.WORD_PROBLEM:
-      return generateWordProblem(config, level, grade);
-    case QuestionType.MIXED:
-      return generateMixedQuestion(config, level, grade);
-    default:
-      return generateFallbackQuestion(grade, level);
-  }
-};
-
-// Addition questions
-const generateAdditionQuestion = (config: LevelConfig, level: number): Question => {
-  const { min, max } = config.numberRange;
-  
-  let a = random(min, max);
-  let b = random(min, max);
-  
-  // Special handling for features
-  if (config.features?.includes('noCarrying')) {
-    // Ensure no carrying (for 2-digit addition)
-    const aOnes = a % 10;
-    const bOnes = b % 10;
-    if (aOnes + bOnes >= 10) {
-      b = b - (aOnes + bOnes - 9);
-    }
+  // Check if grade is supported
+  if (!isSupportedGrade(grade)) {
+    console.warn(`⚠️ Grade ${grade} not supported yet, using fallback`);
+    return generateFallbackQuestion(grade, level);
   }
   
-  const answer = a + b;
-  const question = `${a} + ${b} = ?`;
-  
-  return {
-    id: generateId(),
-    question,
-    answer,
-    choices: config.features?.includes('visualAids') ? undefined : generateChoices(answer),
-    type: QuestionType.ADDITION,
-    difficulty: level
-  };
-};
-
-// Subtraction questions
-const generateSubtractionQuestion = (config: LevelConfig, level: number): Question => {
-  const { min, max } = config.numberRange;
-  
-  let a = random(Math.max(min, 5), max);
-  let b = random(min, Math.min(a, max));
-  
-  // Ensure non-negative result
-  if (b > a) {
-    [a, b] = [b, a];
+  // Get generator for grade
+  const generator = getGeneratorForGrade(grade);
+  if (!generator) {
+    console.error(`❌ No generator found for grade ${grade}`);
+    return generateFallbackQuestion(grade, level);
   }
   
-  const answer = a - b;
-  const question = `${a} - ${b} = ?`;
-  
-  return {
-    id: generateId(),
-    question,
-    answer,
-    choices: generateChoices(answer),
-    type: QuestionType.SUBTRACTION,
-    difficulty: level
-  };
-};
-
-// Multiplication questions
-const generateMultiplicationQuestion = (config: LevelConfig, level: number): Question => {
-  let a: number, b: number;
-  
-  if (config.features?.includes('multiplicationTables')) {
-    // Specific multiplication tables
-    if (config.features.includes('tables_2_5_10')) {
-      const tables = [2, 5, 10];
-      a = tables[random(0, tables.length - 1)];
-      b = random(config.numberRange.min, config.numberRange.max);
-    } else if (config.features.includes('tables_3_4')) {
-      const tables = [3, 4];
-      a = tables[random(0, tables.length - 1)];
-      b = random(config.numberRange.min, config.numberRange.max);
-    } else if (config.features.includes('tables_2_to_5')) {
-      a = random(2, 5);
-      b = random(config.numberRange.min, config.numberRange.max);
-    } else if (config.features.includes('tables_6_to_9')) {
-      a = random(6, 9);
-      b = random(config.numberRange.min, config.numberRange.max);
-    } else {
-      a = random(2, 12);
-      b = random(config.numberRange.min, config.numberRange.max);
-    }
-  } else {
-    // General multiplication
-    const { min, max } = config.numberRange;
-    a = random(min, max);
-    b = random(2, 12);
+  // Validate level
+  if (!generator.supportsLevel(level)) {
+    console.warn(`⚠️ Level ${level} not supported for ${grade}, adjusting to valid range`);
+    const adjustedLevel = Math.max(1, Math.min(100, level));
+    return generator.generateQuestion(adjustedLevel, config);
   }
   
-  const answer = a * b;
-  const question = `${a} × ${b} = ?`;
-  
-  return {
-    id: generateId(),
-    question,
-    answer,
-    choices: level <= 60 ? generateChoices(answer) : undefined,
-    type: QuestionType.MULTIPLICATION,
-    difficulty: level
-  };
-};
-
-// Division questions
-const generateDivisionQuestion = (config: LevelConfig, level: number): Question => {
-  const { min, max } = config.numberRange;
-  
-  const divisor = random(min, max);
-  const quotient = random(2, 12);
-  const dividend = divisor * quotient;
-  
-  const answer = quotient;
-  const question = `${dividend} ÷ ${divisor} = ?`;
-  
-  return {
-    id: generateId(),
-    question,
-    answer,
-    choices: config.features?.includes('basicDivision') ? generateChoices(answer) : undefined,
-    type: QuestionType.DIVISION,
-    difficulty: level
-  };
-};
-
-// Word problems
-const generateWordProblem = (config: LevelConfig, level: number, grade: string): Question => {
-  const { min, max } = config.numberRange;
-  
-  // Simple word problems for lower grades
-  if (grade.startsWith('P') && parseInt(grade.substring(1)) <= 3) {
-    const problems = [
-      {
-        generate: () => {
-          const a = random(min, max);
-          const b = random(min, Math.min(max, 30));
-          return {
-            question: `แม่มีเงิน ${a} บาท ซื้อของไป ${b} บาท เหลือเงินกี่บาท?`,
-            answer: a - b
-          };
-        }
-      },
-      {
-        generate: () => {
-          const a = random(min, max);
-          const b = random(min, max);
-          return {
-            question: `มีแอปเปิ้ล ${a} ผล และส้ม ${b} ผล รวมมีผลไม้กี่ผล?`,
-            answer: a + b
-          };
-        }
-      },
-      {
-        generate: () => {
-          const boxes = random(2, 5);
-          const perBox = random(min, max);
-          return {
-            question: `มีกล่องทั้งหมด ${boxes} กล่อง แต่ละกล่องมีลูกบอล ${perBox} ลูก รวมมีลูกบอลกี่ลูก?`,
-            answer: boxes * perBox
-          };
-        }
-      }
-    ];
+  try {
+    // Generate question using grade-specific generator
+    const question = generator.generateQuestion(level, config);
     
-    const problem = problems[random(0, problems.length - 1)].generate();
-    return {
-      id: generateId(),
-      question: problem.question,
-      answer: problem.answer,
-      choices: undefined,
-      type: QuestionType.WORD_PROBLEM,
-      difficulty: level
-    };
-  }
-  
-  // Complex word problems for higher grades
-  if (config.features?.includes('multiStepProblems')) {
-    const problems = [
-      {
-        generate: () => {
-          const students = random(20, 40);
-          const busCapacity = random(10, 15);
-          const buses = Math.ceil(students / busCapacity);
-          return {
-            question: `โรงเรียนมีนักเรียน ${students} คน รถบัสคันหนึ่งนั่งได้ ${busCapacity} คน ต้องใช้รถบัสอย่างน้อยกี่คัน?`,
-            answer: buses
-          };
-        }
-      },
-      {
-        generate: () => {
-          const total = random(500, 1000);
-          const spent1 = random(100, 300);
-          const spent2 = random(50, 200);
-          return {
-            question: `พ่อมีเงิน ${total} บาท ซื้อของใช้ ${spent1} บาท และซื้ออาหาร ${spent2} บาท เหลือเงินกี่บาท?`,
-            answer: total - spent1 - spent2
-          };
-        }
-      }
-    ];
-    
-    const problem = problems[random(0, problems.length - 1)].generate();
-    return {
-      id: generateId(),
-      question: problem.question,
-      answer: problem.answer,
-      choices: undefined,
-      type: QuestionType.WORD_PROBLEM,
-      difficulty: level
-    };
-  }
-  
-  // Default word problem
-  const a = random(min, max);
-  const b = random(min, Math.min(max, a));
-  return {
-    id: generateId(),
-    question: `มีของทั้งหมด ${a} ชิ้น ให้เพื่อนไป ${b} ชิ้น เหลือกี่ชิ้น?`,
-    answer: a - b,
-    choices: undefined,
-    type: QuestionType.WORD_PROBLEM,
-    difficulty: level
-  };
-};
-
-// Mixed questions (parentheses, fractions, etc.)
-const generateMixedQuestion = (config: LevelConfig, level: number, grade: string): Question => {
-  const { min, max } = config.numberRange;
-  
-  // Questions with parentheses
-  if (config.features?.includes('parentheses')) {
-    const a = random(min, max);
-    const b = random(min, Math.min(max, 20));
-    const c = random(2, 10);
-    
-    const operation = random(0, 3);
-    let question: string;
-    let answer: number;
-    
-    switch (operation) {
-      case 0:
-        answer = (a + b) * c;
-        question = `(${a} + ${b}) × ${c} = ?`;
-        break;
-      case 1:
-        answer = a + (b * c);
-        question = `${a} + (${b} × ${c}) = ?`;
-        break;
-      case 2:
-        answer = (a - b) * c;
-        question = `(${a} - ${b}) × ${c} = ?`;
-        break;
-      default:
-        answer = a - (b * c);
-        question = `${a} - (${b} × ${c}) = ?`;
+    // Debug logging
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ Generated ${question.type} question:`, question.question);
+      console.log(`📝 Answer:`, question.answer);
     }
     
-    return {
-      id: generateId(),
-      question,
-      answer,
-      choices: undefined,
-      type: QuestionType.MIXED,
-      difficulty: level
-    };
+    return question;
+  } catch (error) {
+    console.error(`❌ Error generating question for ${grade} Level ${level}:`, error);
+    return generateFallbackQuestion(grade, level);
   }
-  
-  // Fractions
-  if (config.features?.includes('fractions')) {
-    const a = random(1, 9);
-    const b = random(2, 10);
-    const c = random(1, 9);
-    const d = b; // Same denominator for simplicity
-    
-    const answer = a + c;
-    const question = `${a}/${b} + ${c}/${d} = ?/${b}`;
-    
-    return {
-      id: generateId(),
-      question,
-      answer,
-      choices: undefined,
-      type: QuestionType.MIXED,
-      difficulty: level
-    };
-  }
-  
-  // Decimals
-  if (config.features?.includes('decimals')) {
-    const a = random(1, 99) / 10;
-    const b = random(1, 99) / 10;
-    const answer = Math.round((a + b) * 10) / 10;
-    
-    return {
-      id: generateId(),
-      question: `${a} + ${b} = ?`,
-      answer,
-      choices: undefined,
-      type: QuestionType.MIXED,
-      difficulty: level
-    };
-  }
-  
-  // Integers (positive and negative)
-  if (config.features?.includes('integers')) {
-    const a = random(min, max);
-    const b = random(min, max);
-    const operation = random(0, 1);
-    
-    let answer: number;
-    let question: string;
-    
-    if (operation === 0) {
-      answer = a + b;
-      question = `${a} + (${b}) = ?`;
-    } else {
-      answer = a - b;
-      question = `${a} - (${b}) = ?`;
-    }
-    
-    return {
-      id: generateId(),
-      question,
-      answer,
-      choices: undefined,
-      type: QuestionType.MIXED,
-      difficulty: level
-    };
-  }
-  
-  // Algebra
-  if (config.features?.includes('algebra') || config.features?.includes('linearEquations')) {
-    const a = random(2, 10);
-    const b = random(5, 20);
-    const answer = b - a;
-    
-    return {
-      id: generateId(),
-      question: `x + ${a} = ${b}, x = ?`,
-      answer,
-      choices: undefined,
-      type: QuestionType.MIXED,
-      difficulty: level
-    };
-  }
-  
-  // Default mixed question
-  const a = random(min, max);
-  const b = random(min, max);
-  const answer = a + b;
-  
-  return {
-    id: generateId(),
-    question: `${a} + ${b} = ?`,
-    answer,
-    choices: generateChoices(answer),
-    type: QuestionType.MIXED,
-    difficulty: level
-  };
 };
 
-// Fallback question generator (when no config available)
+/**
+ * Generate specific type of question
+ */
+export const generateQuestionOfType = (
+  grade: string, 
+  level: number, 
+  questionType: QuestionType
+): Question => {
+  const config = getLevelConfig(grade, level);
+  if (!config) {
+    return generateFallbackQuestion(grade, level);
+  }
+  
+  const generator = getGeneratorForGrade(grade);
+  if (!generator) {
+    return generateFallbackQuestion(grade, level);
+  }
+  
+  // Check if this question type is available for this level
+  const availableTypes = generator.getAvailableQuestionTypes(level);
+  if (!availableTypes.includes(questionType)) {
+    console.warn(`⚠️ Question type ${questionType} not available for ${grade} Level ${level}`);
+    // Return a question of an available type instead
+    return generator.generateQuestion(level, config);
+  }
+  
+  try {
+    // For word problems, use the specialized method
+    if (questionType === QuestionType.WORD_PROBLEM) {
+      return generator.generateWordProblem(level, config);
+    }
+    
+    // For other types, generate normally and hope we get the right type
+    // (This could be improved by adding type-specific methods to the interface)
+    return generator.generateQuestion(level, config);
+  } catch (error) {
+    console.error(`❌ Error generating ${questionType} question:`, error);
+    return generateFallbackQuestion(grade, level);
+  }
+};
+
+/**
+ * Get available question types for grade and level
+ */
+export const getAvailableQuestionTypes = (grade: string, level: number): QuestionType[] => {
+  const generator = getGeneratorForGrade(grade);
+  if (!generator) {
+    return [QuestionType.ADDITION]; // Default fallback
+  }
+  
+  return generator.getAvailableQuestionTypes(level);
+};
+
+/**
+ * Fallback question generator for unsupported grades or errors
+ */
 const generateFallbackQuestion = (grade: string, level: number): Question => {
-  const a = random(1, 50);
-  const b = random(1, 50);
+  console.log(`🔄 Using fallback generator for ${grade} Level ${level}`);
+  
+  // Simple addition question as fallback
+  const maxNumber = Math.min(level * 2, 50);
+  const a = random(1, maxNumber);
+  const b = random(1, maxNumber);
   const answer = a + b;
   
   return {
@@ -438,4 +175,86 @@ const generateFallbackQuestion = (grade: string, level: number): Question => {
     type: QuestionType.ADDITION,
     difficulty: level
   };
+};
+
+/**
+ * Validate question before returning to game
+ */
+export const validateQuestion = (question: Question): boolean => {
+  // Basic validation
+  if (!question.id || !question.question || typeof question.answer !== 'number') {
+    return false;
+  }
+  
+  // Answer should be a reasonable number
+  if (question.answer < 0 || question.answer > 100000) {
+    console.warn(`⚠️ Unreasonable answer: ${question.answer}`);
+    return false;
+  }
+  
+  // If choices exist, answer should be in choices
+  if (question.choices && !question.choices.includes(question.answer)) {
+    console.warn(`⚠️ Answer not in choices:`, question);
+    return false;
+  }
+  
+  return true;
+};
+
+/**
+ * Generate and validate question (main export function)
+ */
+export const generateValidatedQuestion = (grade: string, level: number): Question => {
+  let attempts = 0;
+  const maxAttempts = 3;
+  
+  while (attempts < maxAttempts) {
+    const question = generateQuestion(grade, level);
+    
+    if (validateQuestion(question)) {
+      return question;
+    }
+    
+    attempts++;
+    console.warn(`⚠️ Invalid question generated, attempt ${attempts}/${maxAttempts}`);
+  }
+  
+  // If all attempts fail, return a simple fallback
+  console.error(`❌ Failed to generate valid question after ${maxAttempts} attempts`);
+  return generateFallbackQuestion(grade, level);
+};
+
+// Export for backward compatibility
+export { generateQuestion as default };
+
+// Export debug utilities for development
+export const debugUtils = {
+  getSupportedGrades: () => DEBUG_INFO.implementedGrades,
+  getPendingGrades: () => DEBUG_INFO.pendingGrades,
+  getGeneratorInfo: (grade: string) => {
+    const generator = getGeneratorForGrade(grade);
+    if (!generator) return null;
+    
+    return {
+      grade,
+      category: getGradeCategory(grade),
+      supportsLevels: '1-100',
+      availableTypes: generator.getAvailableQuestionTypes(50) // Sample at level 50
+    };
+  },
+  testGeneration: (grade: string, level: number = 50) => {
+    try {
+      const question = generateQuestion(grade, level);
+      return {
+        success: true,
+        question,
+        isValid: validateQuestion(question)
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
 };

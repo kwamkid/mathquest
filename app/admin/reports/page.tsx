@@ -9,6 +9,7 @@ import { User } from '@/types';
 import { BarChart3, School, Trophy, Download } from 'lucide-react';
 import AdminAvatarDisplay from '@/components/admin/AdminAvatarDisplay';
 
+
 interface GradeStats {
   grade: string;
   studentCount: number;

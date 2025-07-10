@@ -19,6 +19,7 @@ import { Redemption, RedemptionStatus, RewardType } from '@/types/avatar';
 import { User } from '@/types';
 import { useDialog } from '@/components/ui/Dialog';
 import AdminAvatarDisplay from '@/components/admin/AdminAvatarDisplay';
+import FixDigitalRewardsButton from '@/components/admin/FixDigitalRewardsButton';
 import { 
   Package, 
   Clock, 
@@ -386,6 +387,18 @@ export default function AdminOrdersPage() {
           
           {/* Actions */}
           <div className="flex gap-3">
+{/* 
+            <FixDigitalRewardsButton onFixCompleted={() => loadRedemptions()} />
+            <motion.button
+                onClick={() => loadRedemptions()}
+                className="p-3 glass rounded-xl hover:bg-white/10 transition"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+            >
+                <RefreshCw className="w-5 h-5 text-white" />
+            </motion.button> */}
+    
+
             <motion.button
               onClick={() => loadRedemptions()}
               className="p-3 glass rounded-xl hover:bg-white/10 transition"
@@ -609,143 +622,141 @@ export default function AdminOrdersPage() {
       {/* Orders List - Compact Design */}
       <div className="space-y-3">
         <AnimatePresence>
-          {filteredRedemptions.map((redemption, index) => {
-            const statusConfig = getStatusDisplay(redemption.status);
-            const isPhysical = redemption.rewardType === RewardType.PHYSICAL;
+    {filteredRedemptions.map((redemption, index) => {
+      const statusConfig = getStatusDisplay(redemption.status);
+      const isPhysical = redemption.rewardType === RewardType.PHYSICAL;
+      
+      return (
+        <motion.div
+          key={redemption.id}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          transition={{ delay: index * 0.02 }}
+          className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 hover:border-metaverse-purple/50 transition-colors"
+        >
+          <div className="flex items-center gap-4">
+            {/* Reward Image */}
+            <div className="flex-shrink-0">
+              {redemption.rewardImageUrl ? (
+                <div className="w-12 h-12 rounded-lg overflow-hidden bg-metaverse-purple/20 border border-metaverse-purple/30">
+                  <img 
+                    src={redemption.rewardImageUrl}
+                    alt={redemption.rewardName}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-lg">${getRewardTypeIcon(redemption.rewardType)}</div>`;
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-12 h-12 rounded-lg bg-metaverse-purple/20 border border-metaverse-purple/30 flex items-center justify-center text-lg">
+                  {getRewardTypeIcon(redemption.rewardType)}
+                </div>
+              )}
+            </div>
             
-            return (
-              <motion.div
-                key={redemption.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ delay: index * 0.02 }}
-                className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 hover:border-metaverse-purple/50 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  {/* Reward Image */}
-                  <div className="flex-shrink-0">
-                    {redemption.rewardImageUrl ? (
-                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-metaverse-purple/20 border border-metaverse-purple/30">
-                        <img 
-                          src={redemption.rewardImageUrl}
-                          alt={redemption.rewardName}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-lg">${getRewardTypeIcon(redemption.rewardType)}</div>`;
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-metaverse-purple/20 border border-metaverse-purple/30 flex items-center justify-center text-lg">
-                        {getRewardTypeIcon(redemption.rewardType)}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Order Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-white mb-1 truncate">
-                          {redemption.rewardName}
-                        </h3>
-                        
-                        <div className="flex flex-wrap items-center gap-4 text-xs text-white/60">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {new Date(redemption.createdAt).toLocaleDateString('th-TH')}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Zap className="w-3 h-3 text-yellow-400" />
-                            <span className="text-yellow-400">{redemption.expCost} EXP</span>
-                          </div>
-                          <div>
-                            #{redemption.id.slice(-8)}
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Status */}
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.color} ml-4 flex-shrink-0`}>
-                        {statusConfig.icon}
-                        {statusConfig.label}
-                      </span>
-                    </div>
-                  </div>
+            {/* Order Info */}
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-white mb-1 truncate">
+                {redemption.rewardName}
+              </h3>
+              
+              <div className="flex flex-wrap items-center gap-4 text-xs text-white/60">
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3" />
+                  {new Date(redemption.createdAt).toLocaleDateString('th-TH')}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Zap className="w-3 h-3 text-yellow-400" />
+                  <span className="text-yellow-400">{redemption.expCost} EXP</span>
+                </div>
+                <div>
+                  #{redemption.id.slice(-8)}
+                </div>
+              </div>
+            </div>
 
-                  {/* User Info */}
-                  <div className="flex-shrink-0">
-                    {redemption.user && (
-                      <div className="flex items-center gap-2">
-                        <AdminAvatarDisplay
-                          userId={redemption.user.id}
-                          avatarData={redemption.user.avatarData}
-                          basicAvatar={redemption.user.avatar}
-                          size="tiny"
-                          showAccessories={true}
-                        />
-                        <div className="hidden md:block">
-                          <p className="text-xs text-white/80 font-medium">
-                            @{redemption.user.username}
-                          </p>
-                          <p className="text-xs text-white/50">
-                            {redemption.user.school}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Actions */}
-                  <div className="flex gap-2 flex-shrink-0">
-                    <motion.button
-                      onClick={() => handleViewDetail(redemption)}
-                      className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-1 text-sm"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Eye className="w-3 h-3" />
-                      <span className="hidden sm:inline">ดู</span>
-                    </motion.button>
-                    
-                    {/* Show update button for all except cancelled/refunded */}
-                    {redemption.status !== RedemptionStatus.CANCELLED && 
-                     redemption.status !== RedemptionStatus.REFUNDED && (
-                      <motion.button
-                        onClick={() => handleUpdateStatus(redemption)}
-                        className="px-3 py-1.5 metaverse-button text-white font-medium rounded-lg flex items-center gap-1 text-sm"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Edit className="w-3 h-3" />
-                        <span className="hidden sm:inline">จัดการ</span>
-                      </motion.button>
-                    )}
+            {/* User Info */}
+            <div className="flex-shrink-0">
+              {redemption.user && (
+                <div className="flex items-center gap-2">
+                  <AdminAvatarDisplay
+                    userId={redemption.user.id}
+                    avatarData={redemption.user.avatarData}
+                    basicAvatar={redemption.user.avatar}
+                    size="tiny"
+                    showAccessories={true}
+                  />
+                  <div className="hidden md:block">
+                    <p className="text-xs text-white/80 font-medium">
+                      @{redemption.user.username}
+                    </p>
+                    <p className="text-xs text-white/50">
+                      {redemption.user.school}
+                    </p>
                   </div>
                 </div>
+              )}
+            </div>
+            
+            {/* Status - ย้ายมาไว้ตรงนี้ */}
+            <div className="flex-shrink-0">
+              <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.color}`}>
+                {statusConfig.icon}
+                {statusConfig.label}
+              </span>
+            </div>
+            
+            {/* Actions */}
+            <div className="flex gap-2 flex-shrink-0">
+              <motion.button
+                onClick={() => handleViewDetail(redemption)}
+                className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-1 text-sm"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Eye className="w-3 h-3" />
+                <span className="hidden sm:inline">ดู</span>
+              </motion.button>
+              
+              {/* Show update button for all except cancelled/refunded */}
+              {redemption.status !== RedemptionStatus.CANCELLED && 
+               redemption.status !== RedemptionStatus.REFUNDED && (
+                <motion.button
+                  onClick={() => handleUpdateStatus(redemption)}
+                  className="px-3 py-1.5 metaverse-button text-white font-medium rounded-lg flex items-center gap-1 text-sm"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <Edit className="w-3 h-3" />
+                  <span className="hidden sm:inline">จัดการ</span>
+                </motion.button>
+              )}
+            </div>
+          </div>
 
-                {/* Additional Info for Physical Orders */}
-                {isPhysical && redemption.shippingAddress && (
-                  <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-xs text-white/60">
-                    <MapPin className="w-4 h-4" />
-                    <span>{redemption.shippingAddress.fullName} - {redemption.shippingAddress.district}, {redemption.shippingAddress.province}</span>
-                    {redemption.trackingNumber && (
-                      <span className="ml-auto font-mono text-white/40">
-                        Tracking: {redemption.trackingNumber}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </motion.div>
-            );
-          })}
-        </AnimatePresence>
+          {/* Additional Info for Physical Orders */}
+          {isPhysical && redemption.shippingAddress && (
+            <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-xs text-white/60">
+              <MapPin className="w-4 h-4" />
+              <span>{redemption.shippingAddress.fullName} - {redemption.shippingAddress.district}, {redemption.shippingAddress.province}</span>
+              {redemption.trackingNumber && (
+                <span className="ml-auto font-mono text-white/40">
+                  Tracking: {redemption.trackingNumber}
+                </span>
+              )}
+            </div>
+          )}
+        </motion.div>
+      );
+    })}
+  </AnimatePresence>
       </div>
 
       {/* Empty State */}
