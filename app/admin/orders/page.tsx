@@ -1,4 +1,4 @@
-// app/admin/orders/page.tsx
+// app/admin/orders/page.tsx - Improved UI Version
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,7 +14,7 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import { updateRedemptionStatus } from '@/lib/firebase/rewards';
+import { updateRedemptionStatus, cancelRedemption, adminCancelRedemption } from '@/lib/firebase/rewards';
 import { Redemption, RedemptionStatus, RewardType } from '@/types/avatar';
 import { User } from '@/types';
 import { useDialog } from '@/components/ui/Dialog';
@@ -72,7 +72,6 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterType, setFilterType] = useState<string>('all');
-  const [activeTab, setActiveTab] = useState<'pending' | 'processing' | 'completed' | 'cancelled'>('pending');
   
   // Update form
   const [updateStatus, setUpdateStatus] = useState<RedemptionStatus>(RedemptionStatus.PENDING);
@@ -86,7 +85,7 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     filterRedemptions();
-  }, [redemptions, searchQuery, filterType, activeTab]);
+  }, [redemptions, searchQuery, filterType, filterStatus]);
 
   const loadRedemptions = async () => {
     try {
@@ -134,32 +133,9 @@ export default function AdminOrdersPage() {
   const filterRedemptions = () => {
     let filtered = redemptions;
 
-    // Tab filter
-    switch (activeTab) {
-      case 'pending':
-        filtered = filtered.filter(r => 
-          r.status === RedemptionStatus.PENDING || 
-          r.status === RedemptionStatus.APPROVED
-        );
-        break;
-      case 'processing':
-        filtered = filtered.filter(r => 
-          r.status === RedemptionStatus.PROCESSING || 
-          r.status === RedemptionStatus.SHIPPED
-        );
-        break;
-      case 'completed':
-        filtered = filtered.filter(r => 
-          r.status === RedemptionStatus.DELIVERED || 
-          r.status === RedemptionStatus.RECEIVED
-        );
-        break;
-      case 'cancelled':
-        filtered = filtered.filter(r => 
-          r.status === RedemptionStatus.CANCELLED || 
-          r.status === RedemptionStatus.REFUNDED
-        );
-        break;
+    // Status filter
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(r => r.status === filterStatus);
     }
 
     // Type filter
@@ -196,76 +172,68 @@ export default function AdminOrdersPage() {
   const handleSubmitUpdate = async () => {
     if (!selectedRedemption) return;
 
-    console.log('Starting update:', {
+    console.log('🔄 Starting update process:', {
       redemptionId: selectedRedemption.id,
       currentStatus: selectedRedemption.status,
       newStatus: updateStatus,
-      rewardType: selectedRedemption.rewardType
+      rewardType: selectedRedemption.rewardType,
+      userId: selectedRedemption.userId,
+      expCost: selectedRedemption.expCost
     });
 
     setUpdating(true);
     try {
-      // ถ้าเป็นการยกเลิก digital reward ให้ใช้ status REFUNDED แทน CANCELLED
-      let finalStatus = updateStatus;
-      if (updateStatus === RedemptionStatus.CANCELLED && 
-          selectedRedemption.rewardType !== RewardType.PHYSICAL) {
-        finalStatus = RedemptionStatus.REFUNDED;
-        console.log('Changed status to REFUNDED for digital reward');
-      }
+      // ตรวจสอบการยกเลิก digital reward
+      const isDigitalCancellation = 
+        updateStatus === RedemptionStatus.CANCELLED && 
+        selectedRedemption.rewardType !== RewardType.PHYSICAL;
 
-      console.log('Calling updateRedemptionStatus with:', finalStatus);
-
-      const result = await updateRedemptionStatus(
-        selectedRedemption.id,
-        finalStatus,
-        trackingNumber || undefined,
-        adminNotes || 'ยกเลิกและคืน EXP โดย Admin'
-      );
-
-      console.log('updateRedemptionStatus result:', result);
-
-      if (result.success) {
-        // ถ้าเป็นการ refund digital reward ต้องคืน EXP
-        if (finalStatus === RedemptionStatus.REFUNDED) {
-          console.log('Refunding EXP to user:', selectedRedemption.userId);
-          
-          // คืน EXP ให้ user
-          const userRef = doc(db, 'users', selectedRedemption.userId);
-          const userDoc = await getDoc(userRef);
-          if (userDoc.exists()) {
-            const currentExp = userDoc.data().experience || 0;
-            const newExp = currentExp + selectedRedemption.expCost;
-            
-            console.log('Updating user EXP:', {
-              currentExp,
-              refundAmount: selectedRedemption.expCost,
-              newExp
-            });
-            
-            await updateDoc(userRef, {
-              experience: newExp
-            });
-            
-            console.log('EXP refunded successfully');
-          } else {
-            console.error('User document not found:', selectedRedemption.userId);
-          }
-        }
-
-        await loadRedemptions();
-        setShowUpdateModal(false);
-        successDialog.showDialog(
-          finalStatus === RedemptionStatus.REFUNDED 
-            ? `ยกเลิกและคืน ${selectedRedemption.expCost} EXP เรียบร้อยแล้ว`
-            : 'อัพเดทสถานะเรียบร้อยแล้ว'
+      if (isDigitalCancellation) {
+        console.log('🚫 Digital reward cancellation detected, using adminCancelRedemption function');
+        
+        // ใช้ adminCancelRedemption function แทน (ไม่ต้องใส่ userId)
+        const result = await adminCancelRedemption(
+          selectedRedemption.id,
+          adminNotes || 'ยกเลิกโดย Admin'
         );
+
+        console.log('❌ adminCancelRedemption result:', result);
+
+        if (result.success) {
+          await loadRedemptions();
+          setShowUpdateModal(false);
+          successDialog.showDialog(
+            result.message || `ยกเลิกและคืน ${selectedRedemption.expCost} EXP เรียบร้อยแล้ว`
+          );
+        } else {
+          console.error('❌ Cancel failed:', result.message);
+          errorDialog.showDialog(result.message);
+        }
       } else {
-        console.error('Update failed:', result.message);
-        errorDialog.showDialog(result.message);
+        console.log('📝 Regular status update');
+        
+        // การอัพเดทสถานะปกติ
+        const result = await updateRedemptionStatus(
+          selectedRedemption.id,
+          updateStatus,
+          trackingNumber || undefined,
+          adminNotes || undefined
+        );
+
+        console.log('✅ updateRedemptionStatus result:', result);
+
+        if (result.success) {
+          await loadRedemptions();
+          setShowUpdateModal(false);
+          successDialog.showDialog('อัพเดทสถานะเรียบร้อยแล้ว');
+        } else {
+          console.error('❌ Update failed:', result.message);
+          errorDialog.showDialog(result.message);
+        }
       }
     } catch (error) {
-      console.error('Update error:', error);
-      errorDialog.showDialog('เกิดข้อผิดพลาดในการอัพเดท');
+      console.error('💥 Unexpected error:', error);
+      errorDialog.showDialog('เกิดข้อผิดพลาดที่ไม่คาดคิด');
     } finally {
       setUpdating(false);
     }
@@ -338,7 +306,7 @@ export default function AdminOrdersPage() {
         bg: 'bg-purple-400/10'
       },
       [RedemptionStatus.DELIVERED]: {
-        label: 'ส่งถึงแล้ว',
+        label: 'สำเร็จแล้ว',
         icon: <CheckCircle className="w-4 h-4" />,
         color: 'text-green-400',
         bg: 'bg-green-400/10'
@@ -378,31 +346,12 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const getTabCount = (tab: string) => {
-    switch (tab) {
-      case 'pending':
-        return redemptions.filter(r => 
-          r.status === RedemptionStatus.PENDING || 
-          r.status === RedemptionStatus.APPROVED
-        ).length;
-      case 'processing':
-        return redemptions.filter(r => 
-          r.status === RedemptionStatus.PROCESSING || 
-          r.status === RedemptionStatus.SHIPPED
-        ).length;
-      case 'completed':
-        return redemptions.filter(r => 
-          r.status === RedemptionStatus.DELIVERED || 
-          r.status === RedemptionStatus.RECEIVED
-        ).length;
-      case 'cancelled':
-        return redemptions.filter(r => 
-          r.status === RedemptionStatus.CANCELLED || 
-          r.status === RedemptionStatus.REFUNDED
-        ).length;
-      default:
-        return 0;
-    }
+  const getStatusCount = (status: string) => {
+    return redemptions.filter(r => r.status === status).length;
+  };
+
+  const getTypeCount = (type: string) => {
+    return redemptions.filter(r => r.rewardType === type).length;
   };
 
   if (loading) {
@@ -420,8 +369,12 @@ export default function AdminOrdersPage() {
 
   return (
     <div>
+      {/* Dialogs */}
+      <successDialog.Dialog />
+      <errorDialog.Dialog />
+
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white flex items-center gap-3">
@@ -455,184 +408,206 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <motion.div 
-          className="glass-dark rounded-xl p-4 border border-yellow-400/30"
-          whileHover={{ scale: 1.02 }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-3xl font-bold text-yellow-400">{getTabCount('pending')}</p>
-              <p className="text-sm text-white/60">รอดำเนินการ</p>
-            </div>
-            <Clock className="w-8 h-8 text-yellow-400/50" />
+      {/* Filter Tabs - Status & Type Combined */}
+      <div className="glass-dark rounded-2xl border border-metaverse-purple/30 mb-6">
+        {/* Status Filter Tabs */}
+        <div className="p-4 border-b border-metaverse-purple/20">
+          <h3 className="text-sm font-medium text-white/80 mb-3">กรองตามสถานะ:</h3>
+          <div className="flex flex-wrap gap-2">
+            <motion.button
+              onClick={() => setFilterStatus('all')}
+              className={`px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm ${
+                filterStatus === 'all'
+                  ? 'metaverse-button text-white'
+                  : 'glass text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Package className="w-4 h-4" />
+              ทั้งหมด ({redemptions.length})
+            </motion.button>
+
+            <motion.button
+              onClick={() => setFilterStatus(RedemptionStatus.PENDING)}
+              className={`px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm ${
+                filterStatus === RedemptionStatus.PENDING
+                  ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
+                  : 'glass text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Clock className="w-4 h-4" />
+              รอดำเนินการ ({getStatusCount(RedemptionStatus.PENDING)})
+            </motion.button>
+
+            <motion.button
+              onClick={() => setFilterStatus(RedemptionStatus.APPROVED)}
+              className={`px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm ${
+                filterStatus === RedemptionStatus.APPROVED
+                  ? 'bg-blue-400/20 text-blue-400 border border-blue-400/30'
+                  : 'glass text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <CheckCircle className="w-4 h-4" />
+              อนุมัติแล้ว ({getStatusCount(RedemptionStatus.APPROVED)})
+            </motion.button>
+
+            <motion.button
+              onClick={() => setFilterStatus(RedemptionStatus.PROCESSING)}
+              className={`px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm ${
+                filterStatus === RedemptionStatus.PROCESSING
+                  ? 'bg-purple-400/20 text-purple-400 border border-purple-400/30'
+                  : 'glass text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Package className="w-4 h-4" />
+              กำลังจัดเตรียม ({getStatusCount(RedemptionStatus.PROCESSING)})
+            </motion.button>
+
+            <motion.button
+              onClick={() => setFilterStatus(RedemptionStatus.SHIPPED)}
+              className={`px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm ${
+                filterStatus === RedemptionStatus.SHIPPED
+                  ? 'bg-indigo-400/20 text-indigo-400 border border-indigo-400/30'
+                  : 'glass text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Truck className="w-4 h-4" />
+              จัดส่งแล้ว ({getStatusCount(RedemptionStatus.SHIPPED)})
+            </motion.button>
+
+            <motion.button
+              onClick={() => setFilterStatus(RedemptionStatus.DELIVERED)}
+              className={`px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm ${
+                filterStatus === RedemptionStatus.DELIVERED
+                  ? 'bg-green-400/20 text-green-400 border border-green-400/30'
+                  : 'glass text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <CheckCircle className="w-4 h-4" />
+              สำเร็จแล้ว ({getStatusCount(RedemptionStatus.DELIVERED) + getStatusCount(RedemptionStatus.RECEIVED)})
+            </motion.button>
+
+            <motion.button
+              onClick={() => setFilterStatus(RedemptionStatus.CANCELLED)}
+              className={`px-4 py-2 rounded-lg transition flex items-center gap-2 text-sm ${
+                filterStatus === RedemptionStatus.CANCELLED
+                  ? 'bg-red-400/20 text-red-400 border border-red-400/30'
+                  : 'glass text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <XCircle className="w-4 h-4" />
+              ยกเลิก ({getStatusCount(RedemptionStatus.CANCELLED) + getStatusCount(RedemptionStatus.REFUNDED)})
+            </motion.button>
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div 
-          className="glass-dark rounded-xl p-4 border border-blue-400/30"
-          whileHover={{ scale: 1.02 }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-3xl font-bold text-blue-400">{getTabCount('processing')}</p>
-              <p className="text-sm text-white/60">กำลังจัดส่ง</p>
+        {/* Type Filter & Search */}
+        <div className="p-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            {/* Type Filter */}
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-white/80 mb-3">กรองตามประเภท:</h3>
+              <div className="flex flex-wrap gap-2">
+                <motion.button
+                  onClick={() => setFilterType('all')}
+                  className={`px-3 py-1.5 rounded-lg transition text-sm ${
+                    filterType === 'all'
+                      ? 'metaverse-button text-white'
+                      : 'glass text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  ทั้งหมด ({redemptions.length})
+                </motion.button>
+
+                <motion.button
+                  onClick={() => setFilterType(RewardType.PHYSICAL)}
+                  className={`px-3 py-1.5 rounded-lg transition text-sm flex items-center gap-1 ${
+                    filterType === RewardType.PHYSICAL
+                      ? 'bg-orange-400/20 text-orange-400 border border-orange-400/30'
+                      : 'glass text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  📦 ของจริง ({getTypeCount(RewardType.PHYSICAL)})
+                </motion.button>
+
+                <motion.button
+                  onClick={() => setFilterType(RewardType.AVATAR)}
+                  className={`px-3 py-1.5 rounded-lg transition text-sm flex items-center gap-1 ${
+                    filterType === RewardType.AVATAR
+                      ? 'bg-purple-400/20 text-purple-400 border border-purple-400/30'
+                      : 'glass text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  🦸 Avatar ({getTypeCount(RewardType.AVATAR)})
+                </motion.button>
+
+                <motion.button
+                  onClick={() => setFilterType(RewardType.ACCESSORY)}
+                  className={`px-3 py-1.5 rounded-lg transition text-sm flex items-center gap-1 ${
+                    filterType === RewardType.ACCESSORY
+                      ? 'bg-yellow-400/20 text-yellow-400 border border-yellow-400/30'
+                      : 'glass text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  👑 Accessories ({getTypeCount(RewardType.ACCESSORY)})
+                </motion.button>
+
+                <motion.button
+                  onClick={() => setFilterType(RewardType.BOOST)}
+                  className={`px-3 py-1.5 rounded-lg transition text-sm flex items-center gap-1 ${
+                    filterType === RewardType.BOOST
+                      ? 'bg-cyan-400/20 text-cyan-400 border border-cyan-400/30'
+                      : 'glass text-white/60 hover:text-white hover:bg-white/5'
+                  }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  ⚡ Boost ({getTypeCount(RewardType.BOOST)})
+                </motion.button>
+              </div>
             </div>
-            <Truck className="w-8 h-8 text-blue-400/50" />
-          </div>
-        </motion.div>
 
-        <motion.div 
-          className="glass-dark rounded-xl p-4 border border-green-400/30"
-          whileHover={{ scale: 1.02 }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-3xl font-bold text-green-400">{getTabCount('completed')}</p>
-              <p className="text-sm text-white/60">สำเร็จแล้ว</p>
+            {/* Search */}
+            <div className="lg:w-80">
+              <h3 className="text-sm font-medium text-white/80 mb-3">ค้นหา:</h3>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-4 h-4" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Order ID, Username, ชื่อรางวัล..."
+                  className="w-full pl-9 pr-4 py-2 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-lg focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 text-sm"
+                />
+              </div>
             </div>
-            <CheckCircle className="w-8 h-8 text-green-400/50" />
           </div>
-        </motion.div>
-
-        <motion.div 
-          className="glass-dark rounded-xl p-4 border border-red-400/30"
-          whileHover={{ scale: 1.02 }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-3xl font-bold text-red-400">{getTabCount('cancelled')}</p>
-              <p className="text-sm text-white/60">ยกเลิก</p>
-            </div>
-            <XCircle className="w-8 h-8 text-red-400/50" />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Tabs */}
-      <div className="glass-dark rounded-t-xl border border-metaverse-purple/30 border-b-0">
-        <div className="flex">
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`flex-1 px-6 py-4 font-medium transition relative ${
-              activeTab === 'pending'
-                ? 'text-white'
-                : 'text-white/60 hover:text-white/80'
-            }`}
-          >
-            <span className="flex items-center justify-center gap-2">
-              รอดำเนินการ
-              {getTabCount('pending') > 0 && (
-                <span className="px-2 py-0.5 bg-yellow-400/20 text-yellow-400 text-xs rounded-full">
-                  {getTabCount('pending')}
-                </span>
-              )}
-            </span>
-            {activeTab === 'pending' && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-metaverse-purple to-metaverse-pink"
-              />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('processing')}
-            className={`flex-1 px-6 py-4 font-medium transition relative ${
-              activeTab === 'processing'
-                ? 'text-white'
-                : 'text-white/60 hover:text-white/80'
-            }`}
-          >
-            <span className="flex items-center justify-center gap-2">
-              กำลังจัดส่ง
-              {getTabCount('processing') > 0 && (
-                <span className="px-2 py-0.5 bg-blue-400/20 text-blue-400 text-xs rounded-full">
-                  {getTabCount('processing')}
-                </span>
-              )}
-            </span>
-            {activeTab === 'processing' && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-metaverse-purple to-metaverse-pink"
-              />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('completed')}
-            className={`flex-1 px-6 py-4 font-medium transition relative ${
-              activeTab === 'completed'
-                ? 'text-white'
-                : 'text-white/60 hover:text-white/80'
-            }`}
-          >
-            สำเร็จแล้ว
-            {activeTab === 'completed' && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-metaverse-purple to-metaverse-pink"
-              />
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('cancelled')}
-            className={`flex-1 px-6 py-4 font-medium transition relative ${
-              activeTab === 'cancelled'
-                ? 'text-white'
-                : 'text-white/60 hover:text-white/80'
-            }`}
-          >
-            ยกเลิก
-            {activeTab === 'cancelled' && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-metaverse-purple to-metaverse-pink"
-              />
-            )}
-          </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="glass-dark rounded-b-xl p-4 mb-6 border border-metaverse-purple/30 border-t-0">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="ค้นหา Order ID, Username, ชื่อรางวัล..."
-                className="w-full pl-10 pr-4 py-2 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40"
-              />
-            </div>
-          </div>
-
-          {/* Type Filter */}
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="px-4 py-2 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink text-white"
-          >
-            <option value="all">ทุกประเภท</option>
-            <option value={RewardType.PHYSICAL}>📦 ของจริง</option>
-            <option value={RewardType.AVATAR}>🦸 Avatar</option>
-            <option value={RewardType.ACCESSORY}>👑 Accessories</option>
-            <option value={RewardType.TITLE_BADGE}>🏆 Title Badge</option>
-            <option value={RewardType.BOOST}>⚡ Boost</option>
-            <option value={RewardType.BADGE}>🎖️ Badge</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Orders List */}
-      <div className="space-y-4">
+      {/* Orders List - Compact Design */}
+      <div className="space-y-3">
         <AnimatePresence>
           {filteredRedemptions.map((redemption, index) => {
             const statusConfig = getStatusDisplay(redemption.status);
@@ -644,153 +619,129 @@ export default function AdminOrdersPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ delay: index * 0.05 }}
-                className="glass-dark rounded-xl p-4 border border-metaverse-purple/30"
+                transition={{ delay: index * 0.02 }}
+                className="glass-dark rounded-xl p-4 border border-metaverse-purple/30 hover:border-metaverse-purple/50 transition-colors"
               >
-                <div className="flex flex-col lg:flex-row gap-4">
+                <div className="flex items-center gap-4">
+                  {/* Reward Image */}
+                  <div className="flex-shrink-0">
+                    {redemption.rewardImageUrl ? (
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-metaverse-purple/20 border border-metaverse-purple/30">
+                        <img 
+                          src={redemption.rewardImageUrl}
+                          alt={redemption.rewardName}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-lg">${getRewardTypeIcon(redemption.rewardType)}</div>`;
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-12 h-12 rounded-lg bg-metaverse-purple/20 border border-metaverse-purple/30 flex items-center justify-center text-lg">
+                        {getRewardTypeIcon(redemption.rewardType)}
+                      </div>
+                    )}
+                  </div>
+                  
                   {/* Order Info */}
-                  <div className="flex-1">
-                    <div className="flex items-start gap-4">
-                      {/* Reward Image */}
-                      <div className="flex-shrink-0">
-                        {redemption.rewardImageUrl ? (
-                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-metaverse-purple/20 border border-metaverse-purple/30">
-                            <img 
-                              src={redemption.rewardImageUrl}
-                              alt={redemption.rewardName}
-                              className="w-full h-full object-contain"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  parent.innerHTML = `<div class="w-full h-full flex items-center justify-center text-2xl">${getRewardTypeIcon(redemption.rewardType)}</div>`;
-                                }
-                              }}
-                            />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-bold text-white mb-1 truncate">
+                          {redemption.rewardName}
+                        </h3>
+                        
+                        <div className="flex flex-wrap items-center gap-4 text-xs text-white/60">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(redemption.createdAt).toLocaleDateString('th-TH')}
                           </div>
-                        ) : (
-                          <div className="w-16 h-16 rounded-lg bg-metaverse-purple/20 border border-metaverse-purple/30 flex items-center justify-center text-2xl">
-                            {getRewardTypeIcon(redemption.rewardType)}
+                          <div className="flex items-center gap-1">
+                            <Zap className="w-3 h-3 text-yellow-400" />
+                            <span className="text-yellow-400">{redemption.expCost} EXP</span>
                           </div>
-                        )}
+                          <div>
+                            #{redemption.id.slice(-8)}
+                          </div>
+                        </div>
                       </div>
                       
-                      {/* Details */}
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="text-lg font-bold text-white mb-0.5">
-                              {redemption.rewardName}
-                            </h3>
-                            
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-white/60">
-                              <div>
-                                Order: <span className="font-mono text-white/80">#{redemption.id.slice(-8)}</span>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Calendar className="w-4 h-4" />
-                                {new Date(redemption.createdAt).toLocaleDateString('th-TH')}
-                              </div>
-                              <div className="flex items-center gap-1">
-                                <Zap className="w-4 h-4 text-yellow-400" />
-                                <span className="text-yellow-400">{redemption.expCost} EXP</span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          {/* Status */}
-                          <span className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${statusConfig.bg} ${statusConfig.color}`}>
-                            {statusConfig.icon}
-                            {statusConfig.label}
-                          </span>
-                        </div>
-                        
-                        {/* User Info */}
-                        <div className="mt-2 glass rounded-lg p-2 flex items-center gap-2">
-                          {redemption.user && (
-                            <AdminAvatarDisplay
-                              userId={redemption.user.id}
-                              avatarData={redemption.user.avatarData}
-                              basicAvatar={redemption.user.avatar}
-                              size="tiny"
-                              showAccessories={true}
-                            />
-                          )}
-                          <div>
-                            <p className="text-xs text-white/80">
-                              <strong>ผู้ใช้:</strong> @{redemption.user?.username}
-                              {redemption.user?.displayName && ` (${redemption.user.displayName})`}
-                            </p>
-                            <p className="text-xs text-white/60">
-                              {redemption.user?.school} - {redemption.user?.grade}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {/* Shipping Preview (if physical) */}
-                        {isPhysical && redemption.shippingAddress && (
-                          <div className="mt-2 flex items-start gap-2 text-xs text-white/60">
-                            <MapPin className="w-4 h-4 mt-0.5" />
-                            <div>
-                              <p>{redemption.shippingAddress.fullName}</p>
-                              <p>{redemption.shippingAddress.district}, {redemption.shippingAddress.province}</p>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Digital Reward Notice */}
-                        {!isPhysical && redemption.status === RedemptionStatus.DELIVERED && (
-                          <div className="mt-2 glass rounded-lg p-1.5 inline-block bg-green-400/10 border border-green-400/30">
-                            <p className="text-xs text-green-400 flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" />
-                              ได้รับรางวัลแล้วทันที
-                            </p>
-                          </div>
-                        )}
-                        
-                        {/* Tracking Number */}
-                        {redemption.trackingNumber && (
-                          <div className="mt-2 glass rounded-lg p-1.5 inline-block">
-                            <p className="text-xs text-white/60">Tracking:</p>
-                            <code className="text-xs text-white font-mono">
-                              {redemption.trackingNumber}
-                            </code>
-                          </div>
-                        )}
-                      </div>
+                      {/* Status */}
+                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.bg} ${statusConfig.color} ml-4 flex-shrink-0`}>
+                        {statusConfig.icon}
+                        {statusConfig.label}
+                      </span>
                     </div>
+                  </div>
+
+                  {/* User Info */}
+                  <div className="flex-shrink-0">
+                    {redemption.user && (
+                      <div className="flex items-center gap-2">
+                        <AdminAvatarDisplay
+                          userId={redemption.user.id}
+                          avatarData={redemption.user.avatarData}
+                          basicAvatar={redemption.user.avatar}
+                          size="tiny"
+                          showAccessories={true}
+                        />
+                        <div className="hidden md:block">
+                          <p className="text-xs text-white/80 font-medium">
+                            @{redemption.user.username}
+                          </p>
+                          <p className="text-xs text-white/50">
+                            {redemption.user.school}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Actions */}
-                  <div className="flex lg:flex-col gap-2 lg:justify-center">
-                      <motion.button
-                        onClick={() => handleViewDetail(redemption)}
-                        className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-2 text-sm"
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Eye className="w-3 h-3" />
-                        <span className="hidden sm:inline">รายละเอียด</span>
-                      </motion.button>
+                  <div className="flex gap-2 flex-shrink-0">
+                    <motion.button
+                      onClick={() => handleViewDetail(redemption)}
+                      className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-1 text-sm"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span className="hidden sm:inline">ดู</span>
+                    </motion.button>
                     
                     {/* Show update button for all except cancelled/refunded */}
                     {redemption.status !== RedemptionStatus.CANCELLED && 
                      redemption.status !== RedemptionStatus.REFUNDED && (
                       <motion.button
                         onClick={() => handleUpdateStatus(redemption)}
-                        className="px-3 py-1.5 metaverse-button text-white font-medium rounded-lg flex items-center gap-2 text-sm"
+                        className="px-3 py-1.5 metaverse-button text-white font-medium rounded-lg flex items-center gap-1 text-sm"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
                         <Edit className="w-3 h-3" />
-                        <span className="hidden sm:inline">
-                          {redemption.rewardType === RewardType.PHYSICAL ? 'อัพเดท' : 'จัดการ'}
-                        </span>
+                        <span className="hidden sm:inline">จัดการ</span>
                       </motion.button>
                     )}
                   </div>
                 </div>
+
+                {/* Additional Info for Physical Orders */}
+                {isPhysical && redemption.shippingAddress && (
+                  <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2 text-xs text-white/60">
+                    <MapPin className="w-4 h-4" />
+                    <span>{redemption.shippingAddress.fullName} - {redemption.shippingAddress.district}, {redemption.shippingAddress.province}</span>
+                    {redemption.trackingNumber && (
+                      <span className="ml-auto font-mono text-white/40">
+                        Tracking: {redemption.trackingNumber}
+                      </span>
+                    )}
+                  </div>
+                )}
               </motion.div>
             );
           })}
@@ -802,12 +753,15 @@ export default function AdminOrdersPage() {
         <div className="text-center py-20">
           <Package className="w-16 h-16 text-white/20 mx-auto mb-4" />
           <p className="text-xl text-white/40">
-            ไม่พบคำสั่งซื้อ
+            ไม่พบคำสั่งซื้อที่ตรงกับเงื่อนไข
+          </p>
+          <p className="text-sm text-white/30 mt-2">
+            ลองปรับเปลี่ยน Filter หรือค้นหาด้วยคำอื่น
           </p>
         </div>
       )}
 
-      {/* Detail Modal */}
+      {/* Detail Modal - Same as before */}
       <AnimatePresence>
         {showDetailModal && selectedRedemption && (
           <motion.div
@@ -988,7 +942,7 @@ export default function AdminOrdersPage() {
         )}
       </AnimatePresence>
 
-      {/* Update Status Modal */}
+      {/* Update Status Modal - Same as before */}
       <AnimatePresence>
         {showUpdateModal && selectedRedemption && (
           <motion.div
@@ -996,13 +950,13 @@ export default function AdminOrdersPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            onClick={() => setShowUpdateModal(false)}
+            onClick={() => !updating && setShowUpdateModal(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="glass-dark rounded-3xl p-8 max-w-md w-full border border-metaverse-purple/30"
+              className="glass-dark rounded-3xl p-8 max-w-md w-full border border-metaverse-purple/30 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-2xl font-bold text-white mb-6">
@@ -1013,6 +967,10 @@ export default function AdminOrdersPage() {
               <div className="glass rounded-xl p-4 mb-6">
                 <p className="text-sm text-white/60">Order #{selectedRedemption.id.slice(-8)}</p>
                 <p className="font-medium text-white">{selectedRedemption.rewardName}</p>
+                <p className="text-xs text-white/60 mt-1">
+                  ประเภท: {selectedRedemption.rewardType} | 
+                  ราคา: {selectedRedemption.expCost} EXP
+                </p>
               </div>
               
               {/* Status Select */}
@@ -1027,20 +985,41 @@ export default function AdminOrdersPage() {
                 >
                   {selectedRedemption.rewardType === RewardType.PHYSICAL ? (
                     <>
-                      <option value={RedemptionStatus.APPROVED}>อนุมัติแล้ว</option>
-                      <option value={RedemptionStatus.PROCESSING}>กำลังจัดเตรียม</option>
-                      <option value={RedemptionStatus.SHIPPED}>จัดส่งแล้ว</option>
-                      <option value={RedemptionStatus.DELIVERED}>ส่งถึงแล้ว</option>
-                      <option value={RedemptionStatus.RECEIVED}>รับของแล้ว</option>
-                      <option value={RedemptionStatus.CANCELLED}>ยกเลิก</option>
+                      <option value={RedemptionStatus.APPROVED}>✅ อนุมัติแล้ว</option>
+                      <option value={RedemptionStatus.PROCESSING}>📦 กำลังจัดเตรียม</option>
+                      <option value={RedemptionStatus.SHIPPED}>🚚 จัดส่งแล้ว</option>
+                      <option value={RedemptionStatus.DELIVERED}>📍 ส่งถึงแล้ว</option>
+                      <option value={RedemptionStatus.RECEIVED}>✅ รับของแล้ว</option>
+                      <option value={RedemptionStatus.CANCELLED}>❌ ยกเลิก (ไม่คืน EXP)</option>
                     </>
                   ) : (
                     <>
-                      <option value={RedemptionStatus.CANCELLED}>ยกเลิก (คืน EXP)</option>
+                      <option value={RedemptionStatus.DELIVERED}>✅ สำเร็จแล้ว</option>
+                      <option value={RedemptionStatus.CANCELLED}>❌ ยกเลิกและคืน EXP</option>
                     </>
                   )}
                 </select>
               </div>
+
+              {/* Warning Message */}
+              {updateStatus === RedemptionStatus.CANCELLED && (
+                <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+                  <p className="text-yellow-400 text-sm flex items-center gap-2">
+                    ⚠️ การยกเลิก:
+                  </p>
+                  <ul className="text-yellow-300 text-xs mt-1 ml-4">
+                    {selectedRedemption.rewardType === RewardType.PHYSICAL ? (
+                      <li>• ของจริง: จะไม่คืน EXP</li>
+                    ) : (
+                      <>
+                        <li>• จะคืน {selectedRedemption.expCost} EXP ให้ผู้ใช้</li>
+                        <li>• จะลบรางวัลออกจาก inventory</li>
+                        <li>• ไม่สามารถย้อนกลับได้</li>
+                      </>
+                    )}
+                  </ul>
+                </div>
+              )}
               
               {/* Tracking Number */}
               {selectedRedemption.rewardType === RewardType.PHYSICAL && 
@@ -1086,16 +1065,7 @@ export default function AdminOrdersPage() {
                 </motion.button>
                 
                 <motion.button
-                  onClick={() => {
-                    console.log('Submit button clicked');
-                    console.log('Current modal state:', {
-                      showUpdateModal,
-                      selectedRedemption: selectedRedemption?.id,
-                      updateStatus,
-                      updating
-                    });
-                    handleSubmitUpdate();
-                  }}
+                  onClick={handleSubmitUpdate}
                   disabled={updating}
                   className="flex-1 py-3 metaverse-button text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
                   whileHover={{ scale: 1.02 }}

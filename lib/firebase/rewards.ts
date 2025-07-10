@@ -15,7 +15,8 @@ import {
   serverTimestamp,
   DocumentReference,
   Timestamp,
-  writeBatch
+  writeBatch,
+  deleteField
 } from 'firebase/firestore';
 import { db } from './client';
 import { 
@@ -549,6 +550,273 @@ export const cancelRedemption = async (
 
 // ==================== ADMIN FUNCTIONS ====================
 
+// Admin cancel redemption (can cancel any status)
+export const adminCancelRedemption = async (
+  redemptionId: string,
+  reason?: string
+): Promise<{ success: boolean; message: string; expRefunded?: number }> => {
+  try {
+    return await runTransaction(db, async (transaction) => {
+      // 1. Read all documents first
+      const redemptionRef = doc(db, COLLECTIONS.REDEMPTIONS, redemptionId);
+      const redemptionDoc = await transaction.get(redemptionRef);
+      
+      if (!redemptionDoc.exists()) {
+        throw new Error('ไม่พบข้อมูลการแลกรางวัล');
+      }
+      
+      const redemption = redemptionDoc.data() as Redemption;
+      
+      // Prevent double cancellation
+      if (redemption.status === RedemptionStatus.CANCELLED || 
+          redemption.status === RedemptionStatus.REFUNDED) {
+        throw new Error('รายการนี้ถูกยกเลิกแล้ว');
+      }
+      
+      // 2. Read user document
+      const userRef = doc(db, COLLECTIONS.USERS, redemption.userId);
+      const userDoc = await transaction.get(userRef);
+      
+      if (!userDoc.exists()) {
+        throw new Error('ไม่พบข้อมูลผู้ใช้');
+      }
+      
+      const currentExp = userDoc.data().experience || 0;
+      
+      // 3. Read reward document (if need to restore stock)
+      const rewardRef = doc(db, COLLECTIONS.REWARDS, redemption.rewardId);
+      const rewardDoc = await transaction.get(rewardRef);
+      const hasStock = rewardDoc.exists() && rewardDoc.data().stock !== undefined;
+      const currentStock = hasStock ? rewardDoc.data().stock : 0;
+      
+      // 4. Read inventory for digital rewards
+      let inventoryDoc;
+      let needsInventoryCleanup = redemption.rewardType !== RewardType.PHYSICAL;
+      
+      if (needsInventoryCleanup) {
+        const inventoryRef = doc(db, COLLECTIONS.USER_INVENTORY, redemption.userId);
+        inventoryDoc = await transaction.get(inventoryRef);
+      }
+      
+      // === NOW ALL WRITES ===
+      
+      // 5. Update redemption status
+      const newStatus = redemption.rewardType === RewardType.PHYSICAL 
+        ? RedemptionStatus.CANCELLED 
+        : RedemptionStatus.REFUNDED;
+        
+      transaction.update(redemptionRef, {
+        status: newStatus,
+        cancelReason: reason || 'ยกเลิกโดย Admin',
+        adminNotes: reason || 'ยกเลิกโดย Admin',
+        updatedAt: new Date().toISOString()
+      });
+      
+      // 6. Refund EXP (always refund for admin cancellation)
+      transaction.update(userRef, {
+        experience: currentExp + redemption.expCost
+      });
+      
+      // 7. Restore stock if applicable
+      if (hasStock) {
+        transaction.update(rewardRef, {
+          stock: currentStock + 1
+        });
+      }
+      
+      // 8. Clean up digital rewards from inventory
+      if (needsInventoryCleanup && inventoryDoc?.exists()) {
+        cleanupDigitalRewardFromInventory(
+          transaction,
+          redemption,
+          inventoryDoc,
+          userDoc.data()
+        );
+      }
+      
+      return {
+        success: true,
+        message: `ยกเลิกและคืน ${redemption.expCost} EXP เรียบร้อยแล้ว`,
+        expRefunded: redemption.expCost
+      };
+    });
+  } catch (error) {
+    console.error('Admin cancel redemption error:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'เกิดข้อผิดพลาด'
+    };
+  }
+};
+
+// Helper function to clean up digital rewards from inventory
+const cleanupDigitalRewardFromInventory = (
+  transaction: any,
+  redemption: Redemption,
+  inventoryDoc: any,
+  userData: any
+) => {
+  const inventoryRef = doc(db, COLLECTIONS.USER_INVENTORY, redemption.userId);
+  const inventory = inventoryDoc.data() as UserInventory;
+  const itemId = redemption.itemId || redemption.rewardId;
+  
+  let needsUpdate = false;
+  const updates: any = {};
+  
+  // Remove from inventory based on type
+  switch (redemption.rewardType) {
+    case RewardType.AVATAR:
+      if (inventory.avatars?.includes(itemId)) {
+        updates.avatars = inventory.avatars.filter((id: string) => id !== itemId);
+        needsUpdate = true;
+      }
+      break;
+      
+    case RewardType.ACCESSORY:
+      if (inventory.accessories?.includes(itemId)) {
+        updates.accessories = inventory.accessories.filter((id: string) => id !== itemId);
+        needsUpdate = true;
+      }
+      break;
+      
+    case RewardType.TITLE_BADGE:
+      if (inventory.titleBadges?.includes(itemId)) {
+        updates.titleBadges = inventory.titleBadges.filter((id: string) => id !== itemId);
+        needsUpdate = true;
+      }
+      break;
+      
+    case RewardType.BADGE:
+      if (inventory.badges?.includes(itemId)) {
+        updates.badges = inventory.badges.filter((id: string) => id !== itemId);
+        needsUpdate = true;
+      }
+      break;
+      
+    case RewardType.BOOST:
+      // Remove active boost
+      if (inventory.activeBoosts?.length > 0) {
+        updates.activeBoosts = inventory.activeBoosts.filter(
+          (boost: ActiveBoost) => boost.redemptionId !== redemption.id
+        );
+        needsUpdate = true;
+      }
+      break;
+  }
+  
+  if (needsUpdate) {
+    transaction.update(inventoryRef, updates);
+  }
+  
+  // Update user avatarData if needed
+  if (redemption.rewardType === RewardType.AVATAR || redemption.rewardType === RewardType.ACCESSORY) {
+    cleanupUserAvatarData(transaction, redemption, userData, itemId);
+  }
+  
+  // Update title badges
+  if (redemption.rewardType === RewardType.TITLE_BADGE) {
+    cleanupUserTitleBadges(transaction, redemption, userData, itemId);
+  }
+};
+
+// Helper function to clean up user avatar data
+const cleanupUserAvatarData = (
+  transaction: any,
+  redemption: Redemption,
+  userData: any,
+  itemId: string
+) => {
+  const userRef = doc(db, COLLECTIONS.USERS, redemption.userId);
+  
+  if (!userData.avatarData) return;
+  
+  let needsUpdate = false;
+  const avatarData = { ...userData.avatarData };
+  
+  if (redemption.rewardType === RewardType.AVATAR) {
+    // Remove from unlocked avatars
+    if (avatarData.unlockedPremiumAvatars?.includes(itemId)) {
+      avatarData.unlockedPremiumAvatars = avatarData.unlockedPremiumAvatars.filter(
+        (id: string) => id !== itemId
+      );
+      needsUpdate = true;
+    }
+    
+    // If currently using this avatar, switch to basic
+    if (avatarData.currentAvatar?.id === itemId && avatarData.currentAvatar?.type === 'premium') {
+      avatarData.currentAvatar = {
+        type: 'basic',
+        id: userData.avatar || 'knight',
+        accessories: avatarData.currentAvatar.accessories || {}
+      };
+      needsUpdate = true;
+    }
+  } else if (redemption.rewardType === RewardType.ACCESSORY) {
+    // Remove from unlocked accessories
+    if (avatarData.unlockedAccessories?.includes(itemId)) {
+      avatarData.unlockedAccessories = avatarData.unlockedAccessories.filter(
+        (id: string) => id !== itemId
+      );
+      needsUpdate = true;
+    }
+    
+    // Remove from current avatar if equipped
+    if (avatarData.currentAvatar?.accessories) {
+      const updatedAccessories = { ...avatarData.currentAvatar.accessories };
+      let accessoryRemoved = false;
+      
+      Object.keys(updatedAccessories).forEach(type => {
+        if (updatedAccessories[type as keyof typeof updatedAccessories] === itemId) {
+          delete updatedAccessories[type as keyof typeof updatedAccessories];
+          accessoryRemoved = true;
+        }
+      });
+      
+      if (accessoryRemoved) {
+        avatarData.currentAvatar.accessories = updatedAccessories;
+        needsUpdate = true;
+      }
+    }
+  }
+  
+  if (needsUpdate) {
+    transaction.update(userRef, {
+      avatarData: avatarData
+    });
+  }
+};
+
+// Helper function to clean up user title badges
+const cleanupUserTitleBadges = (
+  transaction: any,
+  redemption: Redemption,
+  userData: any,
+  itemId: string
+) => {
+  const userRef = doc(db, COLLECTIONS.USERS, redemption.userId);
+  
+  let needsUpdate = false;
+  const updates: any = {};
+  
+  // Remove from owned title badges
+  if (userData.ownedTitleBadges?.includes(itemId)) {
+    updates.ownedTitleBadges = userData.ownedTitleBadges.filter(
+      (id: string) => id !== itemId
+    );
+    needsUpdate = true;
+  }
+  
+  // Remove if currently selected
+  if (userData.currentTitleBadge === itemId) {
+    updates.currentTitleBadge = null;
+    needsUpdate = true;
+  }
+  
+  if (needsUpdate) {
+    transaction.update(userRef, updates);
+  }
+};
+
 // Enhanced save reward that handles type changes
 export const saveReward = async (
   reward: Partial<Reward>,
@@ -757,7 +1025,9 @@ async function cleanupRewardTypeChange(
         // Remove from equipped accessories
         if (avatarData.currentAvatar?.accessories && oldReward.accessoryType) {
           if (avatarData.currentAvatar.accessories[oldReward.accessoryType] === oldItemId) {
-            avatarData.currentAvatar.accessories[oldReward.accessoryType] = undefined;
+            const updatedAccessories = { ...avatarData.currentAvatar.accessories };
+            delete updatedAccessories[oldReward.accessoryType];
+            avatarData.currentAvatar.accessories = updatedAccessories;
             needsUpdate = true;
           }
         }
@@ -955,9 +1225,18 @@ export const deleteReward = async (rewardId: string): Promise<{ success: boolean
             
             // Remove from current avatar if equipped
             if (avatarData.currentAvatar?.accessories) {
-              const accessoryType = reward.accessoryType;
-              if (accessoryType && avatarData.currentAvatar.accessories[accessoryType] === itemId) {
-                avatarData.currentAvatar.accessories[accessoryType] = undefined;
+              const updatedAccessories = { ...avatarData.currentAvatar.accessories };
+              let accessoryRemoved = false;
+              
+              Object.keys(updatedAccessories).forEach(type => {
+                if (updatedAccessories[type as keyof typeof updatedAccessories] === itemId) {
+                  delete updatedAccessories[type as keyof typeof updatedAccessories];
+                  accessoryRemoved = true;
+                }
+              });
+              
+              if (accessoryRemoved) {
+                avatarData.currentAvatar.accessories = updatedAccessories;
                 needsUpdate = true;
               }
             }
