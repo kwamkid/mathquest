@@ -77,6 +77,23 @@ export default function RewardShopPage() {
   const successDialog = useDialog({ type: 'success' });
   const errorDialog = useDialog({ type: 'error' });
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.sort-dropdown-container')) {
+        setShowSortMenu(false);
+      }
+    };
+
+    if (showSortMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => {
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
+  }, [showSortMenu]);
+
   // Load rewards and inventory
   useEffect(() => {
     if (user) {
@@ -161,7 +178,7 @@ export default function RewardShopPage() {
         case 'popular':
           return ((b as any).popularity || 0) - ((a as any).popularity || 0);
         case 'newest':
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime();
         case 'price-low':
           return a.price - b.price;
         case 'price-high':
@@ -379,7 +396,7 @@ export default function RewardShopPage() {
       {/* Main Container - Scrollable */}
       <div className="relative z-10 min-h-screen">
         {/* Fixed Header */}
-        <div className="sticky top-0 z-40 bg-metaverse-black/80 backdrop-blur-md border-b border-metaverse-purple/30">
+        <div className="sticky top-0 z-40 bg-metaverse-black/80 backdrop-blur-md border-b border-metaverse-purple/30" style={{ isolation: 'isolate' }}>
           <div className="p-4 max-w-7xl mx-auto">
             {/* Header Content */}
             <div className="mb-3">
@@ -462,50 +479,49 @@ export default function RewardShopPage() {
                   </div>
                   
                   {/* Sort Button */}
-                  <div className="relative">
-                    <motion.button
-                      onClick={() => setShowSortMenu(!showSortMenu)}
+                  <div className="relative sort-dropdown-container">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log('Sort button clicked, current state:', showSortMenu);
+                        setShowSortMenu(!showSortMenu);
+                      }}
                       className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-1 text-xs"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
                     >
                       <ArrowUpDown className="w-4 h-4" />
                       <span className="hidden sm:inline">
-                        {sortOptions.find(opt => opt.id === sortBy)?.label}
+                        {sortOptions.find(opt => opt.id === sortBy)?.label || 'เรียงตาม'}
                       </span>
-                    </motion.button>
+                    </button>
                     
                     {/* Sort Dropdown */}
-                    <AnimatePresence>
-                      {showSortMenu && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="absolute right-0 top-full mt-1 glass-dark rounded-lg border border-metaverse-purple/30 overflow-hidden z-30 min-w-[150px] shadow-xl"
-                        >
-                          {sortOptions.map(option => (
-                            <button
-                              key={option.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSortBy(option.id);
-                                setShowSortMenu(false);
-                              }}
-                              className={`w-full px-4 py-2 text-left hover:bg-white/10 transition flex items-center gap-2 text-sm whitespace-nowrap ${
-                                sortBy === option.id ? 'bg-metaverse-purple/20 text-metaverse-purple' : 'text-white'
-                              }`}
-                            >
-                              {option.icon}
-                              {option.label}
-                              {sortBy === option.id && (
-                                <Check className="w-3 h-3 ml-auto" />
-                              )}
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    {showSortMenu && (
+                      <div 
+                        className="absolute right-0 top-full mt-1 bg-gray-900 rounded-lg border border-metaverse-purple/30 overflow-hidden min-w-[150px] shadow-xl"
+                        style={{ zIndex: 9999 }}
+                      >
+                        {sortOptions.map(option => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => {
+                              console.log('Sort option clicked:', option.id);
+                              setSortBy(option.id);
+                              setShowSortMenu(false);
+                            }}
+                            className={`w-full px-4 py-2.5 text-left hover:bg-white/20 transition-colors flex items-center gap-2 text-sm whitespace-nowrap ${
+                              sortBy === option.id ? 'bg-metaverse-purple/40 text-metaverse-purple' : 'text-white hover:text-white'
+                            }`}
+                          >
+                            {option.icon}
+                            <span>{option.label}</span>
+                            {sortBy === option.id && (
+                              <Check className="w-3 h-3 ml-auto" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 
@@ -689,14 +705,6 @@ export default function RewardShopPage() {
           )}
         </div>
       </div>
-
-      {/* Close sort menu when clicking outside */}
-      {showSortMenu && (
-        <div 
-          className="fixed inset-0 z-20" 
-          onClick={() => setShowSortMenu(false)}
-        />
-      )}
 
       {/* Shipping Address Modal */}
       <AnimatePresence>
