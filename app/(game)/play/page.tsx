@@ -216,6 +216,8 @@ export default function PlayPage() {
     }
   };
 
+  // แทนที่ฟังก์ชัน endGame เดิมใน app/(game)/play/page.tsx ด้วยโค้ดนี้
+
   // End game
   const endGame = async (finalScore?: number) => {
     const actualScore = finalScore !== undefined ? finalScore : score;
@@ -247,13 +249,19 @@ export default function PlayPage() {
           scoreDiff: scoreDiff
         });
         
-        // Calculate new level based on the level we just played
-        let newLevel = playLevel;
-        if (levelChange === 'increase' && playLevel < 100) {
-          newLevel = playLevel + 1;
-        } else if (levelChange === 'decrease' && playLevel > 1) {
-          newLevel = playLevel - 1;
+        // ✅ แก้ไข: คำนวณ newLevel จาก user.level (level จริง) ไม่ใช่ playLevel
+        let newLevel = user.level; // ใช้ level จริงของ user
+        
+        // ถ้าไม่ได้ force level หรือ force level แต่เป็นการเล่น level ปัจจุบัน
+        if (!forceLevel || forceLevel === user.level) {
+          // อัพเดท level ตามผลการเล่น
+          if (levelChange === 'increase' && user.level < 100) {
+            newLevel = user.level + 1;
+          } else if (levelChange === 'decrease' && user.level > 1) {
+            newLevel = user.level - 1;
+          }
         }
+        // ถ้า force level และเป็นการเล่นด่านเก่า จะไม่เปลี่ยน level จริง
         
         const playCount = (user.levelScores?.[playLevel.toString()]?.playCount || 0) + 1;
         
@@ -282,7 +290,7 @@ export default function PlayPage() {
           playCount: playCount
         };
         
-        // Update user data - only update level if not forced
+        // Update user data
         const updateData: any = {
           totalScore: newTotalScore,
           experience: user.experience + boostedExp,
@@ -291,8 +299,8 @@ export default function PlayPage() {
           playStreak: playStreak
         };
         
-        // Only update level if we're not playing a forced level
-        if (!forceLevel) {
+        // ✅ อัพเดท level เฉพาะเมื่อไม่ได้ force หรือ force แต่เป็น level ปัจจุบัน
+        if (!forceLevel || forceLevel === user.level) {
           updateData.level = newLevel;
         }
         
@@ -311,7 +319,7 @@ export default function PlayPage() {
           percentage: percentage.toString(),
           levelChange: levelChange,
           newLevel: newLevel.toString(),
-          oldLevel: playLevel.toString(),
+          oldLevel: (forceLevel || user.level).toString(), // แสดง level ที่เล่นจริง
           exp: boostedExp.toString(),
           highScore: isNewHighScore.toString(),
           oldHighScore: oldHighScore.toString(),

@@ -37,39 +37,85 @@ export class K1Generator extends BaseGenerator {
   private generateMixed(level: number, config: LevelConfig): Question {
     if (level <= 30) {
       // Level 1-30: นับเลข 1-5
-      return this.generateCounting(level, config);
+      const types = [
+        () => this.generateSimpleCounting(level, config),
+        () => this.generateObjectCounting(level, config)
+      ];
+      return randomChoice(types)();
     } else if (level <= 60) {
       // Level 31-60: บวกเลข 1-5
-      return this.generateAddition(level, config);
+      return this.generateSimpleAddition(level, config);
     } else {
       // Level 61-100: บวกเลข 1-10
       const types = [
-        () => this.generateAddition(level, config),
-        () => this.generateSimpleComparison(level, config),
-        () => this.generateMissingNumber(level, config)
+        () => this.generateSimpleAddition(level, config),
+        () => this.generateNumberSequence(level, config)
       ];
       return randomChoice(types)();
     }
   }
 
-  private generateCounting(level: number, config: LevelConfig): Question {
-    const max = Math.min(5, Math.floor(level / 6) + 1); // ค่อยๆ เพิ่มจาก 1 ถึง 5
-    const num = random(1, max);
+  private generateSimpleCounting(level: number, config: LevelConfig): Question {
+    // นับเลขธรรมดา
+    let maxNum: number;
+    if (level <= 10) {
+      maxNum = 3;
+    } else if (level <= 20) {
+      maxNum = 4;
+    } else {
+      maxNum = 5;
+    }
+    
+    const num = random(1, maxNum);
     
     return this.createQuestion(
       `${num} = ?`,
       num,
       QuestionType.MIXED,
       level,
-      generateChoices(num, 4, 2)
+      generateChoices(num, 4, Math.max(3, maxNum))
     );
   }
 
-  private generateAddition(level: number, config: LevelConfig): Question {
+  private generateObjectCounting(level: number, config: LevelConfig): Question {
+    // นับจำนวนรูปภาพ
+    const objects = ['●', '■', '▲', '★', '♦', '♥'];
+    const obj = randomChoice(objects);
+    
+    let maxCount: number;
+    if (level <= 10) {
+      maxCount = 3;
+    } else if (level <= 20) {
+      maxCount = 4;
+    } else {
+      maxCount = 5;
+    }
+    
+    const count = random(1, maxCount);
+    const display = Array(count).fill(obj).join(' ');
+    
+    // ใช้คำว่า "มี" ที่เป็นธรรมชาติ
+    const questions = [
+      `มี ${display} กี่อัน`,
+      `มี ${display} กี่อัน = ?`,
+      `${display} มีกี่อัน`
+    ];
+    
+    return this.createQuestion(
+      randomChoice(questions),
+      count,
+      QuestionType.MIXED,
+      level,
+      generateChoices(count, 4, Math.max(3, maxCount))
+    );
+  }
+
+  private generateSimpleAddition(level: number, config: LevelConfig): Question {
     if (level <= 60) {
       // Level 31-60: บวกเลข 1-5 (ผลบวกไม่เกิน 5)
+      const maxSum = 5;
       const a = random(1, 3);
-      const b = random(1, Math.min(2, 5 - a));
+      const b = random(1, Math.min(2, maxSum - a));
       const answer = a + b;
       
       return this.createQuestion(
@@ -77,13 +123,15 @@ export class K1Generator extends BaseGenerator {
         answer,
         QuestionType.ADDITION,
         level,
-        generateChoices(answer, 4, 2)
+        generateChoices(answer, 4, Math.max(3, maxSum))
       );
     } else {
-      // Level 61-100: บวกเลข 1-10
-      const maxNum = Math.min(10, 5 + Math.floor((level - 60) / 10));
-      const a = random(1, Math.floor(maxNum / 2));
-      const b = random(1, Math.floor(maxNum / 2));
+      // Level 61-100: บวกเลข 1-10 (ผลบวกไม่เกิน 10)
+      const progress = (level - 60) / 40; // 0 to 1
+      const maxSum = Math.floor(5 + progress * 5); // 5 to 10
+      
+      const a = random(1, Math.min(5, maxSum - 1));
+      const b = random(1, Math.min(5, maxSum - a));
       const answer = a + b;
       
       return this.createQuestion(
@@ -91,42 +139,22 @@ export class K1Generator extends BaseGenerator {
         answer,
         QuestionType.ADDITION,
         level,
-        generateChoices(answer, 4, 3)
+        generateChoices(answer, 4, Math.max(4, Math.floor(answer * 1.2)))
       );
     }
   }
 
-  private generateSimpleComparison(level: number, config: LevelConfig): Question {
-    const a = random(1, 8);
-    const b = random(1, 8);
-    
-    if (a === b) {
-      // ถ้าเท่ากัน สร้างใหม่
-      return this.generateAddition(level, config);
-    }
-    
-    const answer = Math.max(a, b);
+  private generateNumberSequence(level: number, config: LevelConfig): Question {
+    // นับเลขต่อ - แบบง่ายที่สุด
+    const start = random(1, 6);
+    const next = start + 1;
     
     return this.createQuestion(
-      `${a}, ${b} = ?`,  // ตอบตัวที่มากกว่า
-      answer,
+      `${start}, ${next}, ?`,
+      next + 1,
       QuestionType.MIXED,
       level,
-      [a, b]
-    );
-  }
-
-  private generateMissingNumber(level: number, config: LevelConfig): Question {
-    // เลขหายในลำดับง่ายๆ
-    const start = random(1, 5);
-    const missing = start + 1; // ตัวที่ 2 หาย
-    
-    return this.createQuestion(
-      `${start}, ?, ${start + 2}`,
-      missing,
-      QuestionType.MIXED,
-      level,
-      generateChoices(missing, 4, 1)
+      generateChoices(next + 1, 4, 3)
     );
   }
 }

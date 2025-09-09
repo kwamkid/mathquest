@@ -233,11 +233,19 @@ export const purchaseReward = async (
         expCost: reward.price,
         status: reward.requiresShipping 
           ? RedemptionStatus.PENDING 
-          : RedemptionStatus.APPROVED,
+          : RedemptionStatus.DELIVERED,  // Digital rewards are DELIVERED immediately
         createdAt: new Date().toISOString(),
         shippingAddress: shippingAddress,
         itemId: reward.itemId || reward.id // Use reward.id as fallback
       };
+      
+      // Add activation time for boosts
+      if (reward.type === RewardType.BOOST) {
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + (reward.boostDuration || 60) * 60000);
+        redemption.activatedAt = now.toISOString();
+        redemption.expiresAt = expiresAt.toISOString();
+      }
       
       // Clean undefined values before saving to Firestore
       const cleanedRedemption = JSON.parse(JSON.stringify(redemption));
@@ -265,7 +273,7 @@ export const purchaseReward = async (
         success: true,
         message: reward.requiresShipping 
           ? 'แลกรางวัลสำเร็จ! รอการอนุมัติจากแอดมิน' 
-          : 'แลกรางวัลสำเร็จ!',
+          : 'แลกรางวัลสำเร็จ! ไอเทมถูกส่งให้คุณแล้ว',
         redemptionId: redemptionRef.id
       };
     });
@@ -352,13 +360,6 @@ const processDigitalRewardInTransaction = (
       };
       
       inventory.activeBoosts.push(boost);
-      
-      // Update redemption with activation time
-      transaction.update(doc(db, COLLECTIONS.REDEMPTIONS, redemptionId), {
-        activatedAt: now.toISOString(),
-        expiresAt: expiresAt.toISOString(),
-        status: RedemptionStatus.DELIVERED
-      });
       break;
   }
   

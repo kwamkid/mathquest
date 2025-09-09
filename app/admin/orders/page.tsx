@@ -387,7 +387,7 @@ export default function AdminOrdersPage() {
           
           {/* Actions */}
           <div className="flex gap-3">
-{/* 
+
             <FixDigitalRewardsButton onFixCompleted={() => loadRedemptions()} />
             <motion.button
                 onClick={() => loadRedemptions()}
@@ -396,7 +396,7 @@ export default function AdminOrdersPage() {
                 whileTap={{ scale: 0.95 }}
             >
                 <RefreshCw className="w-5 h-5 text-white" />
-            </motion.button> */}
+            </motion.button>
     
 
             <motion.button
