@@ -35,6 +35,8 @@ interface RankingUser {
   experience: number;
   rank?: number;
   grade: Grade | string;
+  playStreak?: number; // ✅ เพิ่มบรรทัดนี้
+
 }
 
 const grades = [
@@ -420,7 +422,7 @@ export default function RankingPage() {
                               level: player.level,
                               experience: player.experience,
                               totalScore: player.totalScore,
-                              dailyStreak: 0,
+                              playStreak: player.playStreak || 0,  // ✅ แก้แล้ว
                               lastLoginDate: '',
                               registrationCode: '',
                               createdAt: '',

@@ -14,7 +14,7 @@ export interface User {
   level: number;
   experience: number;
   totalScore: number;
-  dailyStreak: number;
+  // dailyStreak: number;
   lastLoginDate: string;
   registrationCode: string;
   createdAt: string;

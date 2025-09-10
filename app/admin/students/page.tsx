@@ -220,6 +220,12 @@ export default function AdminStudentsPage() {
                 <p className="text-white font-semibold">{student.level}</p>
               </div>
               <div>
+              <span className="text-white/60">Streak:</span>
+              <p className="text-white">
+                {student.playStreak ? `🔥 ${student.playStreak} วัน` : '-'}
+              </p>
+            </div>
+              <div>
                 <span className="text-white/60">คะแนน:</span>
                 <p className="text-metaverse-pink font-semibold">{student.totalScore.toLocaleString()}</p>
               </div>
@@ -249,6 +255,7 @@ export default function AdminStudentsPage() {
                 <th className="px-6 py-2 text-left text-sm font-semibold text-white/80">โรงเรียน</th>
                 <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">ระดับชั้น</th>
                 <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">Level</th>
+                <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">Streak</th>
                 <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">คะแนนรวม</th>
                 <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">สถานะ</th>
                 <th className="px-6 py-2 text-center text-sm font-semibold text-white/80">จัดการ</th>
@@ -295,6 +302,19 @@ export default function AdminStudentsPage() {
                     </td>
                     <td className="px-6 py-2 text-center font-semibold text-white text-sm">
                       {student.level}
+                    </td>
+                    <td className="px-6 py-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        {(student.playStreak || 0) > 0 && (
+                          <>
+                            <span className="text-orange-400">🔥</span>
+                            <span className="text-sm text-white">{student.playStreak}</span>
+                          </>
+                        )}
+                        {!student.playStreak && (
+                          <span className="text-sm text-white/40">-</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-2 text-center font-semibold text-metaverse-pink text-sm">
                       {student.totalScore.toLocaleString()}
@@ -411,8 +431,8 @@ export default function AdminStudentsPage() {
                   <p className="font-medium text-white">{selectedStudent.experience}</p>
                 </div>
                 <div>
-                  <p className="text-white/60">Daily Streak</p>
-                  <p className="font-medium text-white">{selectedStudent.dailyStreak} วัน</p>
+                  <p className="text-white/60">Play Streak</p>
+                  <p className="font-medium text-white">{selectedStudent.playStreak || 0} วัน</p>
                 </div>
                 <div>
                   <p className="text-white/60">Registration Code</p>

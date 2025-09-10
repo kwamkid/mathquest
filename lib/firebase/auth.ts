@@ -60,6 +60,7 @@ export const signUp = async (
     const codesQuery = query(
       collection(db, COLLECTIONS.REGISTRATION_CODES),
       where('code', '==', registrationCode),
+      where('isActive', '==', true), // เพิ่ม filter เพื่อป้องกัน code ซ้ำที่ inactive
       limit(1)
     );
     const codesSnapshot = await getDocs(codesQuery);
@@ -121,7 +122,7 @@ export const signUp = async (
         level: 1,
         experience: 0,
         totalScore: 0,
-        dailyStreak: 0,
+        playStreak: 0, // ✅ ใช้ playStreak อย่างเดียว (ไม่มี dailyStreak)
         lastLoginDate: now,
         registrationCode,
         createdAt: now,
@@ -201,39 +202,25 @@ export const signIn = async (username: string, password: string, rememberMe: boo
       throw new Error('บัญชีนี้ถูกระงับการใช้งาน');
     }
 
-    // Update last login and daily streak
-    const lastLogin = new Date(userData.lastLoginDate);
+    // ✅ แก้ไข: Update last login only (ไม่อัพเดท streak ที่นี่)
+    // Streak จะอัพเดทตอนเล่นเกมใน lib/firebase/game.ts
     const today = new Date();
-    const diffTime = today.getTime() - lastLogin.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    let newStreak = userData.dailyStreak;
-    if (diffDays === 1) {
-      // Consecutive day login
-      newStreak += 1;
-    } else if (diffDays > 1) {
-      // Streak broken
-      newStreak = 1;
-    }
-    // If diffDays === 0, same day login, keep streak
 
-    // Update user document
+    // Update user document - เฉพาะ lastLoginDate
     await updateDoc(doc(db, COLLECTIONS.USERS, userCredential.user.uid), {
       lastLoginDate: today.toISOString(),
-      dailyStreak: newStreak,
     });
 
     return {
       ...userData,
       lastLoginDate: today.toISOString(),
-      dailyStreak: newStreak,
     };
-} catch (error: unknown) {
-  console.log('Sign in error details:', error);
-  
-  // Type guard สำหรับ Firebase error
-  if (error && typeof error === 'object' && 'code' in error) {
-    const errorCode = (error as {code: string}).code;
+  } catch (error: unknown) {
+    console.log('Sign in error details:', error);
+    
+    // Type guard สำหรับ Firebase error
+    if (error && typeof error === 'object' && 'code' in error) {
+      const errorCode = (error as {code: string}).code;
       
       // Map Firebase error codes to Thai messages
       const errorMessages: { [key: string]: string } = {
@@ -318,7 +305,8 @@ export const updateUserProfile = async (
       updateData.level = 1;
       // Optionally reset other grade-specific data
       updateData.experience = 0;
-      updateData.levelScores = {};  // ← เพิ่มบรรทัดนี้
+      updateData.levelScores = {};
+      updateData.playStreak = 0; // ✅ reset playStreak เมื่อเปลี่ยนระดับชั้น
     }
 
     // Remove undefined values
@@ -332,5 +320,35 @@ export const updateUserProfile = async (
   } catch (error) {
     console.error('Error updating profile:', error);
     throw new Error('ไม่สามารถอัปเดตข้อมูลได้');
+  }
+};
+
+// ✅ เพิ่มฟังก์ชัน Migration สำหรับ users เก่า (optional)
+export const migrateStreakData = async (): Promise<void> => {
+  try {
+    console.log('🔄 Starting streak migration...');
+    
+    const usersSnapshot = await getDocs(collection(db, COLLECTIONS.USERS));
+    let migratedCount = 0;
+    
+    for (const userDoc of usersSnapshot.docs) {
+      const userData = userDoc.data();
+      
+      // ถ้ามี dailyStreak แต่ไม่มี playStreak
+      if (userData.dailyStreak !== undefined && userData.playStreak === undefined) {
+        await updateDoc(doc(db, COLLECTIONS.USERS, userDoc.id), {
+          playStreak: userData.dailyStreak || 0,
+          // Note: ใน Firestore ไม่สามารถลบ field ได้โดยตรง
+          // ต้องใช้ deleteField() จาก firebase/firestore หรือ set ค่าเป็น null
+        });
+        migratedCount++;
+        console.log(`✅ Migrated user ${userDoc.id}`);
+      }
+    }
+    
+    console.log(`✅ Migration complete! Updated ${migratedCount} users`);
+  } catch (error) {
+    console.error('Migration error:', error);
+    throw new Error('ไม่สามารถ migrate streak data ได้');
   }
 };
