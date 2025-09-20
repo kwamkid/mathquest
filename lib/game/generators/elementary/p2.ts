@@ -24,136 +24,210 @@ export class P2Generator extends BaseGenerator {
   }
 
   getAvailableQuestionTypes(level: number): QuestionType[] {
-    if (level <= 40) {
-      return [QuestionType.ADDITION, QuestionType.SUBTRACTION];
-    } else if (level <= 60) {
+    // ปรับ type ตาม level
+    if (level <= 10) {
+      return [QuestionType.ADDITION];
+    } else if (level <= 12 || level === 21 || level === 22 || level === 31 || level === 32 || 
+               level === 41 || level === 42 || level === 51 || level === 52 || level === 61 || level === 62 ||
+               level === 71 || level === 72 || level === 79 || level === 80 || level === 86 || level === 87 ||
+               level === 91 || level === 92) {
       return [QuestionType.MULTIPLICATION];
-    } else if (level <= 90) {
-      return [QuestionType.ADDITION, QuestionType.SUBTRACTION];
+    } else if ((level >= 13 && level <= 15) || (level >= 23 && level <= 25) || (level >= 33 && level <= 35) ||
+               (level >= 53 && level <= 55) || (level >= 63 && level <= 65) || (level >= 84 && level <= 85)) {
+      return [QuestionType.MIXED]; // สำหรับการเปรียบเทียบ
+    } else if (level >= 96) {
+      return [QuestionType.DIVISION];
+    } else if ((level >= 36 && level <= 40) || (level >= 43 && level <= 45) || (level >= 66 && level <= 70) ||
+               (level >= 73 && level <= 78) || (level >= 81 && level <= 83) || (level >= 88 && level <= 90)) {
+      return [QuestionType.SUBTRACTION];
     } else {
-      return [QuestionType.MIXED];
+      return [QuestionType.ADDITION];
     }
   }
 
   private generateMixed(level: number, config: LevelConfig): Question {
-    if (level <= 10) {
-      // Level 1-10: บวกลบพื้นฐาน (เลขหลักเดียว)
-      return this.generateSingleDigitAddSub(level, config);
+    if (level <= 5) {
+      // Level 1-5: บวกเลขหลักเดียว x + x
+      return this.generateSingleDigitAddition(level, config);
+    } else if (level <= 10) {
+      // Level 6-10: บวก xx + x (ไม่ทด)
+      return this.generateTwoDigitPlusOne(level, config);
+    } else if (level <= 12) {
+      // Level 11-12: สูตรคูณแม่ 2
+      return this.generateMultiplicationTable2(level, config);
+    } else if (level <= 15) {
+      // Level 13-15: เปรียบเทียบ xx กับ xx
+      return this.generateComparisonTwoDigit(level, config);
     } else if (level <= 20) {
-      // Level 11-20: บวกลบ 2 หลักกับ 1 หลัก (ไม่ทด/ไม่ยืม)
-      return this.generateTwoDigitWithOneDigit(level, config);
-    } else if (level <= 30) {
-      // Level 21-30: บวก 2 หลัก กับ 2 หลัก (ไม่ทด)
+      // Level 16-20: บวก xx + xx (ไม่ทด)
       return this.generateTwoDigitAdditionNoCarry(level, config);
-    } else if (level <= 40) {
-      // Level 31-40: ลบ 2 หลัก (ไม่ยืม)
-      return this.generateTwoDigitSubtractionNoBorrow(level, config);
-    } else if (level <= 50) {
-      // Level 41-50: สูตรคูณแม่ 2, 5, 10
-      return this.generateMultiplicationTable2510(level, config);
-    } else if (level <= 60) {
-      // Level 51-60: สูตรคูณแม่ 3, 4
-      return this.generateMultiplicationTable34(level, config);
-    } else if (level <= 70) {
-      // Level 61-70: บวกลบ 3 หลัก (ไม่ทด/ไม่ยืม)
-      return this.generateThreeDigitAddSubNoCarry(level, config);
-    } else if (level <= 80) {
-      // Level 71-80: บวก 2 หลัก (มีการทด)
+    } else if (level <= 22) {
+      // Level 21-22: สูตรคูณแม่ 2, 5
+      return this.generateMultiplicationTable25(level, config);
+    } else if (level <= 25) {
+      // Level 23-25: เปรียบเทียบ xxx กับ xxx
+      return this.generateComparisonThreeDigit(level, config);
+    } else if (level <= 30) {
+      // Level 26-30: บวก xx + xx (มีการทด)
       return this.generateTwoDigitAdditionWithCarry(level, config);
-    } else if (level <= 90) {
-      // Level 81-90: ลบ 2 หลัก (มีการยืม)
+    } else if (level <= 32) {
+      // Level 31-32: สูตรคูณแม่ 2, 5, 10
+      return this.generateMultiplicationTable2510(level, config);
+    } else if (level <= 35) {
+      // Level 33-35: เปรียบเทียบผลบวก
+      return this.generateComparisonAddition(level, config);
+    } else if (level <= 40) {
+      // Level 36-40: ลบ xx - xx (ไม่ยืม)
+      return this.generateTwoDigitSubtractionNoBorrow(level, config);
+    } else if (level <= 42) {
+      // Level 41-42: สูตรคูณแม่ 2, 5, 10 (ทบทวน)
+      return this.generateMultiplicationTable2510Review(level, config);
+    } else if (level <= 45) {
+      // Level 43-45: ลบ xx - x
+      return this.generateTwoDigitMinusOne(level, config);
+    } else if (level <= 50) {
+      // Level 46-50: บวก xxx + xx
+      return this.generateThreeDigitPlusTwoDigit(level, config);
+    } else if (level <= 52) {
+      // Level 51-52: สูตรคูณแม่ 2, 5, 10, 3
+      return this.generateMultiplicationTable25103(level, config);
+    } else if (level <= 55) {
+      // Level 53-55: เปรียบเทียบ xxx กับ xx
+      return this.generateComparisonMixed(level, config);
+    } else if (level <= 60) {
+      // Level 56-60: บวก xxx + xxx
+      return this.generateThreeDigitAddition(level, config);
+    } else if (level <= 62) {
+      // Level 61-62: สูตรคูณแม่ 2, 3, 4, 5
+      return this.generateMultiplicationTable2345(level, config);
+    } else if (level <= 65) {
+      // Level 63-65: เปรียบเทียบผลคูณ
+      return this.generateComparisonMultiplication(level, config);
+    } else if (level <= 70) {
+      // Level 66-70: ลบ xxx - xx (ไม่ยืม)
+      return this.generateThreeDigitMinusTwoDigit(level, config);
+    } else if (level <= 72) {
+      // Level 71-72: สูตรคูณแม่ 2-5, 10 (ทบทวน)
+      return this.generateMultiplicationTableReview(level, config);
+    } else if (level <= 75) {
+      // Level 73-75: ลบ xxx - x
+      return this.generateThreeDigitMinusOne(level, config);
+    } else if (level <= 78) {
+      // Level 76-78: ลบ xxx - xxx (ไม่ยืม)
+      return this.generateThreeDigitSubtractionNoBorrow(level, config);
+    } else if (level <= 80) {
+      // Level 79-80: สูตรคูณแม่ 6, 7
+      return this.generateMultiplicationTable67(level, config);
+    } else if (level <= 83) {
+      // Level 81-83: ลบ xx - xx (มีการยืม)
       return this.generateTwoDigitSubtractionWithBorrow(level, config);
+    } else if (level <= 85) {
+      // Level 84-85: เปรียบเทียบผสม
+      return this.generateComparisonMixedOperations(level, config);
+    } else if (level <= 87) {
+      // Level 86-87: สูตรคูณแม่ 8, 9
+      return this.generateMultiplicationTable89(level, config);
+    } else if (level <= 90) {
+      // Level 88-90: ลบ xxx - xx (มีการยืมบางข้อ)
+      return this.generateThreeDigitMinusTwoDigitWithBorrow(level, config);
+    } else if (level <= 92) {
+      // Level 91-92: สูตรคูณแม่ 2-10 (ทบทวนทั้งหมด)
+      return this.generateMultiplicationTableAll(level, config);
+    } else if (level <= 95) {
+      // Level 93-95: หาเลขที่หาย
+      return this.generateMissingNumber(level, config);
     } else {
-      // Level 91-100: โจทย์ผสม
-      return this.generateMixedProblems(level, config);
+      // Level 96-100: การหารพื้นฐาน
+      return this.generateBasicDivision(level, config);
     }
   }
 
-  // Level 1-10: บวกลบพื้นฐาน
-  private generateSingleDigitAddSub(level: number, config: LevelConfig): Question {
-    const operations = [
-      // บวก
+  // Level 1-5: บวกเลขหลักเดียว
+  private generateSingleDigitAddition(level: number, config: LevelConfig): Question {
+    const a = random(1, 9);
+    const b = random(1, 9);
+    const answer = a + b;
+    
+    return this.createQuestion(
+      `${a} + ${b} = ?`,
+      answer,
+      QuestionType.ADDITION,
+      level,
+      generateChoices(answer, 4, 5)
+    );
+  }
+
+  // Level 6-10: บวก xx + x (ไม่ทด)
+  private generateTwoDigitPlusOne(level: number, config: LevelConfig): Question {
+    const tens = random(1, 5) * 10;
+    const ones = random(0, 5);
+    const a = tens + ones;
+    const b = random(1, Math.min(4, 9 - ones)); // ไม่ให้ทด
+    const answer = a + b;
+    
+    return this.createQuestion(
+      `${a} + ${b} = ?`,
+      answer,
+      QuestionType.ADDITION,
+      level,
+      generateChoices(answer, 4, 5)
+    );
+  }
+
+  // Level 11-12: สูตรคูณแม่ 2
+  private generateMultiplicationTable2(level: number, config: LevelConfig): Question {
+    const multiplier = random(1, 5);
+    const answer = 2 * multiplier;
+    
+    return this.createQuestion(
+      `2 × ${multiplier} = ?`,
+      answer,
+      QuestionType.MULTIPLICATION,
+      level,
+      generateChoices(answer, 4, 3)
+    );
+  }
+
+  // Level 13-15: เปรียบเทียบ xx กับ xx
+  private generateComparisonTwoDigit(level: number, config: LevelConfig): Question {
+    const a = random(10, 99);
+    const b = random(10, 99);
+    
+    const types = [
+      () => ({
+        question: `${a} ? ${b}`,
+        answer: a > b ? 1 : (a < b ? 2 : 3), // 1 = >, 2 = <, 3 = =
+        choices: [1, 2, 3] // แทนด้วย >, <, =
+      }),
       () => {
-        const a = random(1, 5);
-        const b = random(1, Math.min(5, 10 - a));
+        const smaller = Math.min(a, b);
         return {
-          question: `${a} + ${b} = ?`,
-          answer: a + b,
-          type: QuestionType.ADDITION
-        };
-      },
-      // ลบ
-      () => {
-        const a = random(3, 9);
-        const b = random(1, Math.min(a - 1, 5));
-        return {
-          question: `${a} - ${b} = ?`,
-          answer: a - b,
-          type: QuestionType.SUBTRACTION
+          question: `${Math.max(a, b)} > ?`,
+          answer: smaller,
+          choices: generateChoices(smaller, 4, 10)
         };
       }
     ];
     
-    const op = randomChoice(operations)();
+    const type = randomChoice(types)();
     
     return this.createQuestion(
-      op.question,
-      op.answer,
-      op.type,
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
       level,
-      generateChoices(op.answer, 4, 3)
+      type.choices
     );
   }
 
-  // Level 11-20: บวกลบ 2 หลักกับ 1 หลัก (ไม่ทด/ไม่ยืม)
-  private generateTwoDigitWithOneDigit(level: number, config: LevelConfig): Question {
-    const operations = [
-      // บวก (ไม่ทด)
-      () => {
-        const tens = random(1, 4) * 10;
-        const ones = random(0, 5);
-        const a = tens + ones;
-        const b = random(1, Math.min(4, 9 - ones));
-        return {
-          question: `${a} + ${b} = ?`,
-          answer: a + b,
-          type: QuestionType.ADDITION
-        };
-      },
-      // ลบ (ไม่ยืม)
-      () => {
-        const tens = random(2, 4) * 10;
-        const ones = random(3, 9);
-        const a = tens + ones;
-        const b = random(1, ones);
-        return {
-          question: `${a} - ${b} = ?`,
-          answer: a - b,
-          type: QuestionType.SUBTRACTION
-        };
-      }
-    ];
-    
-    const op = randomChoice(operations)();
-    
-    return this.createQuestion(
-      op.question,
-      op.answer,
-      op.type,
-      level,
-      generateChoices(op.answer, 4, 5)
-    );
-  }
-
-  // Level 21-30: บวก 2 หลัก กับ 2 หลัก (ไม่ทด)
+  // Level 16-20: บวก xx + xx (ไม่ทด)
   private generateTwoDigitAdditionNoCarry(level: number, config: LevelConfig): Question {
-    // สร้างเลขที่บวกแล้วไม่ทด
     const tens1 = random(1, 3) * 10;
     const ones1 = random(0, 4);
     const a = tens1 + ones1;
     
     const tens2 = random(1, 3) * 10;
-    const ones2 = random(0, Math.min(5, 9 - ones1)); // ไม่ให้ทด
+    const ones2 = random(0, Math.min(5, 9 - ones1));
     const b = tens2 + ones2;
     
     const answer = a + b;
@@ -167,15 +241,101 @@ export class P2Generator extends BaseGenerator {
     );
   }
 
-  // Level 31-40: ลบ 2 หลัก (ไม่ยืม)
+  // Level 21-22: สูตรคูณแม่ 2, 5
+  private generateMultiplicationTable25(level: number, config: LevelConfig): Question {
+    const tables = [2, 5];
+    const multiplicand = randomChoice(tables);
+    const multiplier = random(1, 6);
+    const answer = multiplicand * multiplier;
+    
+    return this.createQuestion(
+      `${multiplicand} × ${multiplier} = ?`,
+      answer,
+      QuestionType.MULTIPLICATION,
+      level,
+      generateChoices(answer, 4, 5)
+    );
+  }
+
+  // Level 23-25: เปรียบเทียบ xxx กับ xxx
+  private generateComparisonThreeDigit(level: number, config: LevelConfig): Question {
+    const a = random(100, 999);
+    const b = random(100, 999);
+    
+    const answer = a > b ? 1 : (a < b ? 2 : 3);
+    
+    return this.createQuestion(
+      `${a} ? ${b}`,
+      answer,
+      QuestionType.MIXED,
+      level,
+      [1, 2, 3]
+    );
+  }
+
+  // Level 26-30: บวก xx + xx (มีการทด)
+  private generateTwoDigitAdditionWithCarry(level: number, config: LevelConfig): Question {
+    const tens1 = random(1, 4) * 10;
+    const ones1 = random(5, 9);
+    const a = tens1 + ones1;
+    
+    const tens2 = random(1, 3) * 10;
+    const ones2 = random(5, 9);
+    const b = tens2 + ones2;
+    
+    const answer = a + b;
+    
+    return this.createQuestion(
+      `${a} + ${b} = ?`,
+      answer,
+      QuestionType.ADDITION,
+      level,
+      generateChoices(answer, 4, 12)
+    );
+  }
+
+  // Level 31-32: สูตรคูณแม่ 2, 5, 10
+  private generateMultiplicationTable2510(level: number, config: LevelConfig): Question {
+    const tables = [2, 5, 10];
+    const multiplicand = randomChoice(tables);
+    const multiplier = random(1, 7);
+    const answer = multiplicand * multiplier;
+    
+    return this.createQuestion(
+      `${multiplicand} × ${multiplier} = ?`,
+      answer,
+      QuestionType.MULTIPLICATION,
+      level,
+      generateChoices(answer, 4, Math.max(5, Math.floor(answer * 0.3)))
+    );
+  }
+
+  // Level 33-35: เปรียบเทียบผลบวก
+  private generateComparisonAddition(level: number, config: LevelConfig): Question {
+    const a = random(10, 40);
+    const b = random(10, 30);
+    const sum = a + b;
+    const compareValue = random(sum - 5, sum + 5);
+    
+    const answer = sum > compareValue ? 1 : (sum < compareValue ? 2 : 3);
+    
+    return this.createQuestion(
+      `${a} + ${b} ? ${compareValue}`,
+      answer,
+      QuestionType.MIXED,
+      level,
+      [1, 2, 3]
+    );
+  }
+
+  // Level 36-40: ลบ xx - xx (ไม่ยืม)
   private generateTwoDigitSubtractionNoBorrow(level: number, config: LevelConfig): Question {
-    // สร้างเลขที่ลบแล้วไม่ยืม
     const tens1 = random(3, 6) * 10;
     const ones1 = random(5, 9);
     const a = tens1 + ones1;
     
     const tens2 = random(1, 2) * 10;
-    const ones2 = random(0, ones1); // ไม่ให้ยืม
+    const ones2 = random(0, ones1);
     const b = tens2 + ones2;
     
     const answer = a - b;
@@ -189,8 +349,8 @@ export class P2Generator extends BaseGenerator {
     );
   }
 
-  // Level 41-50: สูตรคูณแม่ 2, 5, 10
-  private generateMultiplicationTable2510(level: number, config: LevelConfig): Question {
+  // Level 41-42: สูตรคูณแม่ 2, 5, 10 (ทบทวน)
+  private generateMultiplicationTable2510Review(level: number, config: LevelConfig): Question {
     const tables = [2, 5, 10];
     const multiplicand = randomChoice(tables);
     const multiplier = random(1, 10);
@@ -205,9 +365,86 @@ export class P2Generator extends BaseGenerator {
     );
   }
 
-  // Level 51-60: สูตรคูณแม่ 3, 4
-  private generateMultiplicationTable34(level: number, config: LevelConfig): Question {
-    const tables = [3, 4];
+  // Level 43-45: ลบ xx - x
+  private generateTwoDigitMinusOne(level: number, config: LevelConfig): Question {
+    const a = random(20, 99);
+    const b = random(1, 9);
+    const answer = a - b;
+    
+    return this.createQuestion(
+      `${a} - ${b} = ?`,
+      answer,
+      QuestionType.SUBTRACTION,
+      level,
+      generateChoices(answer, 4, 5)
+    );
+  }
+
+  // Level 46-50: บวก xxx + xx
+  private generateThreeDigitPlusTwoDigit(level: number, config: LevelConfig): Question {
+    const a = random(100, 500);
+    const b = random(10, 50);
+    const answer = a + b;
+    
+    return this.createQuestion(
+      `${a} + ${b} = ?`,
+      answer,
+      QuestionType.ADDITION,
+      level,
+      generateChoices(answer, 4, 20)
+    );
+  }
+
+  // Level 51-52: สูตรคูณแม่ 2, 5, 10, 3
+  private generateMultiplicationTable25103(level: number, config: LevelConfig): Question {
+    const tables = [2, 3, 5, 10];
+    const multiplicand = randomChoice(tables);
+    const multiplier = random(1, 8);
+    const answer = multiplicand * multiplier;
+    
+    return this.createQuestion(
+      `${multiplicand} × ${multiplier} = ?`,
+      answer,
+      QuestionType.MULTIPLICATION,
+      level,
+      generateChoices(answer, 4, Math.max(5, Math.floor(answer * 0.3)))
+    );
+  }
+
+  // Level 53-55: เปรียบเทียบ xxx กับ xx
+  private generateComparisonMixed(level: number, config: LevelConfig): Question {
+    const a = random(100, 999);
+    const b = random(10, 99);
+    
+    const answer = 1; // xxx จะมากกว่า xx เสมอ
+    
+    return this.createQuestion(
+      `${a} ? ${b}`,
+      answer,
+      QuestionType.MIXED,
+      level,
+      [1, 2, 3]
+    );
+  }
+
+  // Level 56-60: บวก xxx + xxx
+  private generateThreeDigitAddition(level: number, config: LevelConfig): Question {
+    const a = random(100, 400);
+    const b = random(100, 400);
+    const answer = a + b;
+    
+    return this.createQuestion(
+      `${a} + ${b} = ?`,
+      answer,
+      QuestionType.ADDITION,
+      level,
+      generateChoices(answer, 4, 50)
+    );
+  }
+
+  // Level 61-62: สูตรคูณแม่ 2, 3, 4, 5
+  private generateMultiplicationTable2345(level: number, config: LevelConfig): Question {
+    const tables = [2, 3, 4, 5];
     const multiplicand = randomChoice(tables);
     const multiplier = random(1, 10);
     const answer = multiplicand * multiplier;
@@ -221,87 +458,124 @@ export class P2Generator extends BaseGenerator {
     );
   }
 
-  // Level 61-70: บวกลบ 3 หลัก (ไม่ทด/ไม่ยืม)
-  private generateThreeDigitAddSubNoCarry(level: number, config: LevelConfig): Question {
-    const operations = [
-      // บวก 3 หลัก กับ 2 หลัก (ไม่ทด)
-      () => {
-        const hundreds = random(1, 3) * 100;
-        const tens = random(0, 4) * 10;
-        const ones = random(0, 4);
-        const a = hundreds + tens + ones;
-        
-        const b_tens = random(1, 3) * 10;
-        const b_ones = random(0, Math.min(5, 9 - ones));
-        const b = b_tens + b_ones;
-        
-        return {
-          question: `${a} + ${b} = ?`,
-          answer: a + b,
-          type: QuestionType.ADDITION
-        };
-      },
-      // ลบ 3 หลัก ลบ 2 หลัก (ไม่ยืม)
-      () => {
-        const hundreds = random(2, 4) * 100;
-        const tens = random(3, 7) * 10;
-        const ones = random(5, 9);
-        const a = hundreds + tens + ones;
-        
-        const b_tens = random(1, 2) * 10;
-        const b_ones = random(0, ones);
-        const b = b_tens + b_ones;
-        
-        return {
-          question: `${a} - ${b} = ?`,
-          answer: a - b,
-          type: QuestionType.SUBTRACTION
-        };
-      }
-    ];
+  // Level 63-65: เปรียบเทียบผลคูณ
+  private generateComparisonMultiplication(level: number, config: LevelConfig): Question {
+    const a = random(2, 5);
+    const b = random(3, 8);
+    const product = a * b;
+    const compareValue = random(product - 3, product + 3);
     
-    const op = randomChoice(operations)();
+    const answer = product > compareValue ? 1 : (product < compareValue ? 2 : 3);
     
     return this.createQuestion(
-      op.question,
-      op.answer,
-      op.type,
-      level,
-      generateChoices(op.answer, 4, 15)
-    );
-  }
-
-  // Level 71-80: บวก 2 หลัก (มีการทด)
-  private generateTwoDigitAdditionWithCarry(level: number, config: LevelConfig): Question {
-    // สร้างเลขที่บวกแล้วมีการทด
-    const tens1 = random(1, 4) * 10;
-    const ones1 = random(5, 9); // เลขหลักหน่วยมาก
-    const a = tens1 + ones1;
-    
-    const tens2 = random(1, 3) * 10;
-    const ones2 = random(5, 9); // เลขหลักหน่วยมาก เพื่อให้ทด
-    const b = tens2 + ones2;
-    
-    const answer = a + b;
-    
-    return this.createQuestion(
-      `${a} + ${b} = ?`,
+      `${a} × ${b} ? ${compareValue}`,
       answer,
-      QuestionType.ADDITION,
+      QuestionType.MIXED,
       level,
-      generateChoices(answer, 4, 12)
+      [1, 2, 3]
     );
   }
 
-  // Level 81-90: ลบ 2 หลัก (มีการยืม)
+  // Level 66-70: ลบ xxx - xx (ไม่ยืม)
+  private generateThreeDigitMinusTwoDigit(level: number, config: LevelConfig): Question {
+    const hundreds = random(2, 6) * 100;
+    const tens = random(5, 9) * 10;
+    const ones = random(5, 9);
+    const a = hundreds + tens + ones;
+    
+    const b_tens = random(1, 3) * 10;
+    const b_ones = random(0, ones);
+    const b = b_tens + b_ones;
+    
+    const answer = a - b;
+    
+    return this.createQuestion(
+      `${a} - ${b} = ?`,
+      answer,
+      QuestionType.SUBTRACTION,
+      level,
+      generateChoices(answer, 4, 20)
+    );
+  }
+
+  // Level 71-72: สูตรคูณแม่ 2-5, 10 (ทบทวน)
+  private generateMultiplicationTableReview(level: number, config: LevelConfig): Question {
+    const tables = [2, 3, 4, 5, 10];
+    const multiplicand = randomChoice(tables);
+    const multiplier = random(1, 10);
+    const answer = multiplicand * multiplier;
+    
+    return this.createQuestion(
+      `${multiplicand} × ${multiplier} = ?`,
+      answer,
+      QuestionType.MULTIPLICATION,
+      level,
+      generateChoices(answer, 4, Math.max(5, Math.floor(answer * 0.3)))
+    );
+  }
+
+  // Level 73-75: ลบ xxx - x
+  private generateThreeDigitMinusOne(level: number, config: LevelConfig): Question {
+    const a = random(100, 999);
+    const b = random(1, 9);
+    const answer = a - b;
+    
+    return this.createQuestion(
+      `${a} - ${b} = ?`,
+      answer,
+      QuestionType.SUBTRACTION,
+      level,
+      generateChoices(answer, 4, 10)
+    );
+  }
+
+  // Level 76-78: ลบ xxx - xxx (ไม่ยืม)
+  private generateThreeDigitSubtractionNoBorrow(level: number, config: LevelConfig): Question {
+    const hundreds1 = random(5, 9) * 100;
+    const tens1 = random(5, 9) * 10;
+    const ones1 = random(5, 9);
+    const a = hundreds1 + tens1 + ones1;
+    
+    const hundreds2 = random(1, 4) * 100;
+    const tens2 = random(0, tens1 / 10 - 1) * 10;
+    const ones2 = random(0, ones1);
+    const b = hundreds2 + tens2 + ones2;
+    
+    const answer = a - b;
+    
+    return this.createQuestion(
+      `${a} - ${b} = ?`,
+      answer,
+      QuestionType.SUBTRACTION,
+      level,
+      generateChoices(answer, 4, 50)
+    );
+  }
+
+  // Level 79-80: สูตรคูณแม่ 6, 7
+  private generateMultiplicationTable67(level: number, config: LevelConfig): Question {
+    const tables = [6, 7];
+    const multiplicand = randomChoice(tables);
+    const multiplier = random(1, 10);
+    const answer = multiplicand * multiplier;
+    
+    return this.createQuestion(
+      `${multiplicand} × ${multiplier} = ?`,
+      answer,
+      QuestionType.MULTIPLICATION,
+      level,
+      generateChoices(answer, 4, Math.max(8, Math.floor(answer * 0.2)))
+    );
+  }
+
+  // Level 81-83: ลบ xx - xx (มีการยืม)
   private generateTwoDigitSubtractionWithBorrow(level: number, config: LevelConfig): Question {
-    // สร้างเลขที่ลบแล้วต้องยืม
     const tens1 = random(3, 7) * 10;
-    const ones1 = random(0, 4); // เลขหลักหน่วยน้อย
+    const ones1 = random(0, 4);
     const a = tens1 + ones1;
     
     const tens2 = random(1, 3) * 10;
-    const ones2 = random(ones1 + 1, 9); // เลขหลักหน่วยมากกว่า เพื่อให้ยืม
+    const ones2 = random(ones1 + 1, 9);
     const b = tens2 + ones2;
     
     const answer = a - b;
@@ -315,80 +589,146 @@ export class P2Generator extends BaseGenerator {
     );
   }
 
-  // Level 91-100: โจทย์ผสม
-  private generateMixedProblems(level: number, config: LevelConfig): Question {
-    const problemTypes = [
-      // บวก/ลบ/คูณผสม
+  // Level 84-85: เปรียบเทียบผสม
+  private generateComparisonMixedOperations(level: number, config: LevelConfig): Question {
+    const types = [
       () => {
-        const a = random(3, 8);
-        const b = random(2, 6);
-        const c = random(5, 15);
-        return {
-          question: `${a} × ${b} + ${c} = ?`,
-          answer: (a * b) + c
-        };
-      },
-      // หาเลขที่หาย (บวก)
-      () => {
-        const result = random(15, 30);
-        const known = random(5, result - 5);
-        const unknown = result - known;
-        return {
-          question: `? + ${known} = ${result}`,
-          answer: unknown
-        };
-      },
-      // หาเลขที่หาย (ลบ)
-      () => {
-        const start = random(20, 40);
-        const result = random(5, 15);
-        const unknown = start - result;
-        return {
-          question: `${start} - ? = ${result}`,
-          answer: unknown
-        };
-      },
-      // หาเลขที่หาย (คูณ)
-      () => {
-        const multiplier = randomChoice([2, 3, 4, 5]);
-        const result = multiplier * random(3, 10);
-        const unknown = result / multiplier;
-        return {
-          question: `${multiplier} × ? = ${result}`,
-          answer: unknown
-        };
-      },
-      // ลำดับเลข
-      () => {
-        const start = random(10, 30);
-        const step = randomChoice([2, 3, 5]);
-        const missing = start + step;
-        const next = start + (step * 2);
-        return {
-          question: `${start}, ?, ${next}`,
-          answer: missing
-        };
-      },
-      // การเปรียบเทียบ
-      () => {
-        const a = random(15, 35);
+        const a = random(20, 50);
         const b = random(20, 40);
-        const diff = Math.abs(a - b);
+        const sum = a + b;
+        const compareValue = random(60, 100);
         return {
-          question: `${a} กับ ${b} ต่างกันเท่าไร?`,
-          answer: diff
+          question: `${a} + ${b} ? ${compareValue}`,
+          answer: sum > compareValue ? 1 : (sum < compareValue ? 2 : 3)
+        };
+      },
+      () => {
+        const a = random(5, 8);
+        const b = random(4, 7);
+        const product = a * b;
+        return {
+          question: `${a} × ${b} ? ${product}`,
+          answer: 3 // Always equal
         };
       }
     ];
     
-    const problem = randomChoice(problemTypes)();
+    const type = randomChoice(types)();
     
     return this.createQuestion(
-      problem.question,
-      problem.answer,
+      type.question,
+      type.answer,
       QuestionType.MIXED,
       level,
-      generateChoices(problem.answer, 4, Math.max(5, Math.floor(problem.answer * 0.3)))
+      [1, 2, 3]
+    );
+  }
+
+  // Level 86-87: สูตรคูณแม่ 8, 9
+  private generateMultiplicationTable89(level: number, config: LevelConfig): Question {
+    const tables = [8, 9];
+    const multiplicand = randomChoice(tables);
+    const multiplier = random(1, 10);
+    const answer = multiplicand * multiplier;
+    
+    return this.createQuestion(
+      `${multiplicand} × ${multiplier} = ?`,
+      answer,
+      QuestionType.MULTIPLICATION,
+      level,
+      generateChoices(answer, 4, Math.max(10, Math.floor(answer * 0.2)))
+    );
+  }
+
+  // Level 88-90: ลบ xxx - xx (มีการยืมบางข้อ)
+  private generateThreeDigitMinusTwoDigitWithBorrow(level: number, config: LevelConfig): Question {
+    const a = random(200, 800);
+    const b = random(25, 99);
+    const answer = a - b;
+    
+    return this.createQuestion(
+      `${a} - ${b} = ?`,
+      answer,
+      QuestionType.SUBTRACTION,
+      level,
+      generateChoices(answer, 4, 30)
+    );
+  }
+
+  // Level 91-92: สูตรคูณแม่ 2-10 (ทบทวนทั้งหมด)
+  private generateMultiplicationTableAll(level: number, config: LevelConfig): Question {
+    const multiplicand = random(2, 10);
+    const multiplier = random(1, 10);
+    const answer = multiplicand * multiplier;
+    
+    return this.createQuestion(
+      `${multiplicand} × ${multiplier} = ?`,
+      answer,
+      QuestionType.MULTIPLICATION,
+      level,
+      generateChoices(answer, 4, Math.max(10, Math.floor(answer * 0.2)))
+    );
+  }
+
+  // Level 93-95: หาเลขที่หาย
+  private generateMissingNumber(level: number, config: LevelConfig): Question {
+    const types = [
+      // ? + a = b
+      () => {
+        const answer = random(5, 20);
+        const known = random(5, 15);
+        const result = answer + known;
+        return {
+          question: `? + ${known} = ${result}`,
+          answer: answer
+        };
+      },
+      // a - ? = b
+      () => {
+        const start = random(20, 50);
+        const result = random(10, 30);
+        const answer = start - result;
+        return {
+          question: `${start} - ? = ${result}`,
+          answer: answer
+        };
+      },
+      // a × ? = b
+      () => {
+        const multiplicand = random(2, 5);
+        const answer = random(2, 10);
+        const result = multiplicand * answer;
+        return {
+          question: `${multiplicand} × ? = ${result}`,
+          answer: answer
+        };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      generateChoices(type.answer, 4, 5)
+    );
+  }
+
+  // Level 96-100: การหารพื้นฐาน
+  private generateBasicDivision(level: number, config: LevelConfig): Question {
+    const divisors = [2, 3, 4, 5, 6];
+    const divisor = randomChoice(divisors);
+    const quotient = random(2, 10);
+    const dividend = divisor * quotient;
+    
+    return this.createQuestion(
+      `${dividend} ÷ ${divisor} = ?`,
+      quotient,
+      QuestionType.DIVISION,
+      level,
+      generateChoices(quotient, 4, 3)
     );
   }
 }
