@@ -6,11 +6,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, Trophy, Zap, X, Gift, Info, Crown } from 'lucide-react';
+import { Settings, LogOut, X, Gift, Info, Crown, ShoppingBag, Sparkles } from 'lucide-react';
 import EnhancedSoundToggle from './EnhancedSoundToggle';
-import { getQuestionCount } from '@/lib/game/config';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
-import { useBackgroundMusic } from '@/lib/game/backgroundMusicManager';
 import Link from 'next/link';
 import { TITLE_BADGES } from '@/lib/data/items';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
@@ -28,6 +26,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
   const router = useRouter();
   const [showExpModal, setShowExpModal] = useState(false);
   const [titleData, setTitleData] = useState<{ name: string; color: string } | null>(null);
+  const [isAvatarHovered, setIsAvatarHovered] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -124,17 +123,6 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
     return gradeMap[grade] || grade;
   };
 
-  // คำนวณจำนวน level ที่ผ่านแล้ว
-  const getPassedLevels = (): number => {
-    if (!user.levelScores) return 0;
-    
-    return Object.values(user.levelScores).filter(score => {
-      const questionCount = getQuestionCount(user.grade);
-      const percentage = (score.highScore / questionCount) * 100;
-      return percentage > 85;
-    }).length;
-  };
-
   return (
     <>
       <header className="glass-dark border-b border-metaverse-purple/30 sticky top-0 z-40">
@@ -156,8 +144,25 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                     />
                   </div>
                 ) : (
-                  <Link href="/my-avatar" className="group">
-                    <motion.div whileHover={{ scale: 1.1 }}>
+                  <Link href="/my-avatar" className="group relative">
+                    <motion.div 
+                      whileHover={{ scale: 1.1 }}
+                      onHoverStart={() => setIsAvatarHovered(true)}
+                      onHoverEnd={() => setIsAvatarHovered(false)}
+                      className="relative"
+                    >
+                      {/* Glow effect when hoverable */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-metaverse-purple/40 to-metaverse-pink/40 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                      
+                      {/* Click indicator */}
+                      <motion.div
+                        className="absolute -top-1 -right-1 bg-metaverse-purple text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        animate={isAvatarHovered ? { scale: [1, 1.2, 1] } : {}}
+                        transition={{ repeat: Infinity, duration: 1.5 }}
+                      >
+                        <Sparkles className="w-2.5 h-2.5" />
+                      </motion.div>
+                      
                       <EnhancedAvatarDisplay
                         userId={user.id}
                         avatarData={user.avatarData}
@@ -197,10 +202,6 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                   <div className="flex items-center gap-2 text-xs text-white/70 mt-0.5">
                     <span>{getGradeDisplayName(user.grade)}</span>
                     <span className="text-metaverse-purple font-semibold">Lv.{user.level}</span>
-                    <span className="flex items-center gap-1">
-                      <Trophy className="w-3 h-3 text-yellow-400" />
-                      <span className="text-yellow-400 font-semibold">{getPassedLevels()}</span>
-                    </span>
                   </div>
                 </div>
               </div>
@@ -208,11 +209,30 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
               {/* Actions */}
               {!hideActions && (
                 <div className="flex items-center gap-1">
+                  {/* Reward Shop Button - More prominent */}
                   <Link
                     href="/rewards"
-                    className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                    className="relative"
                   >
-                    <Gift className="w-4 h-4" />
+                    <motion.div
+                      className="p-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full shadow-lg"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      animate={{ 
+                        boxShadow: ['0 0 10px rgba(251, 191, 36, 0.5)', '0 0 20px rgba(251, 191, 36, 0.8)', '0 0 10px rgba(251, 191, 36, 0.5)']
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <ShoppingBag className="w-4 h-4 text-white" />
+                    </motion.div>
+                    {/* Badge for "NEW" or notification */}
+                    <motion.div
+                      className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full px-1"
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      SHOP
+                    </motion.div>
                   </Link>
                   
                   <EnhancedSoundToggle />
@@ -314,8 +334,30 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                   />
                 </div>
               ) : (
-                <Link href="/my-avatar" className="group">
-                  <motion.div whileHover={{ scale: 1.1 }}>
+                <Link href="/my-avatar" className="group relative">
+                  <motion.div 
+                    whileHover={{ scale: 1.1 }}
+                    onHoverStart={() => setIsAvatarHovered(true)}
+                    onHoverEnd={() => setIsAvatarHovered(false)}
+                    className="relative"
+                  >
+                    {/* Glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-metaverse-purple/40 to-metaverse-pink/40 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+                    
+                    {/* Click indicator */}
+                    <motion.div
+                      className="absolute -top-1 -right-1 bg-metaverse-purple text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                      animate={isAvatarHovered ? { scale: [1, 1.2, 1] } : {}}
+                      transition={{ repeat: Infinity, duration: 1.5 }}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                    </motion.div>
+                    
+                    {/* Tooltip */}
+                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                      คลิกเพื่อจัดการ Avatar
+                    </div>
+                    
                     <EnhancedAvatarDisplay
                       userId={user.id}
                       avatarData={user.avatarData}
@@ -355,11 +397,6 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                   <span>{getGradeDisplayName(user.grade)}</span>
                   <span>•</span>
                   <span className="text-metaverse-purple font-semibold">Level {user.level}</span>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Trophy className="w-4 h-4 text-yellow-400" />
-                    <span className="text-yellow-400 font-semibold">{getPassedLevels()}</span> Level ผ่าน
-                  </span>
                 </div>
               </div>
             </div>
@@ -413,12 +450,34 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 <>
                   <div className="w-px h-8 bg-white/20" />
                   <div className="flex items-center gap-2">
+                    {/* Reward Shop - More prominent */}
                     <Link
                       href="/rewards"
-                      className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white group relative"
+                      className="relative group"
                     >
-                      <Gift className="w-5 h-5" />
-                      <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-white/0 group-hover:text-white/80 transition whitespace-nowrap">
+                      <motion.div
+                        className="p-2 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full shadow-lg"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        animate={{ 
+                          boxShadow: ['0 0 15px rgba(251, 191, 36, 0.5)', '0 0 25px rgba(251, 191, 36, 0.8)', '0 0 15px rgba(251, 191, 36, 0.5)']
+                        }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        <ShoppingBag className="w-5 h-5 text-white" />
+                      </motion.div>
+                      
+                      {/* Label */}
+                      <motion.div
+                        className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full px-2 py-0.5 shadow-md"
+                        animate={{ scale: [1, 1.1, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        SHOP
+                      </motion.div>
+                      
+                      {/* Tooltip */}
+                      <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-white/0 group-hover:text-white/80 transition whitespace-nowrap bg-black/90 px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none">
                         Reward Shop
                       </span>
                     </Link>
@@ -509,7 +568,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
               {user.playStreak && user.playStreak > 0 && (
                 <div className="glass bg-gradient-to-r from-yellow-400/10 to-orange-400/10 rounded-xl p-4 mb-6 border border-yellow-400/30">
                   <div className="flex items-center gap-3">
-                    <Trophy className="w-6 h-6 text-yellow-400" />
+                    <Crown className="w-6 h-6 text-yellow-400" />
                     <div>
                       <p className="text-white font-medium">
                         เล่นต่อเนื่อง {user.playStreak} วัน!

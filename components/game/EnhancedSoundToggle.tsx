@@ -1,7 +1,7 @@
 // components/game/EnhancedSoundToggle.tsx
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Music, Zap, X } from 'lucide-react';
 import { useSound } from '@/lib/game/soundManager';
@@ -10,6 +10,7 @@ import { useBackgroundMusic } from '@/lib/game/backgroundMusicManager';
 export default function EnhancedSoundToggle() {
   const [showDialog, setShowDialog] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
   
   const { isEnabled: soundEnabled, toggleSound } = useSound();
   const { 
@@ -19,6 +20,34 @@ export default function EnhancedSoundToggle() {
     stopMusic,
     resumeMusic 
   } = useBackgroundMusic();
+
+  // Close modal when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!showDialog) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowDialog(false);
+      }
+    };
+
+    const handleClickOutside = (e: MouseEvent) => {
+      // Check if click is outside the modal
+      if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+        setShowDialog(false);
+      }
+    };
+
+    // Add event listeners
+    document.addEventListener('keydown', handleEscape);
+    document.addEventListener('mousedown', handleClickOutside);
+    
+    // Cleanup
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDialog]);
 
   // Prevent multiple toggles
   const handleSoundToggle = useCallback(async () => {
@@ -92,38 +121,50 @@ export default function EnhancedSoundToggle() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) {
-                setShowDialog(false);
-              }
-            }}
           >
             <motion.div
+              ref={modalRef}
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="glass-dark rounded-2xl p-6 w-full max-w-sm border border-metaverse-purple/30"
-              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold text-white">ตั้งค่าเสียง</h3>
-                <button
+                <motion.button
                   onClick={() => setShowDialog(false)}
                   className="p-1.5 glass rounded-full hover:bg-white/10 transition"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   <X className="w-4 h-4 text-white/60" />
-                </button>
+                </motion.button>
               </div>
 
               {/* Sound Controls */}
               <div className="space-y-4">
                 {/* Background Music */}
-                <div className="flex items-center justify-between p-4 glass rounded-xl border border-blue-500/30">
+                <motion.div 
+                  className="flex items-center justify-between p-4 glass rounded-xl border border-blue-500/30"
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                >
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="p-2 bg-blue-500/20 rounded-lg">
+                    <motion.div 
+                      className="p-2 bg-blue-500/20 rounded-lg"
+                      animate={musicPlaying ? { 
+                        rotate: [0, 360],
+                      } : {}}
+                      transition={musicPlaying ? { 
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "linear"
+                      } : {}}
+                    >
                       <Music className="w-5 h-5 text-blue-400" />
-                    </div>
+                    </motion.div>
                     <div>
                       <h4 className="font-medium text-white">เพลงประกอบ</h4>
                       <p className="text-xs text-white/60">
@@ -136,14 +177,17 @@ export default function EnhancedSoundToggle() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex-shrink-0">
+                  <button
+                    onClick={handleMusicToggle}
+                    disabled={isToggling}
+                    className="flex-shrink-0 focus:outline-none"
+                  >
                     <div
-                      className={`w-12 h-6 rounded-full transition-all duration-300 cursor-pointer ${
+                      className={`w-12 h-6 rounded-full transition-all duration-300 ${
                         musicEnabled 
                           ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' 
                           : 'bg-gray-600'
-                      } ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={isToggling ? undefined : handleMusicToggle}
+                      } ${isToggling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                     >
                       <motion.div
                         className="w-5 h-5 bg-white rounded-full shadow-md"
@@ -153,15 +197,22 @@ export default function EnhancedSoundToggle() {
                         transition={{ type: "spring", stiffness: 500, damping: 30 }}
                       />
                     </div>
-                  </div>
-                </div>
+                  </button>
+                </motion.div>
 
                 {/* Sound Effects */}
-                <div className="flex items-center justify-between p-4 glass rounded-xl border border-orange-500/30">
+                <motion.div 
+                  className="flex items-center justify-between p-4 glass rounded-xl border border-orange-500/30"
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                >
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="p-2 bg-orange-500/20 rounded-lg">
+                    <motion.div 
+                      className="p-2 bg-orange-500/20 rounded-lg"
+                      whileTap={{ scale: 0.9 }}
+                    >
                       <Zap className="w-5 h-5 text-orange-400" />
-                    </div>
+                    </motion.div>
                     <div>
                       <h4 className="font-medium text-white">เสียงเอฟเฟค</h4>
                       <p className="text-xs text-white/60">
@@ -169,14 +220,17 @@ export default function EnhancedSoundToggle() {
                       </p>
                     </div>
                   </div>
-                  <div className="flex-shrink-0">
+                  <button
+                    onClick={handleSoundToggle}
+                    disabled={isToggling}
+                    className="flex-shrink-0 focus:outline-none"
+                  >
                     <div
-                      className={`w-12 h-6 rounded-full transition-all duration-300 cursor-pointer ${
+                      className={`w-12 h-6 rounded-full transition-all duration-300 ${
                         soundEnabled 
                           ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' 
                           : 'bg-gray-600'
-                      } ${isToggling ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      onClick={isToggling ? undefined : handleSoundToggle}
+                      } ${isToggling ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
                     >
                       <motion.div
                         className="w-5 h-5 bg-white rounded-full shadow-md"
@@ -186,9 +240,26 @@ export default function EnhancedSoundToggle() {
                         transition={{ type: "spring", stiffness: 500, damping: 30 }}
                       />
                     </div>
-                  </div>
-                </div>
+                  </button>
+                </motion.div>
               </div>
+
+              {/* Tips */}
+              <div className="mt-6 p-3 bg-white/5 rounded-lg border border-white/10">
+                <p className="text-xs text-white/50 text-center">
+                  💡 คลิกข้างนอกหรือกด ESC เพื่อปิด
+                </p>
+              </div>
+
+              {/* Close Button (Mobile) */}
+              <motion.button
+                onClick={() => setShowDialog(false)}
+                className="md:hidden w-full mt-4 py-2.5 metaverse-button text-white font-medium rounded-xl"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                ปิด
+              </motion.button>
             </motion.div>
           </motion.div>
         )}
