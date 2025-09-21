@@ -5,10 +5,8 @@ import { LevelConfig } from '../../config';
 import { BaseGenerator } from '../types';
 import { 
   random, 
-  generateChoices, 
-  randomChoice,
-  generateDivisibleNumbers,
-  simplifyFraction
+  generateChoices,
+  randomChoice
 } from '../utils';
 
 export class P5Generator extends BaseGenerator {
@@ -17,286 +15,545 @@ export class P5Generator extends BaseGenerator {
   }
 
   generateQuestion(level: number, config: LevelConfig): Question {
-    // P5 จะเน้นแค่โจทย์ตัวเลขล้วนๆ ไม่มีคำถามยาวๆ
+    // P5 ใช้แค่ MIXED (ตัวเลขล้วน) ไม่มีโจทย์ปัญหา
     return this.generateMixed(level, config);
   }
 
   generateWordProblem(level: number, config: LevelConfig): Question {
-    // ไม่ทำ word problem - return โจทย์ตัวเลขแทน
+    // P5 ไม่มีโจทย์ปัญหา ให้ส่ง MIXED แทน
     return this.generateMixed(level, config);
   }
 
   getAvailableQuestionTypes(level: number): QuestionType[] {
-    if (level <= 25) {
-      return [QuestionType.MULTIPLICATION];
-    } else if (level <= 50) {
-      return [QuestionType.DIVISION];
-    } else if (level <= 75) {
-      return [QuestionType.MIXED]; // เศษส่วน
-    } else {
-      return [QuestionType.MULTIPLICATION, QuestionType.DIVISION, QuestionType.MIXED];
-    }
+    // P5 มีแค่ MIXED (ตัวเลขล้วน)
+    return [QuestionType.MIXED];
   }
 
   private generateMixed(level: number, config: LevelConfig): Question {
-    if (level <= 25) {
-      // Level 1-25: คูณ 3 หลัก
-      return this.generateThreeDigitMultiplication(level, config);
+    if (level <= 10) {
+      // Level 1-10: จำนวนนับมากกว่า 1,000,000
+      return this.generateLargeNumbers(level, config);
+    } else if (level <= 20) {
+      // Level 11-20: ตัวประกอบ
+      return this.generateFactors(level, config);
+    } else if (level <= 30) {
+      // Level 21-30: จำนวนเฉพาะ
+      return this.generatePrimeNumbers(level, config);
+    } else if (level <= 40) {
+      // Level 31-40: เศษส่วนและจำนวนคละ
+      return this.generateMixedNumbers(level, config);
     } else if (level <= 50) {
-      // Level 26-50: หารยาว
-      return this.generateLongDivision(level, config);
-    } else if (level <= 75) {
-      // Level 51-75: เศษส่วนเบื้องต้น
-      const types = [
-        () => this.generateFractionAddition(level, config),
-        () => this.generateFractionSubtraction(level, config),
-        () => this.generateFractionMultiplication(level, config),
-        () => this.generateFractionToDecimal(level, config)
-      ];
-      return randomChoice(types)();
+      // Level 41-50: การบวกลบเศษส่วน
+      return this.generateFractionOperations(level, config);
+    } else if (level <= 60) {
+      // Level 51-60: ทศนิยม 3 ตำแหน่ง
+      return this.generateDecimals3Places(level, config);
+    } else if (level <= 70) {
+      // Level 61-70: ทศนิยม (คูณ หาร)
+      return this.generateDecimalMultiplyDivide(level, config);
+    } else if (level <= 80) {
+      // Level 71-80: ร้อยละ
+      return this.generatePercentage(level, config);
+    } else if (level <= 85) {
+      // Level 81-85: พื้นที่รูปสี่เหลี่ยม
+      return this.generateQuadrilateralArea(level, config);
+    } else if (level <= 90) {
+      // Level 86-90: พื้นที่รูปสามเหลี่ยม
+      return this.generateTriangleArea(level, config);
+    } else if (level <= 95) {
+      // Level 91-95: ปริมาตร
+      return this.generateVolume(level, config);
     } else {
-      // Level 76-100: โจทย์ผสม
-      const types = [
-        () => this.generateThreeDigitMultiplication(level, config),
-        () => this.generateLongDivision(level, config),
-        () => this.generateAdvancedCalculation(level, config),
-        () => this.generatePercentageBasic(level, config)
-      ];
-      return randomChoice(types)();
+      // Level 96-100: โจทย์ผสม
+      return this.generateMixedProblems(level, config);
     }
   }
 
-  private generateThreeDigitMultiplication(level: number, config: LevelConfig): Question {
-    if (level <= 25) {
-      // Level 1-25: คูณ 3 หลัก กับ 1 หลัก
-      const a = random(100, 300);
-      const b = random(2, 12);
-      const answer = a * b;
-      
-      return this.createQuestion(
-        `${a} × ${b} = ?`,
-        answer,
-        QuestionType.MULTIPLICATION,
-        level,
-        generateChoices(answer, 4, Math.max(50, Math.floor(answer * 0.1)))
-      );
-    } else {
-      // Level 26+: คูณเลขใหญ่ขึ้น
-      const a = random(150, 500);
-      const b = random(3, 15);
-      const answer = a * b;
-      
-      return this.createQuestion(
-        `${a} × ${b} = ?`,
-        answer,
-        QuestionType.MULTIPLICATION,
-        level,
-        generateChoices(answer, 4, Math.max(100, Math.floor(answer * 0.1)))
-      );
-    }
-  }
-
-  private generateLongDivision(level: number, config: LevelConfig): Question {
-    if (level <= 50) {
-      // Level 26-50: หารยาว
-      const divisor = random(10, 50);
-      const quotient = random(8, 40);
-      const dividend = divisor * quotient;
-      
-      return this.createQuestion(
-        `${dividend} ÷ ${divisor} = ?`,
-        quotient,
-        QuestionType.DIVISION,
-        level,
-        generateChoices(quotient, 4, Math.max(5, Math.floor(quotient * 0.3)))
-      );
-    } else {
-      // Level 51+: หารยาวซับซ้อน
-      const divisor = random(15, 80);
-      const quotient = random(12, 60);
-      const dividend = divisor * quotient;
-      
-      return this.createQuestion(
-        `${dividend} ÷ ${divisor} = ?`,
-        quotient,
-        QuestionType.DIVISION,
-        level,
-        generateChoices(quotient, 4, Math.max(8, Math.floor(quotient * 0.2)))
-      );
-    }
-  }
-
-  private generateFractionAddition(level: number, config: LevelConfig): Question {
-    // บวกเศษส่วนตัวส่วนเดียวกัน
-    const denominator = randomChoice([2, 3, 4, 5, 6, 8]);
-    const num1 = random(1, denominator - 1);
-    const num2 = random(1, denominator - num1);
-    const answerNum = num1 + num2;
-    
-    // ลดรูป
-    const [simplifiedNum, simplifiedDen] = simplifyFraction(answerNum, denominator);
-    
-    if (simplifiedDen === 1) {
-      // ผลลัพธ์เป็นจำนวนเต็ม
-      return this.createQuestion(
-        `${num1}/${denominator} + ${num2}/${denominator} = ?`,
-        simplifiedNum,
-        QuestionType.MIXED,
-        level,
-        generateChoices(simplifiedNum, 4, 2)
-      );
-    } else {
-      // ถามเฉพาะตัวเศษ (ระบุตัวส่วน)
-      return this.createQuestion(
-        `${num1}/${denominator} + ${num2}/${denominator} = ?/${simplifiedDen}`,
-        simplifiedNum,
-        QuestionType.MIXED,
-        level,
-        generateChoices(simplifiedNum, 4, 3)
-      );
-    }
-  }
-
-  private generateFractionSubtraction(level: number, config: LevelConfig): Question {
-    const denominator = randomChoice([3, 4, 5, 6, 8]);
-    const num1 = random(2, denominator);
-    const num2 = random(1, num1 - 1);
-    const answerNum = num1 - num2;
-    
-    const [simplifiedNum, simplifiedDen] = simplifyFraction(answerNum, denominator);
-    
-    if (simplifiedDen === 1) {
-      return this.createQuestion(
-        `${num1}/${denominator} - ${num2}/${denominator} = ?`,
-        simplifiedNum,
-        QuestionType.MIXED,
-        level,
-        generateChoices(simplifiedNum, 4, 2)
-      );
-    } else {
-      return this.createQuestion(
-        `${num1}/${denominator} - ${num2}/${denominator} = ?/${simplifiedDen}`,
-        simplifiedNum,
-        QuestionType.MIXED,
-        level,
-        generateChoices(simplifiedNum, 4, 3)
-      );
-    }
-  }
-
-  private generateFractionMultiplication(level: number, config: LevelConfig): Question {
-    // เศษส่วน × จำนวนเต็ม
-    const fractions = [
-      { num: 1, den: 2 },
-      { num: 1, den: 3 },
-      { num: 1, den: 4 },
-      { num: 2, den: 3 },
-      { num: 3, den: 4 }
-    ];
-    
-    const fraction = randomChoice(fractions);
-    const whole = generateDivisibleNumbers(fraction.den, 12, 60);
-    const answer = (whole * fraction.num) / fraction.den;
-    
-    return this.createQuestion(
-      `${fraction.num}/${fraction.den} × ${whole} = ?`,
-      answer,
-      QuestionType.MIXED,
-      level,
-      generateChoices(answer, 4, Math.max(3, Math.floor(answer * 0.3)))
-    );
-  }
-
-  private generateFractionToDecimal(level: number, config: LevelConfig): Question {
-    const fractions = [
-      { num: 1, den: 2, decimal: 50 },  // 0.5 → 50
-      { num: 1, den: 4, decimal: 25 },  // 0.25 → 25
-      { num: 3, den: 4, decimal: 75 },  // 0.75 → 75
-      { num: 1, den: 5, decimal: 20 },  // 0.2 → 20
-      { num: 2, den: 5, decimal: 40 },  // 0.4 → 40
-    ];
-    
-    const fraction = randomChoice(fractions);
-    
-    return this.createQuestion(
-      `${fraction.num}/${fraction.den} = 0.??`,
-      fraction.decimal,
-      QuestionType.MIXED,
-      level,
-      generateChoices(fraction.decimal, 4, 15)
-    );
-  }
-
-  private generateAdvancedCalculation(level: number, config: LevelConfig): Question {
+  // Level 1-10: จำนวนนับมากกว่า 1,000,000
+  private generateLargeNumbers(level: number, config: LevelConfig): Question {
     const operations = [
-      // (a + b) ÷ c
       () => {
-        const c = random(10, 50);
-        const quotient = random(4, 20);
-        const sum = c * quotient;
-        const a = random(Math.floor(sum * 0.3), Math.floor(sum * 0.7));
-        const b = sum - a;
-        return {
-          question: `(${a} + ${b}) ÷ ${c} = ?`,
-          answer: quotient
-        };
+        const a = random(1000000, 9999999);
+        const b = random(100000, 999999);
+        const answer = a + b;
+        return { question: `${a} + ${b} = ?`, answer };
       },
-      // a × b + c × d
       () => {
-        const a = random(5, 15);
-        const b = random(4, 12);
-        const c = random(3, 10);
-        const d = random(5, 15);
-        return {
-          question: `${a} × ${b} + ${c} × ${d} = ?`,
-          answer: (a * b) + (c * d)
-        };
+        const a = random(5000000, 9999999);
+        const b = random(1000000, 4000000);
+        const answer = a - b;
+        return { question: `${a} - ${b} = ?`, answer };
       },
-      // a × b - c × d
       () => {
-        const a = random(10, 20);
-        const b = random(5, 15);
-        const c = random(3, 8);
-        const d = random(4, 10);
-        const product1 = a * b;
-        const product2 = c * d;
-        if (product1 > product2) {
-          return {
-            question: `${a} × ${b} - ${c} × ${d} = ?`,
-            answer: product1 - product2
-          };
-        } else {
-          return {
-            question: `${c} × ${d} - ${a} × ${b} = ?`,
-            answer: product2 - product1
-          };
-        }
+        const a = random(10000, 99999);
+        const b = random(100, 999);
+        const answer = a * b;
+        return { question: `${a} × ${b} = ?`, answer };
+      },
+      () => {
+        // เปรียบเทียบจำนวน
+        const a = random(1000000, 9999999);
+        const b = random(1000000, 9999999);
+        const answer = a > b ? 1 : (a < b ? 2 : 3);
+        return { question: `${a} ? ${b} (1=>, 2=<, 3==)`, answer };
       }
     ];
     
     const op = randomChoice(operations)();
-    
     return this.createQuestion(
       op.question,
       op.answer,
       QuestionType.MIXED,
       level,
-      generateChoices(op.answer, 4, Math.max(20, Math.floor(op.answer * 0.1)))
+      op.question.includes('(1=') ? [1, 2, 3] : generateChoices(op.answer, 4, Math.max(100000, Math.floor(op.answer * 0.05)))
     );
   }
 
-  private generatePercentageBasic(level: number, config: LevelConfig): Question {
-    const percentages = [10, 20, 25, 50, 75];
-    const percentage = randomChoice(percentages);
-    const total = generateDivisibleNumbers(percentage === 25 ? 4 : percentage === 75 ? 4 : percentage / 10, 20, 200);
-    const answer = (total * percentage) / 100;
+  // Level 11-20: ตัวประกอบ
+  private generateFactors(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // หาตัวประกอบทั้งหมด
+        const numbers: Record<number, number> = {
+          12: 6,  // ตัวประกอบ: 1,2,3,4,6,12
+          18: 6,  // ตัวประกอบ: 1,2,3,6,9,18
+          20: 6,  // ตัวประกอบ: 1,2,4,5,10,20
+          24: 8,  // ตัวประกอบ: 1,2,3,4,6,8,12,24
+          30: 8,  // ตัวประกอบ: 1,2,3,5,6,10,15,30
+          36: 9   // ตัวประกอบ: 1,2,3,4,6,9,12,18,36
+        };
+        const num = randomChoice(Object.keys(numbers).map(Number));
+        return { question: `${num} มีตัวประกอบกี่ตัว?`, answer: numbers[num] };
+      },
+      () => {
+        // ตัวประกอบที่ใหญ่ที่สุด (นอกจาก ตัวมันเอง)
+        const num = randomChoice([12, 15, 18, 20, 24, 30]);
+        const answer = num / this.smallestPrimeFactor(num);
+        return { question: `ตัวประกอบใหญ่สุดของ ${num} (ไม่รวม ${num}) = ?`, answer };
+      },
+      () => {
+        // จำนวนคู่/คี่
+        const num = random(10, 50) * 2; // จำนวนคู่
+        return { question: `${num} เป็นจำนวน? (1=คู่, 2=คี่)`, answer: 1 };
+      }
+    ];
     
+    const type = randomChoice(types)();
     return this.createQuestion(
-      `${percentage}% × ${total} = ?`,
-      answer,
+      type.question,
+      type.answer,
       QuestionType.MIXED,
       level,
-      generateChoices(answer, 4, Math.max(5, Math.floor(answer * 0.3)))
+      type.question.includes('(1=') ? [1, 2] : generateChoices(type.answer, 4, 3)
     );
+  }
+
+  // Level 21-30: จำนวนเฉพาะ
+  private generatePrimeNumbers(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // ตรวจสอบจำนวนเฉพาะ
+        const primes = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47];
+        const nonPrimes = [4, 6, 8, 9, 10, 12, 14, 15, 16, 18, 20, 21, 22, 24, 25];
+        const num = randomChoice([...primes, ...nonPrimes]);
+        const answer = primes.includes(num) ? 1 : 2;
+        return { question: `${num} เป็นจำนวน? (1=เฉพาะ, 2=ไม่เฉพาะ)`, answer };
+      },
+      () => {
+        // จำนวนเฉพาะถัดไป
+        const pairs = [
+          { from: 2, next: 3 },
+          { from: 3, next: 5 },
+          { from: 5, next: 7 },
+          { from: 7, next: 11 },
+          { from: 11, next: 13 },
+          { from: 13, next: 17 },
+          { from: 17, next: 19 },
+          { from: 19, next: 23 }
+        ];
+        const pair = randomChoice(pairs);
+        return { question: `จำนวนเฉพาะถัดจาก ${pair.from} = ?`, answer: pair.next };
+      },
+      () => {
+        // จำนวนเฉพาะระหว่าง
+        const ranges = [
+          { from: 10, to: 20, count: 4 }, // 11,13,17,19
+          { from: 20, to: 30, count: 2 }, // 23,29
+          { from: 30, to: 40, count: 2 }, // 31,37
+          { from: 1, to: 10, count: 4 }   // 2,3,5,7
+        ];
+        const range = randomChoice(ranges);
+        return { question: `จำนวนเฉพาะระหว่าง ${range.from}-${range.to} มีกี่จำนวน?`, answer: range.count };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      type.question.includes('(1=') ? [1, 2] : generateChoices(type.answer, 4, 3)
+    );
+  }
+
+  // Level 31-40: เศษส่วนและจำนวนคละ
+  private generateMixedNumbers(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // แปลงจำนวนคละเป็นเศษเกิน
+        const whole = random(2, 5);
+        const num = random(1, 4);
+        const den = random(3, 6);
+        const answer = whole * den + num;
+        return { question: `${whole} ${num}/${den} = ?/${den}`, answer };
+      },
+      () => {
+        // แปลงเศษเกินเป็นจำนวนคละ
+        const den = random(3, 7);
+        const whole = random(2, 5);
+        const remainder = random(1, den - 1);
+        const num = whole * den + remainder;
+        return { question: `${num}/${den} = ${whole} ?/${den}`, answer: remainder };
+      },
+      () => {
+        // บวกจำนวนคละ
+        const whole1 = random(1, 3);
+        const whole2 = random(1, 3);
+        const den = randomChoice([4, 5, 6]);
+        const num1 = random(1, den - 1);
+        const num2 = random(1, den - 1);
+        const totalNum = num1 + num2;
+        const extraWhole = Math.floor(totalNum / den);
+        const finalWhole = whole1 + whole2 + extraWhole;
+        return { question: `${whole1} ${num1}/${den} + ${whole2} ${num2}/${den} = ? (ตอบจำนวนเต็ม)`, answer: finalWhole };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      generateChoices(type.answer, 4, Math.max(3, Math.floor(type.answer * 0.3)))
+    );
+  }
+
+  // Level 41-50: การบวกลบเศษส่วน
+  private generateFractionOperations(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // บวกเศษส่วนต่างตัวส่วน (ค.ร.น.)
+        const den1 = randomChoice([2, 3, 4]);
+        const den2 = randomChoice([3, 4, 6]);
+        const lcm = this.lcm(den1, den2);
+        const num1 = random(1, den1 - 1);
+        const num2 = random(1, den2 - 1);
+        const answer = (num1 * lcm / den1) + (num2 * lcm / den2);
+        return { question: `${num1}/${den1} + ${num2}/${den2} = ?/${lcm}`, answer };
+      },
+      () => {
+        // ลบเศษส่วนต่างตัวส่วน
+        const den1 = randomChoice([3, 4, 5]);
+        const den2 = randomChoice([2, 3, 6]);
+        const lcm = this.lcm(den1, den2);
+        const num1 = random(Math.ceil(den1/2), den1 - 1);
+        const num2 = random(1, Math.floor(den2/2));
+        const answer = (num1 * lcm / den1) - (num2 * lcm / den2);
+        return { question: `${num1}/${den1} - ${num2}/${den2} = ?/${lcm}`, answer };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      generateChoices(type.answer, 4, Math.max(3, Math.floor(type.answer * 0.5)))
+    );
+  }
+
+  // Level 51-60: ทศนิยม 3 ตำแหน่ง
+  private generateDecimals3Places(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // คูณ/หารด้วย 10, 100, 1000
+        const num = random(100, 999);
+        const divisor = randomChoice([10, 100, 1000]);
+        const answer = num; // คำตอบคือตัวเลขเดิม
+        return { question: `${num / divisor} × ${divisor} = ?`, answer };
+      },
+      () => {
+        // เปรียบเทียบทศนิยม 3 ตำแหน่ง
+        const a = random(100, 999);
+        const b = random(100, 999);
+        const answer = a > b ? 1 : (a < b ? 2 : 3);
+        return { question: `0.${a} ? 0.${b} (1=>, 2=<, 3==)`, answer };
+      },
+      () => {
+        // เรียงลำดับทศนิยม
+        const nums = [
+          random(100, 300),
+          random(301, 600),
+          random(601, 999)
+        ];
+        const smallest = Math.min(...nums);
+        return { question: `ค่าน้อยสุดคือ 0.${nums[0]}, 0.${nums[1]}, 0.${nums[2]} = 0.?`, answer: smallest };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      type.question.includes('(1=') ? [1, 2, 3] : generateChoices(type.answer, 4, 50)
+    );
+  }
+
+  // Level 61-70: ทศนิยม (คูณ หาร)
+  private generateDecimalMultiplyDivide(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // คูณทศนิยมด้วยจำนวนเต็ม
+        const decimal = random(10, 99) / 10;
+        const multiplier = random(2, 9);
+        const answer = Math.round(decimal * multiplier * 10);
+        return { question: `${decimal.toFixed(1)} × ${multiplier} = ? (ตอบ × 10)`, answer };
+      },
+      () => {
+        // หารทศนิยมด้วยจำนวนเต็ม
+        const dividend = random(20, 99) / 10;
+        const divisor = randomChoice([2, 4, 5]);
+        const answer = Math.round(dividend / divisor * 10);
+        return { question: `${dividend.toFixed(1)} ÷ ${divisor} = ? (ตอบ × 10)`, answer };
+      },
+      () => {
+        // คูณทศนิยมด้วยทศนิยม
+        const a = random(10, 50) / 10;
+        const b = random(10, 30) / 10;
+        const answer = Math.round(a * b * 10);
+        return { question: `${a.toFixed(1)} × ${b.toFixed(1)} = ? (ตอบ × 10)`, answer };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      generateChoices(type.answer, 4, 10)
+    );
+  }
+
+  // Level 71-80: ร้อยละ
+  private generatePercentage(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // หาร้อยละของจำนวน
+        const base = randomChoice([50, 100, 200, 400, 500]);
+        const percent = randomChoice([10, 20, 25, 50, 75]);
+        const answer = (base * percent) / 100;
+        return { question: `${base} × ${percent}% = ?`, answer };
+      },
+      () => {
+        // หาจำนวนเมื่อรู้ร้อยละ
+        const percent = randomChoice([20, 25, 50]);
+        const value = random(10, 50);
+        const base = (value * 100) / percent;
+        return { question: `?× ${percent}% = ${value}`, answer: base };
+      },
+      () => {
+        // เปรียบเทียบเป็นร้อยละ
+        const part = random(10, 40);
+        const whole = randomChoice([50, 100, 200]);
+        const answer = (part * 100) / whole;
+        return { question: `${part} จาก ${whole} = ?%`, answer };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      generateChoices(type.answer, 4, Math.max(10, Math.floor(type.answer * 0.2)))
+    );
+  }
+
+  // Level 81-85: พื้นที่รูปสี่เหลี่ยม
+  private generateQuadrilateralArea(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // พื้นที่สี่เหลี่ยมผืนผ้า
+        const length = random(10, 30);
+        const width = random(5, 20);
+        const area = length * width;
+        return { question: `สี่เหลี่ยมผืนผ้า ${length} × ${width} พื้นที่ = ?`, answer: area };
+      },
+      () => {
+        // พื้นที่สี่เหลี่ยมจัตุรัส
+        const side = random(8, 25);
+        const area = side * side;
+        return { question: `สี่เหลี่ยมจัตุรัส ด้าน ${side} พื้นที่ = ?`, answer: area };
+      },
+      () => {
+        // พื้นที่สี่เหลี่ยมด้านขนาน
+        const base = random(10, 25);
+        const height = random(5, 15);
+        const area = base * height;
+        return { question: `สี่เหลี่ยมด้านขนาน ฐาน ${base} สูง ${height} พื้นที่ = ?`, answer: area };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      generateChoices(type.answer, 4, Math.max(20, Math.floor(type.answer * 0.15)))
+    );
+  }
+
+  // Level 86-90: พื้นที่รูปสามเหลี่ยม
+  private generateTriangleArea(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // พื้นที่สามเหลี่ยม
+        const base = random(8, 24);
+        const height = random(6, 20);
+        const area = (base * height) / 2;
+        return { question: `สามเหลี่ยม ฐาน ${base} สูง ${height} พื้นที่ = ?`, answer: area };
+      },
+      () => {
+        // หาความสูงจากพื้นที่
+        const area = random(20, 100);
+        const base = randomChoice([4, 5, 8, 10]);
+        const height = (2 * area) / base;
+        return { question: `สามเหลี่ยม พื้นที่ ${area} ฐาน ${base} สูง = ?`, answer: height };
+      },
+      () => {
+        // หาฐานจากพื้นที่
+        const area = random(30, 120);
+        const height = randomChoice([6, 8, 10, 12]);
+        const base = (2 * area) / height;
+        return { question: `สามเหลี่ยม พื้นที่ ${area} สูง ${height} ฐาน = ?`, answer: base };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      generateChoices(type.answer, 4, Math.max(5, Math.floor(type.answer * 0.2)))
+    );
+  }
+
+  // Level 91-95: ปริมาตร
+  private generateVolume(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // ปริมาตรทรงสี่เหลี่ยมมุมฉาก
+        const length = random(5, 15);
+        const width = random(4, 12);
+        const height = random(3, 10);
+        const volume = length * width * height;
+        return { question: `กล่อง ${length}×${width}×${height} ปริมาตร = ?`, answer: volume };
+      },
+      () => {
+        // ปริมาตรลูกบาศก์
+        const side = random(4, 12);
+        const volume = side * side * side;
+        return { question: `ลูกบาศก์ ขอบ ${side} ปริมาตร = ?`, answer: volume };
+      },
+      () => {
+        // หาด้านจากปริมาตร
+        const side = randomChoice([3, 4, 5, 6]);
+        const volume = side * side * side;
+        return { question: `ลูกบาศก์ ปริมาตร ${volume} ขอบ = ?`, answer: side };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      generateChoices(type.answer, 4, Math.max(10, Math.floor(type.answer * 0.1)))
+    );
+  }
+
+  // Level 96-100: โจทย์ผสม
+  private generateMixedProblems(level: number, config: LevelConfig): Question {
+    const types = [
+      () => {
+        // ตัวประกอบร่วมมาก
+        const pairs = [
+          { a: 12, b: 18, gcf: 6 },
+          { a: 15, b: 20, gcf: 5 },
+          { a: 24, b: 36, gcf: 12 },
+          { a: 16, b: 24, gcf: 8 }
+        ];
+        const pair = randomChoice(pairs);
+        return { question: `ห.ร.ม. ของ ${pair.a} และ ${pair.b} = ?`, answer: pair.gcf };
+      },
+      () => {
+        // คูณทศนิยม + ร้อยละ
+        const num = random(50, 200);
+        const percent = randomChoice([20, 25, 50]);
+        const answer = (num * percent) / 100;
+        return { question: `${num} × ${percent}% = ?`, answer };
+      },
+      () => {
+        // เศษส่วน + จำนวนคละ
+        const whole = random(2, 5);
+        const num = random(1, 3);
+        const den = randomChoice([4, 5, 6]);
+        const totalNum = whole * den + num;
+        return { question: `${whole} ${num}/${den} = ?/${den}`, answer: totalNum };
+      },
+      () => {
+        // พื้นที่ + ปริมาตร
+        const side = random(5, 10);
+        const area = side * side;
+        const volume = side * side * side;
+        const answer = area + volume;
+        return { question: `ลูกบาศก์ขอบ ${side} พื้นที่ 1 หน้า + ปริมาตร = ?`, answer };
+      }
+    ];
+    
+    const type = randomChoice(types)();
+    return this.createQuestion(
+      type.question,
+      type.answer,
+      QuestionType.MIXED,
+      level,
+      generateChoices(type.answer, 4, Math.max(10, Math.floor(type.answer * 0.15)))
+    );
+  }
+
+  private gcd(a: number, b: number): number {
+    return b === 0 ? a : this.gcd(b, a % b);
+  }
+
+  private lcm(a: number, b: number): number {
+    return (a * b) / this.gcd(a, b);
+  }
+
+  private smallestPrimeFactor(n: number): number {
+    if (n % 2 === 0) return 2;
+    for (let i = 3; i <= Math.sqrt(n); i += 2) {
+      if (n % i === 0) return i;
+    }
+    return n;
   }
 }
