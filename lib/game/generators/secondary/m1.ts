@@ -181,24 +181,24 @@ export class M1Generator extends BaseGenerator {
     );
   }
 
-  // Level 21-25: หารจำนวนเต็ม
+  // Level 21-25: หารจำนวนเต็ม (ปรับให้ลงตัวเสมอ)
   private generateIntegerDivide(level: number, config: LevelConfig): Question {
     const operations = [
       () => {
         const b = randomChoice([-6, -4, -3, -2, 2, 3, 4, 6]);
         const quotient = random(-8, 8);
-        const a = b * quotient;
+        const a = b * quotient; // สร้าง a ที่หาร b ลงตัว
         return { question: `${a} ÷ (${b}) = ?`, answer: quotient };
       },
       () => {
         const b = random(2, 10);
         const quotient = random(-10, -1);
-        const a = b * quotient;
+        const a = b * quotient; // สร้าง a ที่หาร b ลงตัว
         return { question: `(${a}) ÷ ${b} = ?`, answer: quotient };
       },
       () => {
-        const answer = random(1, 10);
-        return { question: `0 ÷ (${random(-10, -1)}) = ?`, answer: 0 };
+        const divisor = random(-10, -1);
+        return { question: `0 ÷ (${divisor}) = ?`, answer: 0 };
       }
     ];
     
@@ -315,7 +315,7 @@ export class M1Generator extends BaseGenerator {
       },
       () => {
         const divisor = randomChoice([2, 3, 4, 5]);
-        const x = random(2, 10) * divisor;
+        const x = random(2, 10) * divisor; // x ต้องหาร divisor ลงตัว
         const result = x / divisor;
         return { question: `x/${divisor} = ${result}, x = ?`, answer: x };
       }
@@ -331,7 +331,7 @@ export class M1Generator extends BaseGenerator {
     );
   }
 
-  // Level 61-70: สมการเชิงเส้น (ขั้นสูง)
+  // Level 61-70: สมการเชิงเส้น (ขั้นสูง) - ปรับให้ x เป็นจำนวนเต็มเสมอ
   private generateAdvancedEquations(level: number, config: LevelConfig): Question {
     const equations = [
       () => {
@@ -347,6 +347,13 @@ export class M1Generator extends BaseGenerator {
         const b = random(1, 10);
         const result = a * x - b;
         return { question: `${a}x - ${b} = ${result}, x = ?`, answer: x };
+      },
+      () => {
+        const x = random(3, 12);
+        const a = randomChoice([2, 3, 5]);
+        const b = random(5, 20);
+        const result = b - a * x;
+        return { question: `${b} - ${a}x = ${result}, x = ?`, answer: x };
       }
     ];
     
@@ -376,6 +383,14 @@ export class M1Generator extends BaseGenerator {
         const b = random(1, 4);
         const result = a * (x - b);
         return { question: `${a}(x - ${b}) = ${result}, x = ?`, answer: x };
+      },
+      () => {
+        const x = random(2, 10);
+        const a = randomChoice([2, 3]);
+        const b = random(1, 6);
+        const c = random(2, 8);
+        const result = a * (x + b) + c;
+        return { question: `${a}(x + ${b}) + ${c} = ${result}, x = ?`, answer: x };
       }
     ];
     
@@ -389,29 +404,42 @@ export class M1Generator extends BaseGenerator {
     );
   }
 
-  // Level 76-80: สมการเศษส่วน
+  // Level 76-80: สมการเศษส่วน (แก้ไขให้ลงตัวเสมอ)
   private generateFractionEquations(level: number, config: LevelConfig): Question {
     const equations = [
       () => {
+        // x/divisor + b = result
         const divisor = randomChoice([2, 3, 4, 5]);
-        const x = random(2, 8) * divisor;
+        const x = random(2, 8) * divisor; // x ต้องหาร divisor ลงตัว
         const b = random(1, 10);
         const result = (x / divisor) + b;
         return { question: `x/${divisor} + ${b} = ${result}, x = ?`, answer: x };
       },
       () => {
+        // x/divisor - b = result
         const divisor = randomChoice([2, 3, 4]);
-        const x = random(3, 10) * divisor;
+        const x = random(3, 10) * divisor; // x ต้องหาร divisor ลงตัว
         const b = random(1, 5);
         const result = (x / divisor) - b;
         return { question: `x/${divisor} - ${b} = ${result}, x = ?`, answer: x };
       },
       () => {
+        // ax/b = result (ให้ x ลงตัวเสมอ)
         const a = randomChoice([2, 3]);
-        const divisor = randomChoice([4, 5]);
-        const x = random(2, 8) * divisor / a;
-        const result = (a * x) / divisor;
-        return { question: `${a}x/${divisor} = ${result}, x = ?`, answer: Math.round(x) };
+        const b = randomChoice([2, 4, 6]); // เลือก b ที่หาร a ลงตัวหรือมี GCD
+        const gcd = this.gcd(a, b);
+        const multiplier = b / gcd; // ตัวคูณที่ทำให้ x เป็นจำนวนเต็ม
+        const x = random(1, 6) * multiplier;
+        const result = (a * x) / b;
+        return { question: `${a}x/${b} = ${result}, x = ?`, answer: x };
+      },
+      () => {
+        // (x + a)/b = result
+        const b = randomChoice([2, 3, 4, 5]);
+        const a = random(1, 10);
+        const result = random(2, 8);
+        const x = result * b - a;
+        return { question: `(x + ${a})/${b} = ${result}, x = ?`, answer: x };
       }
     ];
     
@@ -425,29 +453,51 @@ export class M1Generator extends BaseGenerator {
     );
   }
 
-  // Level 81-85: อัตราส่วน
+  // Helper function for GCD
+  private gcd(a: number, b: number): number {
+    while (b !== 0) {
+      const temp = b;
+      b = a % b;
+      a = temp;
+    }
+    return a;
+  }
+
+  // Level 81-85: อัตราส่วน (ปรับให้ลงตัว)
   private generateRatios(level: number, config: LevelConfig): Question {
     const ratios = [
       () => {
+        // a:b = c:d, หา d
         const a = random(2, 6);
         const b = random(3, 8);
-        const c = random(2, 10);
-        const d = Math.round((b * c) / a);
+        const gcd = this.gcd(a, b);
+        const scale = random(2, 5);
+        const c = (a / gcd) * scale;
+        const d = (b / gcd) * scale;
         return { question: `${a}:${b} = ${c}:?`, answer: d };
       },
       () => {
+        // a:b = c:d, หา c
         const a = random(3, 8);
         const b = random(4, 12);
-        const d = random(2, 10);
-        const c = Math.round((a * d) / b);
+        const gcd = this.gcd(a, b);
+        const scale = random(2, 4);
+        const c = (a / gcd) * scale;
+        const d = (b / gcd) * scale;
         return { question: `${a}:${b} = ?:${d}`, answer: c };
       },
       () => {
-        const b = random(2, 8);
-        const c = random(3, 9);
-        const d = random(4, 12);
-        const a = Math.round((b * c) / d);
-        return { question: `?:${b} = ${c}:${d}`, answer: a };
+        // a:b = c:d, หา a
+        const scale1 = random(2, 5);
+        const scale2 = random(2, 4);
+        const a = scale1 * random(2, 4);
+        const b = scale1 * random(3, 5);
+        const c = scale2 * random(2, 4);
+        const d = scale2 * random(3, 5);
+        // ปรับให้อัตราส่วนเท่ากัน
+        const ratio = c / d;
+        const actualA = Math.round(b * ratio);
+        return { question: `?:${b} = ${c}:${d}`, answer: actualA };
       }
     ];
     
@@ -480,16 +530,16 @@ export class M1Generator extends BaseGenerator {
   // Level 91-95: เปลี่ยนเศษส่วนเป็นทศนิยม
   private generateFractionToDecimal(level: number, config: LevelConfig): Question {
     const fractions = [
-      { num: 1, den: 2, dec: 5 },  // 1/2 = 0.5
-      { num: 1, den: 4, dec: 25 }, // 1/4 = 0.25
-      { num: 3, den: 4, dec: 75 }, // 3/4 = 0.75
-      { num: 1, den: 5, dec: 2 },  // 1/5 = 0.2
-      { num: 2, den: 5, dec: 4 },  // 2/5 = 0.4
-      { num: 3, den: 5, dec: 6 },  // 3/5 = 0.6
-      { num: 4, den: 5, dec: 8 },  // 4/5 = 0.8
-      { num: 1, den: 10, dec: 1 }, // 1/10 = 0.1
-      { num: 3, den: 10, dec: 3 }, // 3/10 = 0.3
-      { num: 7, den: 10, dec: 7 }  // 7/10 = 0.7
+      { num: 1, den: 2, dec: 5 },   // 1/2 = 0.5
+      { num: 1, den: 4, dec: 25 },  // 1/4 = 0.25
+      { num: 3, den: 4, dec: 75 },  // 3/4 = 0.75
+      { num: 1, den: 5, dec: 2 },   // 1/5 = 0.2
+      { num: 2, den: 5, dec: 4 },   // 2/5 = 0.4
+      { num: 3, den: 5, dec: 6 },   // 3/5 = 0.6
+      { num: 4, den: 5, dec: 8 },   // 4/5 = 0.8
+      { num: 1, den: 10, dec: 1 },  // 1/10 = 0.1
+      { num: 3, den: 10, dec: 3 },  // 3/10 = 0.3
+      { num: 7, den: 10, dec: 7 }   // 7/10 = 0.7
     ];
     
     const frac = randomChoice(fractions);

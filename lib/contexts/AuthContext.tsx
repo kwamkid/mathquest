@@ -6,7 +6,7 @@ import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase/client';
 import { doc, getDoc } from 'firebase/firestore';
 import { User } from '@/types';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
@@ -39,6 +39,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const pathname = usePathname();  // 👈 ใช้ usePathname แทน window.location
 
   // Function to fetch user data from Firestore
   const fetchUserData = async (firebaseUser: FirebaseUser): Promise<User | null> => {
@@ -100,19 +101,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Auto redirect based on auth state and current path
   useEffect(() => {
+    // 🔴 ไม่ทำอะไรถ้าเป็น admin routes
+    if (pathname?.startsWith('/admin')) {
+      return;
+    }
+    
     if (!loading) {
       const publicPaths = ['/', '/login', '/register'];
-      const currentPath = window.location.pathname;
       
-      if (!user && !publicPaths.includes(currentPath)) {
+      if (!user && !publicPaths.includes(pathname)) {
         // Not logged in and trying to access protected route
         router.push('/login');
-      } else if (user && publicPaths.includes(currentPath) && currentPath !== '/') {
+      } else if (user && publicPaths.includes(pathname) && pathname !== '/') {
         // Logged in and on login/register page
         router.push('/play');
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
   return (
     <AuthContext.Provider value={{ user, loading, error, refreshUser }}>
