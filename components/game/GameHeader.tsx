@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, X, Gift, Info, Crown, ShoppingBag, Sparkles } from 'lucide-react';
+import { Settings, LogOut, X, Gift, Info, Crown, ShoppingBag, Sparkles, Edit3, MousePointer ,Zap} from 'lucide-react';
 import EnhancedSoundToggle from './EnhancedSoundToggle';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import Link from 'next/link';
@@ -126,7 +126,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
   return (
     <>
       <header className="glass-dark border-b border-metaverse-purple/30 sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-2 md:py-3">
+        <div className="container mx-auto px-3 py-1.5 md:py-2">
           {/* Mobile Layout */}
           <div className="md:hidden">
             {/* Row 1: User Info + Actions */}
@@ -146,21 +146,29 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 ) : (
                   <Link href="/my-avatar" className="group relative">
                     <motion.div 
-                      whileHover={{ scale: 1.1 }}
-                      onHoverStart={() => setIsAvatarHovered(true)}
-                      onHoverEnd={() => setIsAvatarHovered(false)}
                       className="relative"
+                      animate={{ 
+                        y: [0, -2, 0],
+                      }}
+                      transition={{ 
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
                     >
-                      {/* Glow effect when hoverable */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-metaverse-purple/40 to-metaverse-pink/40 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                      
-                      {/* Click indicator */}
+                      {/* Edit Icon - Always visible on mobile */}
                       <motion.div
-                        className="absolute -top-1 -right-1 bg-metaverse-purple text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        animate={isAvatarHovered ? { scale: [1, 1.2, 1] } : {}}
-                        transition={{ repeat: Infinity, duration: 1.5 }}
+                        className="absolute -bottom-0.5 -right-0.5 bg-metaverse-purple text-white rounded-full p-0.5 shadow-lg z-10"
+                        animate={{ 
+                          scale: [1, 1.1, 1],
+                        }}
+                        transition={{ 
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
                       >
-                        <Sparkles className="w-2.5 h-2.5" />
+                        <Edit3 className="w-2.5 h-2.5" />
                       </motion.div>
                       
                       <EnhancedAvatarDisplay
@@ -260,26 +268,26 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
             {/* Row 2: Stats */}
             <div className="flex items-center gap-2">
               <motion.div 
-                className="flex-1 glass-dark px-2 py-1.5 rounded-lg border border-metaverse-purple/20"
+                className="flex-1 glass-dark px-2 py-1 rounded-lg border border-metaverse-purple/20"
                 whileHover={{ scale: 1.02 }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/60">คะแนนรวม</span>
-                  <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
+                  <span className="text-[10px] text-white/60">คะแนน</span>
+                  <p className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
                     {user.totalScore.toLocaleString()}
                   </p>
                 </div>
               </motion.div>
               <motion.div 
-                className="flex-1 glass-dark px-2 py-1.5 rounded-lg border border-yellow-400/30 relative cursor-pointer bg-gradient-to-br from-yellow-400/5 to-orange-400/5"
+                className="flex-1 glass-dark px-2 py-1 rounded-lg border border-yellow-400/30 relative cursor-pointer bg-gradient-to-br from-yellow-400/5 to-orange-400/5"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => !hideActions && setShowExpModal(true)}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-white/60">EXP</span>
+                  <span className="text-[10px] text-white/60">EXP</span>
                   <div className="flex items-center gap-1">
-                    <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
+                    <p className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                       {user.experience.toLocaleString()}
                     </p>
                     {!hideActions && (
@@ -293,14 +301,14 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                           ease: "easeInOut"
                         }}
                       >
-                        <Info className="w-3 h-3 text-yellow-400" />
+                        <Info className="w-2.5 h-2.5 text-yellow-400" />
                       </motion.div>
                     )}
                   </div>
                 </div>
                 {!hideActions && (
                   <motion.div
-                    className="absolute -top-0.5 -right-0.5 bg-yellow-400 text-metaverse-black rounded-full px-1 py-0.5 text-[9px] font-bold shadow-lg"
+                    className="absolute -top-0.5 -right-0.5 bg-yellow-400 text-metaverse-black rounded-full px-1 py-0.5 text-[8px] font-bold shadow-lg"
                     animate={{ 
                       scale: [1, 1.1, 1],
                     }}
@@ -340,21 +348,32 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                     onHoverStart={() => setIsAvatarHovered(true)}
                     onHoverEnd={() => setIsAvatarHovered(false)}
                     className="relative"
+                    animate={{ 
+                      y: [0, -2, 0],
+                    }}
+                    transition={{ 
+                      duration: 2.5,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
                   >
-                    {/* Glow effect */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-metaverse-purple/40 to-metaverse-pink/40 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-opacity" />
-                    
-                    {/* Click indicator */}
+                    {/* Click indicator with edit icon */}
                     <motion.div
-                      className="absolute -top-1 -right-1 bg-metaverse-purple text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                      animate={isAvatarHovered ? { scale: [1, 1.2, 1] } : {}}
-                      transition={{ repeat: Infinity, duration: 1.5 }}
+                      className="absolute -bottom-0.5 -right-0.5 bg-metaverse-purple text-white rounded-full p-0.5 shadow-lg z-10"
+                      animate={{ 
+                        scale: isAvatarHovered ? [1, 1.2, 1] : [0.9, 1.1, 0.9]
+                      }}
+                      transition={{ 
+                        duration: isAvatarHovered ? 0.5 : 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
                     >
-                      <Sparkles className="w-3 h-3" />
+                      <Edit3 className="w-2.5 h-2.5" />
                     </motion.div>
                     
                     {/* Tooltip */}
-                    <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+                    <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
                       คลิกเพื่อจัดการ Avatar
                     </div>
                     
@@ -404,26 +423,26 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
             {/* Right Side: Stats + Actions */}
             <div className="flex items-center gap-4">
               {/* Stats */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <motion.div 
-                  className="text-center glass-dark px-3 py-1.5 rounded-xl border border-metaverse-purple/20"
+                  className="text-center glass-dark px-2.5 py-1 rounded-xl border border-metaverse-purple/20"
                   whileHover={{ scale: 1.05 }}
                 >
                   <div>
-                    <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
+                    <p className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
                       {user.totalScore.toLocaleString()}
                     </p>
-                    <p className="text-xs text-white/60">คะแนนรวม</p>
+                    <p className="text-[10px] text-white/60">คะแนนรวม</p>
                   </div>
                 </motion.div>
                 <motion.div 
-                  className="text-center glass-dark px-3 py-1.5 rounded-xl border border-yellow-400/30 relative cursor-pointer bg-gradient-to-br from-yellow-400/5 to-orange-400/5"
+                  className="text-center glass-dark px-2.5 py-1 rounded-xl border border-yellow-400/30 relative cursor-pointer bg-gradient-to-br from-yellow-400/5 to-orange-400/5"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => !hideActions && setShowExpModal(true)}
                 >
                   <div className="flex items-center justify-center gap-1">
-                    <p className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
+                    <p className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                       {user.experience}
                     </p>
                     {!hideActions && (
@@ -437,11 +456,11 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                           ease: "easeInOut"
                         }}
                       >
-                        <Info className="w-4 h-4 text-yellow-400" />
+                        <Info className="w-3.5 h-3.5 text-yellow-400" />
                       </motion.div>
                     )}
                   </div>
-                  <p className="text-xs text-white/60">EXP</p>
+                  <p className="text-[10px] text-white/60">EXP</p>
                 </motion.div>
               </div>
 
