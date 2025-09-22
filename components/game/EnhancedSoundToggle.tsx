@@ -113,21 +113,24 @@ export default function EnhancedSoundToggle() {
         </span>
       </motion.button>
 
-      {/* Sound Control Dialog */}
+      {/* Sound Control Dialog - Centered */}
       <AnimatePresence>
         {showDialog && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-[9999]"
+            style={{ marginTop: 0, paddingTop: '10vh' }}
           >
             <motion.div
               ref={modalRef}
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="glass-dark rounded-2xl p-6 w-full max-w-sm border border-metaverse-purple/30"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="bg-gray-900 rounded-2xl p-6 w-full max-w-sm border border-metaverse-purple/50 mx-auto my-auto shadow-2xl"
+              style={{ position: 'relative' }}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
