@@ -217,8 +217,6 @@ export default function PlayPage() {
     }
   };
 
-  // แทนที่ฟังก์ชัน endGame เดิมใน app/(game)/play/page.tsx ด้วยโค้ดนี้
-
   // End game
   const endGame = async (finalScore?: number) => {
     const actualScore = finalScore !== undefined ? finalScore : score;
@@ -525,8 +523,59 @@ export default function PlayPage() {
                       />
                     </motion.div>
                   </Link>
-                </div> 
-              </div>             
+                </div>
+                
+                <h1 className="text-4xl font-bold text-white mb-4 text-center">
+                  พร้อมเริ่มการผจญภัยหรือยัง?
+                </h1>
+                
+                <div className="mb-8 space-y-2 text-center">
+                  <p className="text-xl text-white/80">
+                    <span className="font-medium">ระดับชั้น:</span>{' '}
+                    <span className="text-metaverse-pink">{getGradeDisplayName(user?.grade || '')}</span>
+                  </p>
+                  <div className="space-y-1">
+                    <p className="text-xl text-white/80">
+                      <span className="font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
+                        Level {displayLevel}
+                      </span>{' '}
+                      <span className="text-white/60">
+                        {user && getLevelDescription(user.grade, displayLevel)}
+                      </span>
+                    </p>
+                    {forceLevel && forceLevel !== user.level && (
+                      <div className="glass bg-yellow-400/10 border border-yellow-400/30 rounded-lg px-4 py-2 inline-block">
+                        <span className="text-yellow-400 font-medium">
+                          🔁 กำลังเล่น Level {forceLevel} ซ้ำ (ปกติคุณอยู่ Level {user.level})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xl text-white/80">
+                    <span className="font-medium">จำนวน:</span>{' '}
+                    <span className="text-metaverse-glow">{totalQuestions} ข้อ</span>
+                  </p>
+                </div>
+                
+                {/* Start Game Button */}
+                <div className="text-center">
+                  <motion.button
+                    onClick={startGame}
+                    onMouseDown={() => {
+                      startMusicOnInteraction();
+                      playSound('click');
+                    }}
+                    className="px-12 py-6 metaverse-button text-white font-bold text-2xl rounded-full shadow-lg hover:shadow-xl relative overflow-hidden"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <span className="relative z-10 flex items-center gap-3">
+                      <Rocket className="w-7 h-7" />
+                      เริ่มเลย!
+                    </span>
+                  </motion.button>
+                </div>
+              </div>
 
               {/* Quick Menu Grid */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -806,6 +855,9 @@ export default function PlayPage() {
                   setQuestionNumber(0);
                   setAnswers([]);
                   setShowExitModal(false);
+                  
+                  // Restore normal music volume
+                  restoreNormalVolume();
                 }}
                 className="flex-1 py-3 bg-red-500/20 border border-red-500/50 text-red-400 font-bold rounded-xl hover:bg-red-500/30 transition"
                 whileHover={{ scale: 1.02 }}
