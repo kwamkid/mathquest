@@ -30,7 +30,8 @@ import {
   Pi,
   Zap,
   Clock,
-  Gift
+  Gift,
+  Edit3
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -472,79 +473,60 @@ export default function PlayPage() {
 
               {/* Main Game Card */}
               <div className="glass-dark rounded-3xl shadow-2xl p-12 border border-metaverse-purple/30 mb-8">
-                {/* Avatar Display */}
+                {/* Avatar Display - Now Clickable */}
                 <div className="flex justify-center mb-6">
-                  <motion.div
-                    animate={{ 
-                      scale: [1, 1.05, 1],
-                    }}
-                    transition={{ 
-                      duration: 4,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    <EnhancedAvatarDisplay
-                      userId={user.id}
-                      avatarData={user.avatarData}
-                      basicAvatar={user.avatar}
-                      size="xlarge"
-                      showEffects={true}
-                      showTitle={true}
-                      titleBadge={user.currentTitleBadge}
-                    />
-                  </motion.div>
-                </div>
-                
-                <h1 className="text-4xl font-bold text-white mb-4 text-center">
-                  พร้อมเริ่มการผจญภัยหรือยัง?
-                </h1>
-                
-                <div className="mb-8 space-y-2 text-center">
-                  <p className="text-xl text-white/80">
-                    <span className="font-medium">ระดับชั้น:</span>{' '}
-                    <span className="text-metaverse-pink">{getGradeDisplayName(user?.grade || '')}</span>
-                  </p>
-                  <div className="space-y-1">
-                    <p className="text-xl text-white/80">
-                      <span className="font-bold text-2xl text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
-                        Level {displayLevel}
-                      </span>{' '}
-                      <span className="text-white/60">
-                        {user && getLevelDescription(user.grade, displayLevel)}
-                      </span>
-                    </p>
-                    {forceLevel && forceLevel !== user.level && (
-                      <div className="glass bg-yellow-400/10 border border-yellow-400/30 rounded-lg px-4 py-2 inline-block">
-                        <span className="text-yellow-400 font-medium">
-                          🔁 กำลังเล่น Level {forceLevel} ซ้ำ (ปกติคุณอยู่ Level {user.level})
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-xl text-white/80">
-                    <span className="font-medium">จำนวน:</span>{' '}
-                    <span className="text-metaverse-glow">{totalQuestions} ข้อ</span>
-                  </p>
-                </div>
-                <div className="text-center">
-                  <motion.button
-                    onClick={startGame}
-                    onMouseDown={() => {
-                      startMusicOnInteraction();
-                      playSound('click');
-                    }}
-                    className="px-12 py-6 metaverse-button text-white font-bold text-2xl rounded-full shadow-lg hover:shadow-xl relative overflow-hidden"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <span className="relative z-10 flex items-center gap-3">
-                      <Rocket className="w-7 h-7" />
-                      เริ่มเลย!
-                    </span>
-                  </motion.button>
-                </div>
-              </div>
+                  <Link href="/my-avatar" className="group relative cursor-pointer">
+                    <motion.div
+                      className="relative"
+                      animate={{ 
+                        scale: [1, 1.02, 1],
+                        y: [0, -3, 0],
+                      }}
+                      transition={{ 
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      {/* Edit Icon Badge */}
+                      <motion.div
+                        className="absolute -bottom-2 -right-2 bg-metaverse-purple text-white rounded-full p-2 shadow-lg z-10"
+                        animate={{ 
+                          scale: [0.9, 1.1, 0.9],
+                        }}
+                        transition={{ 
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                      >
+                        <Edit3 className="w-5 h-5" />
+                      </motion.div>
+                      
+                      {/* "EDIT AVATAR" label that appears on hover */}
+                      <motion.div
+                        className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-metaverse-purple to-metaverse-pink text-white text-sm font-bold rounded-full px-4 py-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
+                      >
+                        จัดการ Avatar
+                      </motion.div>
+                      
+                      {/* Subtle glow on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-metaverse-purple/20 to-metaverse-pink/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity scale-110" />
+                      
+                      <EnhancedAvatarDisplay
+                        userId={user.id}
+                        avatarData={user.avatarData}
+                        basicAvatar={user.avatar}
+                        size="xlarge"
+                        showEffects={true}
+                        showTitle={true}
+                        titleBadge={user.currentTitleBadge}
+                      />
+                    </motion.div>
+                  </Link>
+                </div> 
+              </div>             
 
               {/* Quick Menu Grid */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

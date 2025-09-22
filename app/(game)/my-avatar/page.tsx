@@ -95,23 +95,36 @@ export default function MyAvatarPage() {
           currentAvatar: {
             type: 'basic',
             id: freshUserData?.avatar || 'knight',
-            accessories: {
-              hat: undefined,
-              glasses: undefined,
-              mask: undefined,
-              earring: undefined,
-              necklace: undefined,
-              background: undefined
-            }
+            accessories: {} // Start with empty object
           },
           unlockedPremiumAvatars: [],
           unlockedAccessories: []
         };
       } else {
-        avatarData = freshUserData.avatarData;
+        // Clean existing data - remove all undefined/null values
+        const existingAccessories = freshUserData.avatarData.currentAvatar?.accessories || {};
+        const cleanedAccessories: any = {};
+        
+        Object.entries(existingAccessories).forEach(([key, value]) => {
+          // Only keep values that are not undefined, null, or empty string
+          if (value !== undefined && value !== null && value !== '') {
+            cleanedAccessories[key] = value;
+          }
+        });
+        
+        avatarData = {
+          ...freshUserData.avatarData,
+          currentAvatar: {
+            type: freshUserData.avatarData.currentAvatar?.type || 'basic',
+            id: freshUserData.avatarData.currentAvatar?.id || freshUserData?.avatar || 'knight',
+            accessories: cleanedAccessories
+          },
+          unlockedPremiumAvatars: freshUserData.avatarData.unlockedPremiumAvatars || [],
+          unlockedAccessories: freshUserData.avatarData.unlockedAccessories || []
+        };
       }
       
-      console.log('Avatar data:', avatarData);
+      console.log('Cleaned avatar data:', avatarData);
       
       // Load inventory from Firebase
       const inventory = await getUserInventory(user.id);
@@ -290,17 +303,33 @@ export default function MyAvatarPage() {
       
       setTitleBadges(loadedTitles);
       
-      // Sync avatarData back to user if needed
-      if (freshUserData?.avatarData?.unlockedPremiumAvatars?.length !== avatarData.unlockedPremiumAvatars.length ||
-          freshUserData?.avatarData?.unlockedAccessories?.length !== avatarData.unlockedAccessories.length) {
+      // Sync avatarData back to user if needed - with clean data
+      const needsSync = freshUserData?.avatarData?.unlockedPremiumAvatars?.length !== avatarData.unlockedPremiumAvatars.length ||
+                        freshUserData?.avatarData?.unlockedAccessories?.length !== avatarData.unlockedAccessories.length ||
+                        JSON.stringify(freshUserData?.avatarData?.currentAvatar?.accessories) !== JSON.stringify(avatarData.currentAvatar.accessories);
+      
+      if (needsSync) {
         console.log('Syncing avatar data back to user...');
+        // Make sure we're not saving any undefined values
+        const syncData = {
+          currentAvatar: {
+            type: avatarData.currentAvatar.type,
+            id: avatarData.currentAvatar.id,
+            accessories: avatarData.currentAvatar.accessories || {}
+          },
+          unlockedPremiumAvatars: avatarData.unlockedPremiumAvatars || [],
+          unlockedAccessories: avatarData.unlockedAccessories || []
+        };
+        
         await updateDoc(doc(db, 'users', user.id), {
-          avatarData: avatarData
+          avatarData: syncData
         });
       }
       
       setCurrentAvatarData(avatarData);
-      setTempAvatarData(JSON.parse(JSON.stringify(avatarData)));
+      // Deep clone to avoid reference issues
+      const clonedData = JSON.parse(JSON.stringify(avatarData));
+      setTempAvatarData(clonedData);
     } catch (error) {
       console.error('Error loading avatar data:', error);
     }
@@ -345,16 +374,9 @@ export default function MyAvatarPage() {
         ...tempAvatarData.currentAvatar,
         type,
         id: avatarId,
-        // Reset accessories when changing avatar type
+        // Reset accessories when changing avatar type - use empty object
         accessories: type !== tempAvatarData.currentAvatar.type 
-          ? {
-              hat: undefined,
-              glasses: undefined,
-              mask: undefined,
-              earring: undefined,
-              necklace: undefined,
-              background: undefined
-            }
+          ? {}
           : tempAvatarData.currentAvatar.accessories
       }
     };
@@ -366,14 +388,21 @@ export default function MyAvatarPage() {
   const handleAccessoryChange = (type: string, accessoryId: string | null) => {
     if (!tempAvatarData) return;
     
+    // Create new accessories object without undefined values
+    const newAccessories: Record<string, string> = { ...tempAvatarData.currentAvatar.accessories } as Record<string, string>;
+    
+    if (accessoryId) {
+      newAccessories[type] = accessoryId;
+    } else {
+      // Remove the key entirely instead of setting to undefined
+      delete newAccessories[type];
+    }
+    
     const newData = {
       ...tempAvatarData,
       currentAvatar: {
         ...tempAvatarData.currentAvatar,
-        accessories: {
-          ...tempAvatarData.currentAvatar.accessories,
-          [type]: accessoryId || undefined
-        }
+        accessories: newAccessories as any
       }
     };
     
@@ -393,10 +422,10 @@ export default function MyAvatarPage() {
     
     setSaving(true);
     try {
-      // Clean up undefined values in accessories
+      // Clean up undefined values in accessories - remove completely
       const cleanedAccessories: any = {};
       Object.entries(tempAvatarData.currentAvatar.accessories).forEach(([key, value]) => {
-        if (value !== undefined && value !== null) {
+        if (value !== undefined && value !== null && value !== '') {
           cleanedAccessories[key] = value;
         }
       });
@@ -442,7 +471,19 @@ export default function MyAvatarPage() {
   // Reset changes
   const handleReset = () => {
     if (!currentAvatarData) return;
-    setTempAvatarData(JSON.parse(JSON.stringify(currentAvatarData)));
+    // Deep clone and ensure no undefined values
+    const clonedData = JSON.parse(JSON.stringify(currentAvatarData));
+    // Extra safety: clean accessories again
+    if (clonedData.currentAvatar?.accessories) {
+      const cleanAccessories: any = {};
+      Object.entries(clonedData.currentAvatar.accessories).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          cleanAccessories[key] = value;
+        }
+      });
+      clonedData.currentAvatar.accessories = cleanAccessories;
+    }
+    setTempAvatarData(clonedData);
     setSelectedTitle(user?.currentTitleBadge || null);
     setHasChanges(false);
   };

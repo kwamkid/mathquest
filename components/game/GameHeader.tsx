@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, X, Gift, Info, Crown, ShoppingBag, Sparkles, Edit3, MousePointer ,Zap} from 'lucide-react';
+import { Settings, LogOut, X, Gift, Info, Crown, ShoppingBag, Sparkles, MousePointer, Zap } from 'lucide-react';
 import EnhancedSoundToggle from './EnhancedSoundToggle';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import Link from 'next/link';
@@ -126,11 +126,11 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
   return (
     <>
       <header className="glass-dark border-b border-metaverse-purple/30 sticky top-0 z-40">
-        <div className="container mx-auto px-3 py-1.5 md:py-2">
+        <div className="container mx-auto px-3 py-1">
           {/* Mobile Layout */}
           <div className="md:hidden">
             {/* Row 1: User Info + Actions */}
-            <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center justify-between mb-0.5">
               <div className="flex items-center gap-2">
                 {hideActions ? (
                   <div className="cursor-not-allowed opacity-60">
@@ -156,21 +156,6 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                         ease: "easeInOut"
                       }}
                     >
-                      {/* Edit Icon - Always visible on mobile */}
-                      <motion.div
-                        className="absolute -bottom-0.5 -right-0.5 bg-metaverse-purple text-white rounded-full p-0.5 shadow-lg z-10"
-                        animate={{ 
-                          scale: [1, 1.1, 1],
-                        }}
-                        transition={{ 
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        <Edit3 className="w-2.5 h-2.5" />
-                      </motion.div>
-                      
                       <EnhancedAvatarDisplay
                         userId={user.id}
                         avatarData={user.avatarData}
@@ -357,21 +342,6 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                       ease: "easeInOut"
                     }}
                   >
-                    {/* Click indicator with edit icon */}
-                    <motion.div
-                      className="absolute -bottom-0.5 -right-0.5 bg-metaverse-purple text-white rounded-full p-0.5 shadow-lg z-10"
-                      animate={{ 
-                        scale: isAvatarHovered ? [1, 1.2, 1] : [0.9, 1.1, 0.9]
-                      }}
-                      transition={{ 
-                        duration: isAvatarHovered ? 0.5 : 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    >
-                      <Edit3 className="w-2.5 h-2.5" />
-                    </motion.div>
-                    
                     {/* Tooltip */}
                     <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
                       คลิกเพื่อจัดการ Avatar
