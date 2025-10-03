@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
+import { getGradeDisplayName } from '@/lib/game/gradeProgression';
 import confetti from 'canvas-confetti';
 import { 
   Trophy, 
@@ -99,6 +100,38 @@ const fireLevelUpConfetti = () => {
   });
 };
 
+// Special confetti for grade upgrade
+const fireGradeUpgradeConfetti = () => {
+  const duration = 5 * 1000;
+  const animationEnd = Date.now() + duration;
+
+  const interval: any = setInterval(function() {
+    const timeLeft = animationEnd - Date.now();
+
+    if (timeLeft <= 0) {
+      return clearInterval(interval);
+    }
+
+    const particleCount = 50 * (timeLeft / duration);
+
+    // Gold and rainbow colors for grade upgrade
+    confetti({
+      particleCount,
+      angle: 60,
+      spread: 55,
+      origin: { x: 0 },
+      colors: ['#FFD700', '#FFA500', '#FF6347', '#FF69B4', '#9333EA']
+    });
+    confetti({
+      particleCount,
+      angle: 120,
+      spread: 55,
+      origin: { x: 1 },
+      colors: ['#FFD700', '#FFA500', '#FF6347', '#FF69B4', '#9333EA']
+    });
+  }, 250);
+};
+
 // Separate component for content that uses useSearchParams
 function SummaryContent() {
   const router = useRouter();
@@ -112,6 +145,9 @@ function SummaryContent() {
   const levelChange = searchParams.get('levelChange') || 'maintain';
   const newLevel = parseInt(searchParams.get('newLevel') || '1');
   const oldLevel = parseInt(searchParams.get('oldLevel') || '1');
+  const newGrade = searchParams.get('newGrade') || user?.grade || 'P1';
+  const oldGrade = searchParams.get('oldGrade') || user?.grade || 'P1';
+  const gradeChanged = searchParams.get('gradeChanged') === 'true';
   const exp = parseInt(searchParams.get('exp') || '0');
   const isHighScore = searchParams.get('highScore') === 'true';
   const scoreDiff = parseInt(searchParams.get('scoreDiff') || '0');
@@ -135,12 +171,17 @@ function SummaryContent() {
   useEffect(() => {
     // Delay a bit to ensure page is loaded
     const timer = setTimeout(() => {
-      if (percentage >= 85) {
+      if (gradeChanged && newGrade !== oldGrade) {
+        // Special confetti for grade upgrade!
+        fireGradeUpgradeConfetti();
+      } else if (percentage >= 85) {
         fireConfetti();
       }
-      if (levelChange === 'increase') {
+      
+      if (levelChange === 'increase' && !gradeChanged) {
         fireLevelUpConfetti();
       }
+      
       if (percentage === 100) {
         // Special confetti for perfect score
         confetti({
@@ -153,7 +194,7 @@ function SummaryContent() {
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [percentage, levelChange]);
+  }, [percentage, levelChange, gradeChanged, newGrade, oldGrade]);
 
   // Format time
   const formatTime = (seconds: number): string => {
@@ -175,8 +216,20 @@ function SummaryContent() {
 
   const performance = getPerformanceMessage();
 
-  // Get level change info
+  // Get level change info - แก้ไขให้รองรับการเลื่อนชั้น
   const getLevelChangeInfo = () => {
+    // ถ้าเลื่อนชั้น
+    if (gradeChanged && newGrade !== oldGrade) {
+      return {
+        icon: <Crown className="w-6 h-6 md:w-8 md:h-8" />,
+        text: '🎉 เลื่อนชั้น!',
+        color: 'text-yellow-400',
+        bgColor: 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20',
+        borderColor: 'border-yellow-500/50'
+      };
+    }
+    
+    // Level change ปกติ
     switch (levelChange) {
       case 'increase':
         return {
@@ -257,12 +310,54 @@ function SummaryContent() {
             </motion.button>
           </div>
 
-          {/* Header */}
+          {/* Header with Grade Change message */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-center mb-6"
           >
+            {gradeChanged && newGrade !== oldGrade && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", delay: 0.2 }}
+                className="mb-4 p-6 glass-dark rounded-2xl border-2 border-yellow-400 shadow-[0_0_30px_rgba(251,191,36,0.3)]"
+              >
+                <motion.div
+                  animate={{ 
+                    rotate: [0, -10, 10, -10, 0],
+                    scale: [1, 1.1, 1, 1.1, 1]
+                  }}
+                  transition={{ 
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                >
+                  <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-3 filter drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]" />
+                </motion.div>
+                <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-yellow-400 mb-2">
+                  🎉 ยินดีด้วย! เลื่อนชั้นแล้ว!
+                </h2>
+                <div className="flex items-center justify-center gap-3 text-xl md:text-2xl text-white/90 mt-3">
+                  <span className="font-medium">{getGradeDisplayName(oldGrade)}</span>
+                  <motion.span
+                    animate={{ x: [0, 10, 0] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                    className="text-yellow-400"
+                  >
+                    →
+                  </motion.span>
+                  <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
+                    {getGradeDisplayName(newGrade)}
+                  </span>
+                </div>
+                <p className="text-sm text-white/60 mt-2">
+                  เริ่มต้นใหม่ที่ Level 1
+                </p>
+              </motion.div>
+            )}
+            
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">สรุปผลการเล่น</h1>
             <p className={`text-xl md:text-2xl font-medium ${performance.color}`}>
               {performance.text}
@@ -349,7 +444,7 @@ function SummaryContent() {
 
           {/* Stats Grid */}
           <div className="grid grid-cols-2 gap-4 mb-6">
-            {/* Level Change */}
+            {/* Level/Grade Change */}
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -357,18 +452,31 @@ function SummaryContent() {
               className={`glass-dark rounded-xl p-4 md:p-6 border ${levelInfo.borderColor} ${levelInfo.bgColor}`}
             >
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-white/60 mb-2">Level</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl md:text-3xl font-bold text-white">
-                      {oldLevel}
-                    </span>
-                    <span className={levelInfo.color}>→</span>
-                    <span className={`text-2xl md:text-3xl font-bold ${levelInfo.color}`}>
-                      {newLevel}
-                    </span>
-                  </div>
-                  <p className={`font-medium ${levelInfo.color} mt-1`}>
+                <div className="flex-1">
+                  <p className="text-sm text-white/60 mb-2">
+                    {gradeChanged ? 'ระดับชั้น & Level' : 'Level'}
+                  </p>
+                  {gradeChanged ? (
+                    <>
+                      <div className="text-white/80 text-xs md:text-sm mb-1">
+                        {getGradeDisplayName(oldGrade)} → {getGradeDisplayName(newGrade)}
+                      </div>
+                      <div className="text-base md:text-lg font-bold text-white">
+                        Level {oldLevel} → <span className={levelInfo.color}>Level {newLevel}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl md:text-3xl font-bold text-white">
+                        {oldLevel}
+                      </span>
+                      <span className={levelInfo.color}>→</span>
+                      <span className={`text-2xl md:text-3xl font-bold ${levelInfo.color}`}>
+                        {newLevel}
+                      </span>
+                    </div>
+                  )}
+                  <p className={`font-medium ${levelInfo.color} mt-1 text-sm md:text-base`}>
                     {levelInfo.text}
                   </p>
                 </div>
@@ -503,16 +611,23 @@ function SummaryContent() {
                 transition={{ delay: 1.8 }}
                 onClick={handlePlayNext}
                 className={`flex-1 py-4 rounded-xl shadow-lg hover:shadow-xl transition flex items-center justify-center gap-2 text-white font-bold ${
-                  levelChange === 'increase' 
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-500'
-                    : percentage >= 85
-                      ? 'metaverse-button'
-                      : 'bg-gradient-to-r from-gray-600 to-gray-700'
+                  gradeChanged
+                    ? 'bg-gradient-to-r from-yellow-500 to-orange-500'
+                    : levelChange === 'increase' 
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500'
+                      : percentage >= 85
+                        ? 'metaverse-button'
+                        : 'bg-gradient-to-r from-gray-600 to-gray-700'
                 }`}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {levelChange === 'increase' ? (
+                {gradeChanged ? (
+                  <>
+                    <Crown className="w-5 h-5" />
+                    <span>เริ่มต้น {getGradeDisplayName(newGrade)}</span>
+                  </>
+                ) : levelChange === 'increase' ? (
                   <>
                     <Rocket className="w-5 h-5" />
                     <span>เข้าสู่ Level {newLevel}</span>

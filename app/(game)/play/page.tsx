@@ -12,6 +12,7 @@ import QuestionDisplay from '@/components/game/QuestionDisplay';
 import GameHeader from '@/components/game/GameHeader';
 import GameProgress from '@/components/game/GameProgress';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
+import { calculateGradeProgression } from '@/lib/game/gradeProgression';
 import { generateQuestion } from '@/lib/game/questionGenerator';
 import { getQuestionCount, calculateLevelChange, getLevelConfig } from '@/lib/game/config';
 import { useSound } from '@/lib/game/soundManager';
@@ -248,17 +249,23 @@ export default function PlayPage() {
           scoreDiff: scoreDiff
         });
         
-        // ✅ แก้ไข: คำนวณ newLevel จาก user.level (level จริง) ไม่ใช่ playLevel
-        let newLevel = user.level; // ใช้ level จริงของ user
+        // ✅ ใหม่: ใช้ระบบเลื่อนชั้นแบบใหม่
+        let newGrade = user.grade;
+        let newLevel = user.level;
+        let gradeChanged = false;
         
         // ถ้าไม่ได้ force level หรือ force level แต่เป็นการเล่น level ปัจจุบัน
         if (!forceLevel || forceLevel === user.level) {
-          // อัพเดท level ตามผลการเล่น
-          if (levelChange === 'increase' && user.level < 100) {
-            newLevel = user.level + 1;
-          } else if (levelChange === 'decrease' && user.level > 1) {
-            newLevel = user.level - 1;
-          }
+          // คำนวณการเลื่อนชั้น/ระดับ
+          const progression = calculateGradeProgression(
+            user.grade,
+            user.level,
+            percentage
+          );
+          
+          newGrade = progression.newGrade;
+          newLevel = progression.newLevel;
+          gradeChanged = progression.gradeChanged;
         }
         // ถ้า force level และเป็นการเล่นด่านเก่า จะไม่เปลี่ยน level จริง
         
@@ -298,9 +305,13 @@ export default function PlayPage() {
           playStreak: playStreak
         };
         
-        // ✅ อัพเดท level เฉพาะเมื่อไม่ได้ force หรือ force แต่เป็น level ปัจจุบัน
+        // ✅ อัพเดท level และ grade เฉพาะเมื่อไม่ได้ force หรือ force แต่เป็น level ปัจจุบัน
         if (!forceLevel || forceLevel === user.level) {
           updateData.level = newLevel;
+          // ถ้าเลื่อนชั้น ให้อัพเดท grade ด้วย
+          if (gradeChanged) {
+            updateData.grade = newGrade;
+          }
         }
         
         await updateUserGameData(user.id, updateData);
@@ -318,7 +329,10 @@ export default function PlayPage() {
           percentage: percentage.toString(),
           levelChange: levelChange,
           newLevel: newLevel.toString(),
-          oldLevel: (forceLevel || user.level).toString(), // แสดง level ที่เล่นจริง
+          oldLevel: (forceLevel || user.level).toString(),
+          newGrade: newGrade.toString(), // เพิ่ม
+          oldGrade: user.grade.toString(), // เพิ่ม
+          gradeChanged: gradeChanged.toString(), // เพิ่ม
           exp: boostedExp.toString(),
           highScore: isNewHighScore.toString(),
           oldHighScore: oldHighScore.toString(),
