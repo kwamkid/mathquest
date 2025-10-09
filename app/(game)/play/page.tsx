@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -63,6 +63,9 @@ export default function PlayPage() {
   }>>([]);
   const [startTime, setStartTime] = useState<number>(0);
   
+  // ✅ เพิ่ม: ป้องกันการกดซ้ำ
+  const [isProcessing, setIsProcessing] = useState(false);
+  
   // Boost state
   const [activeBoosts, setActiveBoosts] = useState<ActiveBoost[]>([]);
   const [currentBoostMultiplier, setCurrentBoostMultiplier] = useState(1);
@@ -79,13 +82,6 @@ export default function PlayPage() {
       setTotalQuestions(getQuestionCount(user.grade));
       setTempTotalScore(user.totalScore);
       
-      // Start background music if enabled and not playing
-      if (musicEnabled && !isPlaying) {
-        setTimeout(() => {
-          resumeMusic();
-        }, 1000); // Delay 1 second to ensure page is loaded
-      }
-      
       // Check for active boosts
       getActiveBoosts(user.id).then(boosts => {
         setActiveBoosts(boosts);
@@ -99,16 +95,38 @@ export default function PlayPage() {
       
       setLoading(false);
     }
-  }, [user, musicEnabled, isPlaying, resumeMusic]);
+  }, [user]);
 
-  // Auto-start music on first interaction
+  // ✅ แก้ไข: แยก useEffect สำหรับเพลงออกมา
+  useEffect(() => {
+    if (!loading && musicEnabled && !isPlaying) {
+      // ✅ ใช้ fadeIn เพื่อให้เพลงค่อยๆดังขึ้น
+      const timer = setTimeout(() => {
+        fadeIn(2000); // Fade in 2 วินาที
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [loading, musicEnabled, isPlaying, fadeIn]);
+
+  // ✅ เพิ่ม: Cleanup เมื่อ unmount หรือเปลี่ยน state
+  useEffect(() => {
+    return () => {
+      if (gameState === 'playing') {
+        restoreNormalVolume();
+      }
+    };
+  }, [gameState, restoreNormalVolume]);
+
+  // ✅ แก้ไข: Auto-start music on first interaction
   const startMusicOnInteraction = () => {
     if (musicEnabled && !isPlaying) {
+      console.log('🎵 Starting music on user interaction');
       fadeIn(2000);
     }
   };
 
-  // Check for level parameter from URL - ต้องอ่านก่อน clear
+  // Check for level parameter from URL
   useEffect(() => {
     const levelParam = searchParams.get('level');
     if (levelParam) {
@@ -123,13 +141,10 @@ export default function PlayPage() {
   // Auto start game if coming from summary
   useEffect(() => {
     if (searchParams.get('autoStart') === 'true' && !loading && user && gameState === 'ready') {
-      // Start game immediately
       startGame();
       
-      // Clear only autoStart parameter, keep level parameter
       const url = new URL(window.location.href);
       url.searchParams.delete('autoStart');
-      // Keep the level parameter if it exists
       window.history.replaceState({}, '', url);
     }
   }, [searchParams, loading, user, gameState]);
@@ -166,10 +181,9 @@ export default function PlayPage() {
     setScore(0);
     setAnswers([]);
     setGameStartTime(Date.now());
+    setIsProcessing(false); // ✅ Reset processing state
     
-    // ลดเสียงเพลงตอนเล่นเกม
     setGameplayVolume();
-    
     generateNewQuestion();
   };
 
@@ -178,7 +192,6 @@ export default function PlayPage() {
     if (!user) return;
     
     const levelToPlay = getPlayLevel();
-    
     const question = generateQuestion(user.grade, levelToPlay);
     setCurrentQuestion(question);
     setStartTime(Date.now());
@@ -186,7 +199,9 @@ export default function PlayPage() {
 
   // Handle answer submission
   const handleAnswer = (userAnswer: number) => {
-    if (!currentQuestion) return;
+    if (!currentQuestion || isProcessing) return;
+    
+    setIsProcessing(true);
     
     const timeSpent = Math.floor((Date.now() - startTime) / 1000);
     const isCorrect = userAnswer === currentQuestion.answer;
@@ -211,10 +226,17 @@ export default function PlayPage() {
       setTimeout(() => {
         const finalScore = isCorrect ? score + 1 : score;
         endGame(finalScore);
-      }, 2000);
+      }, 1500);
     } else {
+      // ✅ แก้ไข: เคลียร์คำถามเก่าทันที
+      setCurrentQuestion(null);
       setQuestionNumber(questionNumber + 1);
-      generateNewQuestion();
+      
+      // ✅ โหลดข้อใหม่เร็วขึ้น
+      setTimeout(() => {
+        generateNewQuestion();
+        setIsProcessing(false);
+      }, 600); // ✅ ลดจาก 800ms → 600ms
     }
   };
 
@@ -249,14 +271,11 @@ export default function PlayPage() {
           scoreDiff: scoreDiff
         });
         
-        // ✅ ใหม่: ใช้ระบบเลื่อนชั้นแบบใหม่
         let newGrade = user.grade;
         let newLevel = user.level;
         let gradeChanged = false;
         
-        // ถ้าไม่ได้ force level หรือ force level แต่เป็นการเล่น level ปัจจุบัน
         if (!forceLevel || forceLevel === user.level) {
-          // คำนวณการเลื่อนชั้น/ระดับ
           const progression = calculateGradeProgression(
             user.grade,
             user.level,
@@ -267,11 +286,9 @@ export default function PlayPage() {
           newLevel = progression.newLevel;
           gradeChanged = progression.gradeChanged;
         }
-        // ถ้า force level และเป็นการเล่นด่านเก่า จะไม่เปลี่ยน level จริง
         
         const playCount = (user.levelScores?.[playLevel.toString()]?.playCount || 0) + 1;
         
-        // Calculate EXP with boost
         const expCalc = calculateExpGained(
           actualScore,
           totalQuestions,
@@ -282,9 +299,7 @@ export default function PlayPage() {
           playCount
         );
         
-        // Apply boost multiplier
         const boostedExp = Math.floor(expCalc.totalExp * currentBoostMultiplier);
-        
         const newTotalScore = user.totalScore + scoreDiff;
         
         const levelScores = user.levelScores || {};
@@ -296,7 +311,6 @@ export default function PlayPage() {
           playCount: playCount
         };
         
-        // Update user data
         const updateData: any = {
           totalScore: newTotalScore,
           experience: user.experience + boostedExp,
@@ -305,18 +319,14 @@ export default function PlayPage() {
           playStreak: playStreak
         };
         
-        // ✅ อัพเดท level และ grade เฉพาะเมื่อไม่ได้ force หรือ force แต่เป็น level ปัจจุบัน
         if (!forceLevel || forceLevel === user.level) {
           updateData.level = newLevel;
-          // ถ้าเลื่อนชั้น ให้อัพเดท grade ด้วย
           if (gradeChanged) {
             updateData.grade = newGrade;
           }
         }
         
         await updateUserGameData(user.id, updateData);
-        
-        // Refresh user data in auth context
         await refreshUser();
         
         setTempTotalScore(newTotalScore);
@@ -330,9 +340,9 @@ export default function PlayPage() {
           levelChange: levelChange,
           newLevel: newLevel.toString(),
           oldLevel: (forceLevel || user.level).toString(),
-          newGrade: newGrade.toString(), // เพิ่ม
-          oldGrade: user.grade.toString(), // เพิ่ม
-          gradeChanged: gradeChanged.toString(), // เพิ่ม
+          newGrade: newGrade.toString(),
+          oldGrade: user.grade.toString(),
+          gradeChanged: gradeChanged.toString(),
           exp: boostedExp.toString(),
           highScore: isNewHighScore.toString(),
           oldHighScore: oldHighScore.toString(),
@@ -348,6 +358,7 @@ export default function PlayPage() {
         
       } catch (error) {
         console.error('Error saving game data:', error);
+        setIsProcessing(false); // ✅ Unlock ถ้าเกิด error
       }
     }
   };
@@ -419,9 +430,9 @@ export default function PlayPage() {
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
       </div>
 
-      {/* Floating particles */}
+      {/* ✅ แก้ไข: ลด Floating particles จาก 20 → 8 */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
+        {[...Array(8)].map((_, i) => (
           <motion.div
             key={i}
             className="absolute w-2 h-2 bg-metaverse-purple/30 rounded-full"
@@ -485,7 +496,7 @@ export default function PlayPage() {
 
               {/* Main Game Card */}
               <div className="glass-dark rounded-3xl shadow-2xl p-12 border border-metaverse-purple/30 mb-8">
-                {/* Avatar Display - Now Clickable */}
+                {/* Avatar Display */}
                 <div className="flex justify-center mb-6">
                   <Link href="/my-avatar" className="group relative cursor-pointer">
                     <motion.div
@@ -501,7 +512,6 @@ export default function PlayPage() {
                       }}
                       whileHover={{ scale: 1.05 }}
                     >
-                      {/* Edit Icon Badge */}
                       <motion.div
                         className="absolute -bottom-2 -right-2 bg-metaverse-purple text-white rounded-full p-2 shadow-lg z-10"
                         animate={{ 
@@ -516,14 +526,12 @@ export default function PlayPage() {
                         <Edit3 className="w-5 h-5" />
                       </motion.div>
                       
-                      {/* "EDIT AVATAR" label that appears on hover */}
                       <motion.div
                         className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-metaverse-purple to-metaverse-pink text-white text-sm font-bold rounded-full px-4 py-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
                       >
                         จัดการ Avatar
                       </motion.div>
                       
-                      {/* Subtle glow on hover */}
                       <div className="absolute inset-0 bg-gradient-to-r from-metaverse-purple/20 to-metaverse-pink/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity scale-110" />
                       
                       <EnhancedAvatarDisplay
@@ -716,7 +724,7 @@ export default function PlayPage() {
           )}
 
           {/* Playing State */}
-          {gameState === 'playing' && currentQuestion && (
+          {gameState === 'playing' && (
             <motion.div
               key="playing"
               initial={{ opacity: 0, x: 50 }}
@@ -742,11 +750,30 @@ export default function PlayPage() {
                 score={score}
               />
               
-              <QuestionDisplay
-                question={currentQuestion}
-                questionNumber={questionNumber}
-                onAnswer={handleAnswer}
-              />
+              {/* ✅ แสดง Loading หรือ Question */}
+              {currentQuestion ? (
+                <QuestionDisplay
+                  question={currentQuestion}
+                  questionNumber={questionNumber}
+                  onAnswer={handleAnswer}
+                />
+              ) : (
+                // ✅ Loading State สำหรับข้อถัดไป
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="glass-dark rounded-3xl shadow-xl p-12 border border-metaverse-purple/30 flex flex-col items-center justify-center min-h-[400px]"
+                >
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="mb-4"
+                  >
+                    <div className="w-16 h-16 border-4 border-metaverse-purple border-t-transparent rounded-full" />
+                  </motion.div>
+                  <p className="text-xl text-white font-medium">กำลังโหลดคำถาม...</p>
+                </motion.div>
+              )}
             </motion.div>
           )}
 
@@ -815,7 +842,6 @@ export default function PlayPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="glass-dark rounded-3xl p-8 max-w-md w-full border border-metaverse-purple/30"
           >
-            {/* Warning Icon */}
             <motion.div
               className="text-6xl text-center mb-4"
               animate={{ 
@@ -859,7 +885,6 @@ export default function PlayPage() {
                   playSound('click');
                   setTempTotalScore(user?.totalScore || 0);
                   setForceLevel(null);
-                  // Clear all query parameters when exiting
                   const url = new URL(window.location.href);
                   url.search = '';
                   window.history.replaceState({}, '', url);
@@ -869,8 +894,8 @@ export default function PlayPage() {
                   setQuestionNumber(0);
                   setAnswers([]);
                   setShowExitModal(false);
+                  setIsProcessing(false); // ✅ Reset processing state
                   
-                  // Restore normal music volume
                   restoreNormalVolume();
                 }}
                 className="flex-1 py-3 bg-red-500/20 border border-red-500/50 text-red-400 font-bold rounded-xl hover:bg-red-500/30 transition"

@@ -1,7 +1,7 @@
 // components/game/QuestionDisplay.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, memo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types';
 import { useSound } from '@/lib/game/soundManager';
@@ -13,27 +13,28 @@ interface QuestionDisplayProps {
   onAnswer: (answer: number) => void;
 }
 
-export default function QuestionDisplay({ question, questionNumber, onAnswer }: QuestionDisplayProps) {
+function QuestionDisplay({ question, questionNumber, onAnswer }: QuestionDisplayProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const { playSound } = useSound();
 
-  const handleAnswerClick = (answer: number) => {
+  // ✅ Handle answer click with faster transition
+  const handleAnswerClick = useCallback((answer: number) => {
     if (showResult) return;
     
     playSound('click');
     setSelectedAnswer(answer);
     setShowResult(true);
     
-    // Wait before moving to next question
+    // ✅ แก้ไข: ลด delay เป็น 600ms
     setTimeout(() => {
       onAnswer(answer);
       setSelectedAnswer(null);
       setShowResult(false);
-      setInputValue(''); // Reset input
-    }, 1500);
-  };
+      setInputValue('');
+    }, 600);
+  }, [showResult, playSound, onAnswer]);
 
   // For multiple choice questions
   const renderMultipleChoice = () => {
@@ -68,16 +69,6 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                {/* Background animation */}
-                {(showCorrect || showWrong) && (
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
-                    initial={{ x: '-100%' }}
-                    animate={{ x: '100%' }}
-                    transition={{ duration: 0.5 }}
-                  />
-                )}
-                
                 <span className="relative z-10">{choice}</span>
                 
                 {showCorrect && (
@@ -137,9 +128,9 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
               autoFocus
             />
             
-            {/* Glow effect */}
+            {/* ✅ ลด glow effect */}
             {!showResult && (
-              <div className="absolute inset-0 rounded-2xl bg-metaverse-purple/20 blur-xl -z-10" />
+              <div className="absolute inset-0 rounded-2xl bg-metaverse-purple/10 blur-xl -z-10" />
             )}
           </div>
           
@@ -206,27 +197,6 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
         >
           {question.question}
         </motion.h2>
-        
-        {/* Math symbols decoration */}
-        <div className="flex justify-center gap-4 mb-4">
-          {['∞', 'π', '∑'].map((symbol, i) => (
-            <motion.span
-              key={i}
-              className="text-metaverse-purple/20 text-2xl"
-              animate={{ 
-                opacity: [0.2, 0.5, 0.2],
-                y: [0, -10, 0],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                delay: i * 0.5,
-              }}
-            >
-              {symbol}
-            </motion.span>
-          ))}
-        </div>
       </div>
 
       {/* Answer Options */}
@@ -234,3 +204,6 @@ export default function QuestionDisplay({ question, questionNumber, onAnswer }: 
     </motion.div>
   );
 }
+
+// ✅ เพิ่ม React.memo
+export default memo(QuestionDisplay);

@@ -50,8 +50,22 @@ export default function EnhancedAvatarDisplay({
   // Load avatar and accessory URLs
   const { avatarUrl, accessoryUrls, loading } = useAvatarData(userId, avatarData, basicAvatar);
   
+  // ✅ เพิ่ม: State สำหรับ error handling
+  const [avatarError, setAvatarError] = useState(false);
+  const [failedAccessories, setFailedAccessories] = useState<Set<string>>(new Set());
+  
   // State for title badge data
   const [titleData, setTitleData] = useState<{ name: string; color: string } | null>(null);
+  
+  // ✅ เพิ่ม: Reset error เมื่อ avatarUrl เปลี่ยน
+  useEffect(() => {
+    setAvatarError(false);
+  }, [avatarUrl]);
+  
+  // ✅ เพิ่ม: Reset failed accessories เมื่อ accessoryUrls เปลี่ยน
+  useEffect(() => {
+    setFailedAccessories(new Set());
+  }, [accessoryUrls]);
   
   // Load title badge data
   useEffect(() => {
@@ -123,7 +137,9 @@ export default function EnhancedAvatarDisplay({
   
   // ✅ Safe access to avatarData with fallbacks
   const currentAvatar = avatarData?.currentAvatar;
-  const isBasicAvatar = !currentAvatar || currentAvatar.type === 'basic' || !avatarUrl;
+  
+  // ✅ แก้ไข: ถ้า avatar error ให้ fallback ไป basic ทันที
+  const isBasicAvatar = !currentAvatar || currentAvatar.type === 'basic' || !avatarUrl || avatarError;
   
   // ✅ Get avatar ID with multiple fallbacks
   const avatarId = currentAvatar?.id || basicAvatar || 'knight';
@@ -132,6 +148,18 @@ export default function EnhancedAvatarDisplay({
   const getAvatarEmoji = (id: string): string => {
     const avatar = basicAvatars.find(a => a.id === id);
     return avatar?.emoji || '👤';
+  };
+  
+  // ✅ เพิ่ม: Handle avatar load error
+  const handleAvatarError = () => {
+    console.error('❌ Failed to load avatar:', avatarUrl);
+    setAvatarError(true);
+  };
+  
+  // ✅ เพิ่ม: Handle accessory load error
+  const handleAccessoryError = (type: string, url: string) => {
+    console.error(`❌ Failed to load accessory ${type}:`, url);
+    setFailedAccessories(prev => new Set([...prev, type]));
   };
   
   // Size mapping - แต่ใช้ admin page structure เสมอ
@@ -154,20 +182,19 @@ export default function EnhancedAvatarDisplay({
       className={`relative inline-block ${className} ${onClick ? 'cursor-pointer' : ''}`}
       onClick={onClick}
     >
-      {/* Debug info - เพิ่มข้อมูลเปรียบเทียบ */}
+      {/* Debug info */}
       {debug && (
         <div className="absolute -top-20 left-0 bg-black/90 text-white text-xs p-3 rounded z-50 w-80">
-          <div className="font-bold text-yellow-400 mb-2">🔍 Debug Info (Admin Style)</div>
+          <div className="font-bold text-yellow-400 mb-2">🔍 Debug Info</div>
           <div>Final Size: {finalSize}x{finalSize}</div>
-          <div>Multiplier: {sizeMultiplier}</div>
           <div>Avatar: {avatarId} ({isBasicAvatar ? 'basic' : 'premium'})</div>
-          <div>Accessories: {Object.keys(accessoryUrls).length}</div>
-          <div>AvatarData: {avatarData ? 'exists' : 'undefined'}</div>
-          <div>CurrentAvatar: {currentAvatar ? 'exists' : 'undefined'}</div>
-          <div className="mt-2 text-green-300">
-            <div className="font-semibold">Container: 300x300 (fixed)</div>
-            <div>ใช้โครงสร้างเดียวกับ admin page 100%</div>
-          </div>
+          <div>Avatar Error: {avatarError ? '❌ YES' : '✅ NO'}</div>
+          <div>Failed Accessories: {failedAccessories.size}</div>
+          {avatarError && (
+            <div className="mt-2 text-red-400">
+              ⚠️ Using fallback emoji
+            </div>
+          )}
         </div>
       )}
       
@@ -208,7 +235,7 @@ export default function EnhancedAvatarDisplay({
         </motion.div>
       )}
       
-      {/* Main Container - ขนาดตาม size prop แต่ใช้โครงสร้างเหมือน admin page */}
+      {/* Main Container */}
       <div 
         className={`relative ${debug ? 'border-2 border-red-500' : ''}`} 
         style={{ 
@@ -224,11 +251,10 @@ export default function EnhancedAvatarDisplay({
           </div>
         )}
         
-        {/* Admin Page Style Container - แก้ไข scale เมื่อ xlarge */}
+        {/* Admin Page Style Container */}
         <div 
           className={`relative ${debug ? 'border-2 border-blue-500' : ''}`}
           style={ size === 'xlarge' ? {
-            // xlarge: ไม่ scale เลย เหมือน admin page
             width: '300px',
             height: '300px',
             position: 'absolute',
@@ -237,7 +263,6 @@ export default function EnhancedAvatarDisplay({
             marginLeft: '-150px',
             marginTop: '-150px'
           } : size === 'tiny' ? {
-            // tiny: ใช้ scale และปรับ avatar ให้เล็กมาก
             width: '300px',
             height: '300px',
             transform: `scale(${sizeMultiplier})`,
@@ -249,7 +274,6 @@ export default function EnhancedAvatarDisplay({
             marginLeft: '-150px',
             marginTop: '-150px'
           } : {
-            // size อื่นๆ: ใช้ scale
             width: '300px',
             height: '300px',
             transform: `scale(${sizeMultiplier})`,
@@ -270,22 +294,23 @@ export default function EnhancedAvatarDisplay({
             </div>
           )}
           
-          {/* Avatar - ใช้โครงสร้างเดียวกับ admin page */}
+          {/* Avatar */}
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative">
               {isBasicAvatar ? (
+                // ✅ Fallback: Basic Emoji Avatar
                 <div className="text-[120px] select-none">
                   {getAvatarEmoji(avatarId)}
                 </div>
               ) : (
+                // ✅ Premium Avatar with Error Handling
                 <div className="w-48 h-48 relative overflow-hidden rounded-full">
                   <img 
                     src={avatarUrl} 
                     alt="Avatar"
                     className="w-full h-full object-contain"
-                    onError={(e) => {
-                      console.error('Failed to load avatar:', avatarUrl);
-                    }}
+                    onError={handleAvatarError}
+                    onLoad={() => setAvatarError(false)}
                   />
                   
                   {/* Premium avatar glow */}
@@ -306,19 +331,22 @@ export default function EnhancedAvatarDisplay({
                 </div>
               )}
               
-              {/* Accessories - ใช้วิธีเดียวกับ admin page 100% */}
-              {/* ✅ เช็คให้แน่ใจว่ามี currentAvatar และ accessories ก่อนแสดง */}
+              {/* Accessories */}
               {showAccessories && currentAvatar?.accessories && Object.entries(accessoryUrls).map(([type, url]) => {
                 const accessoryType = type as AccessoryType;
+                
+                // ✅ ถ้า accessory นี้ fail แล้ว ไม่ต้องแสดง
+                if (failedAccessories.has(type)) {
+                  return null;
+                }
+                
                 const position = getAccessoryPosition(accessoryType, avatarId);
                 const config = getAccessoryConfig(accessoryType);
                 
                 if (!url || !position) return null;
                 
-                // คำนวณ zIndex ครั้งเดียว
                 const zIndexValue = accessoryType === AccessoryType.BACKGROUND ? -1 : 10;
                 
-                // ใช้ logic เดียวกับ admin page
                 let left = '50%';
                 let top = '50%';
                 
@@ -370,6 +398,7 @@ export default function EnhancedAvatarDisplay({
                           src={url} 
                           alt={`${type} accessory`}
                           className="w-full h-full object-contain"
+                          onError={() => handleAccessoryError(type, url)}
                         />
                       </div>
                       
@@ -395,6 +424,7 @@ export default function EnhancedAvatarDisplay({
                           src={url} 
                           alt={`${type} accessory`}
                           className="w-full h-full object-contain"
+                          onError={() => handleAccessoryError(type, url)}
                         />
                       </div>
                       
@@ -438,9 +468,7 @@ export default function EnhancedAvatarDisplay({
                         src={url} 
                         alt={`${type} accessory`}
                         className="w-full h-full object-contain"
-                        onError={(e) => {
-                          console.error(`Failed to load ${type}:`, url);
-                        }}
+                        onError={() => handleAccessoryError(type, url)}
                       />
                     </div>
                     
@@ -470,7 +498,7 @@ export default function EnhancedAvatarDisplay({
         </div>
         
         {/* Glow Effect */}
-        {showEffects && (
+        {showEffects && !avatarError && (
           <>
             <motion.div
               className="absolute inset-0 rounded-full pointer-events-none"
@@ -502,6 +530,20 @@ export default function EnhancedAvatarDisplay({
               <Sparkles className="w-6 h-6 text-yellow-400" />
             </motion.div>
           </>
+        )}
+        
+        {/* ✅ Error Indicator (Development only) */}
+        {(avatarError || failedAccessories.size > 0) && process.env.NODE_ENV === 'development' && (
+          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap text-xs">
+            {avatarError && (
+              <div className="text-red-400">⚠️ Avatar fallback</div>
+            )}
+            {failedAccessories.size > 0 && (
+              <div className="text-orange-400">
+                ⚠️ {failedAccessories.size} accessory failed
+              </div>
+            )}
+          </div>
         )}
       </div>
       

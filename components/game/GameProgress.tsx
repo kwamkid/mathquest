@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { CheckCircle, Zap } from 'lucide-react';
+import { memo } from 'react';
 
 interface GameProgressProps {
   current: number;
@@ -9,7 +10,7 @@ interface GameProgressProps {
   score: number;
 }
 
-export default function GameProgress({ current, total, score }: GameProgressProps) {
+function GameProgress({ current, total, score }: GameProgressProps) {
   const progress = (current / total) * 100;
 
   return (
@@ -27,28 +28,16 @@ export default function GameProgress({ current, total, score }: GameProgressProp
           </div>
         </div>
         
-        <motion.div
-          className="flex items-center gap-2 text-metaverse-pink"
-          animate={{ 
-            scale: [1, 1.1, 1],
-          }}
-          transition={{ 
-            duration: 2, 
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        >
+        {/* ✅ ลด animation complexity */}
+        <div className="flex items-center gap-2 text-metaverse-pink">
           <Zap className="w-6 h-6" />
           <span className="font-bold">LIVE</span>
-        </motion.div>
+        </div>
       </div>
 
       {/* Progress Bar */}
       <div className="relative h-6 bg-white/10 rounded-full overflow-hidden backdrop-blur">
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="h-full w-full bg-gradient-to-r from-transparent via-white/10 to-transparent animate-pulse" />
-        </div>
+        {/* ✅ เอา background pattern ออก - ประหยัด CPU */}
         
         <motion.div
           className="absolute inset-y-0 left-0 bg-gradient-to-r from-metaverse-purple to-metaverse-red shadow-lg"
@@ -56,14 +45,14 @@ export default function GameProgress({ current, total, score }: GameProgressProp
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}
         >
-          {/* Shine effect */}
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+          {/* ✅ ลด shimmer effect - ใช้ CSS แทน */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-50" />
         </motion.div>
         
-        {/* Progress circles */}
+        {/* ✅ ลด circles จาก 10 → 5 ตัว */}
         <div className="absolute inset-0 flex items-center justify-between px-2">
-          {[...Array(Math.min(10, total))].map((_, i) => {
-            const position = ((i + 1) / Math.min(10, total)) * 100;
+          {[...Array(Math.min(5, total))].map((_, i) => {
+            const position = ((i + 1) / Math.min(5, total)) * 100;
             const isPassed = progress >= position;
             return (
               <motion.div
@@ -89,18 +78,16 @@ export default function GameProgress({ current, total, score }: GameProgressProp
         </div>
       </div>
 
-      {/* Motivational Text */}
-      <motion.p
-        key={current}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center text-white/60 text-sm mt-2"
-      >
+      {/* Motivational Text - ✅ ไม่มี animation */}
+      <p className="text-center text-white/60 text-sm mt-2">
         {progress < 30 && "เริ่มต้นได้ดี! 💪"}
         {progress >= 30 && progress < 60 && "ทำได้ดีมาก! 🌟"}
         {progress >= 60 && progress < 90 && "ใกล้สำเร็จแล้ว! 🚀"}
         {progress >= 90 && "อีกนิดเดียว! 🏆"}
-      </motion.p>
+      </p>
     </div>
   );
 }
+
+// ✅ เพิ่ม React.memo เพื่อป้องกัน re-render
+export default memo(GameProgress);

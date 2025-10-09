@@ -1,12 +1,12 @@
 // components/game/GameHeader.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, X, Gift, Info, Crown, ShoppingBag, Sparkles, MousePointer, Zap } from 'lucide-react';
+import { Settings, LogOut, X, Gift, Info, Crown, ShoppingBag, Zap,Sparkles } from 'lucide-react';
 import EnhancedSoundToggle from './EnhancedSoundToggle';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import Link from 'next/link';
@@ -19,10 +19,10 @@ interface GameHeaderProps {
   hideActions?: boolean;
 }
 
-// Cache for title data to avoid repeated Firebase calls
+// ✅ Move cache outside component to persist across re-renders
 const titleCache = new Map<string, { name: string; color: string }>();
 
-export default function GameHeader({ user, hideActions = false }: GameHeaderProps) {
+function GameHeader({ user, hideActions = false }: GameHeaderProps) {
   const router = useRouter();
   const [showExpModal, setShowExpModal] = useState(false);
   const [titleData, setTitleData] = useState<{ name: string; color: string } | null>(null);
@@ -33,33 +33,34 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
     router.push('/');
   };
 
-  // Load title badge data
+  // ✅ Optimize: Load title only once per titleBadge
   useEffect(() => {
+    // ถ้าไม่มี titleBadge หรือมีใน cache แล้ว ไม่ต้อง load
+    if (!user.currentTitleBadge) {
+      setTitleData(null);
+      return;
+    }
+    
+    if (titleCache.has(user.currentTitleBadge)) {
+      setTitleData(titleCache.get(user.currentTitleBadge)!);
+      return;
+    }
+    
+    // Load จาก local data หรือ Firebase
     const loadTitleData = async () => {
-      if (!user.currentTitleBadge) {
-        setTitleData(null);
-        return;
-      }
-      
-      // Check cache first
-      if (titleCache.has(user.currentTitleBadge)) {
-        setTitleData(titleCache.get(user.currentTitleBadge)!);
-        return;
-      }
-      
       // Try local data first
-      const localData = TITLE_BADGES[user.currentTitleBadge];
+      const localData = TITLE_BADGES[user.currentTitleBadge!];
       if (localData) {
         const data = {
           name: localData.name,
           color: localData.color || '#FFD700'
         };
-        titleCache.set(user.currentTitleBadge, data);
+        titleCache.set(user.currentTitleBadge!, data);
         setTitleData(data);
         return;
       }
       
-      // Try Firebase
+      // Try Firebase (only if not in local)
       try {
         const rewardsQuery = query(
           collection(db, 'rewards'),
@@ -76,7 +77,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
             name: rewardData.name || user.currentTitleBadge,
             color: rewardData.color || '#FFD700'
           };
-          titleCache.set(user.currentTitleBadge, data);
+          titleCache.set(user.currentTitleBadge!, data);
           setTitleData(data);
           return;
         }
@@ -86,15 +87,15 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
       
       // Use default
       const defaultData = {
-        name: user.currentTitleBadge.replace(/title-/g, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        name: user.currentTitleBadge!.replace(/title-/g, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
         color: '#FFD700'
       };
-      titleCache.set(user.currentTitleBadge, defaultData);
+      titleCache.set(user.currentTitleBadge!, defaultData);
       setTitleData(defaultData);
     };
     
     loadTitleData();
-  }, [user.currentTitleBadge]);
+  }, [user.currentTitleBadge]); // ✅ เปลี่ยนเฉพาะเมื่อ titleBadge เปลี่ยน
 
   // Helper function to check if color is gradient
   const isGradient = (color: string) => {
@@ -104,21 +105,11 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
   // Get grade display name
   const getGradeDisplayName = (grade: string): string => {
     const gradeMap: Record<string, string> = {
-      K1: 'อนุบาล 1',
-      K2: 'อนุบาล 2',
-      K3: 'อนุบาล 3',
-      P1: 'ประถม 1',
-      P2: 'ประถม 2',
-      P3: 'ประถม 3',
-      P4: 'ประถม 4',
-      P5: 'ประถม 5',
-      P6: 'ประถม 6',
-      M1: 'มัธยม 1',
-      M2: 'มัธยม 2',
-      M3: 'มัธยม 3',
-      M4: 'มัธยม 4',
-      M5: 'มัธยม 5',
-      M6: 'มัธยม 6',
+      K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
+      P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
+      P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
+      M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
+      M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
     };
     return gradeMap[grade] || grade;
   };
@@ -145,17 +136,8 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                   </div>
                 ) : (
                   <Link href="/my-avatar" className="group relative">
-                    <motion.div 
-                      className="relative"
-                      animate={{ 
-                        y: [0, -2, 0],
-                      }}
-                      transition={{ 
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                    >
+                    {/* ✅ ลด avatar animation complexity */}
+                    <div className="relative">
                       <EnhancedAvatarDisplay
                         userId={user.id}
                         avatarData={user.avatarData}
@@ -164,12 +146,11 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                         showEffects={false}
                         showAccessories={true}
                       />
-                    </motion.div>
+                    </div>
                   </Link>
                 )}
                 <div>
                   <div className="flex items-center gap-2">
-                    {/* แสดง Title Badge เป็นส่วนหนึ่งของชื่อ */}
                     <h3 className="font-bold text-base text-white flex items-center gap-1.5">
                       {titleData && (
                         <span 
@@ -202,30 +183,15 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
               {/* Actions */}
               {!hideActions && (
                 <div className="flex items-center gap-1">
-                  {/* Reward Shop Button - More prominent */}
-                  <Link
-                    href="/rewards"
-                    className="relative"
-                  >
-                    <motion.div
-                      className="p-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full shadow-lg"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.95 }}
-                      animate={{ 
-                        boxShadow: ['0 0 10px rgba(251, 191, 36, 0.5)', '0 0 20px rgba(251, 191, 36, 0.8)', '0 0 10px rgba(251, 191, 36, 0.5)']
-                      }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
+                  {/* Reward Shop Button */}
+                  <Link href="/rewards" className="relative">
+                    {/* ✅ ลด animation complexity */}
+                    <div className="p-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full shadow-lg">
                       <ShoppingBag className="w-4 h-4 text-white" />
-                    </motion.div>
-                    {/* Badge for "NEW" or notification */}
-                    <motion.div
-                      className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full px-1"
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                    >
+                    </div>
+                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full px-1">
                       SHOP
-                    </motion.div>
+                    </div>
                   </Link>
                   
                   <EnhancedSoundToggle />
@@ -276,35 +242,14 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                       {user.experience.toLocaleString()}
                     </p>
                     {!hideActions && (
-                      <motion.div
-                        animate={{ 
-                          rotate: [0, -10, 10, -10, 0],
-                        }}
-                        transition={{ 
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        <Info className="w-2.5 h-2.5 text-yellow-400" />
-                      </motion.div>
+                      <Info className="w-2.5 h-2.5 text-yellow-400" />
                     )}
                   </div>
                 </div>
                 {!hideActions && (
-                  <motion.div
-                    className="absolute -top-0.5 -right-0.5 bg-yellow-400 text-metaverse-black rounded-full px-1 py-0.5 text-[8px] font-bold shadow-lg"
-                    animate={{ 
-                      scale: [1, 1.1, 1],
-                    }}
-                    transition={{ 
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
+                  <div className="absolute -top-0.5 -right-0.5 bg-yellow-400 text-metaverse-black rounded-full px-1 py-0.5 text-[8px] font-bold shadow-lg">
                     กดดู
-                  </motion.div>
+                  </div>
                 )}
               </motion.div>
             </div>
@@ -328,25 +273,8 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 </div>
               ) : (
                 <Link href="/my-avatar" className="group relative">
-                  <motion.div 
-                    whileHover={{ scale: 1.1 }}
-                    onHoverStart={() => setIsAvatarHovered(true)}
-                    onHoverEnd={() => setIsAvatarHovered(false)}
-                    className="relative"
-                    animate={{ 
-                      y: [0, -2, 0],
-                    }}
-                    transition={{ 
-                      duration: 2.5,
-                      repeat: Infinity,
-                      ease: "easeInOut"
-                    }}
-                  >
-                    {/* Tooltip */}
-                    <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-black/90 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20">
-                      คลิกเพื่อจัดการ Avatar
-                    </div>
-                    
+                  {/* ✅ ลด animation */}
+                  <div className="relative">
                     <EnhancedAvatarDisplay
                       userId={user.id}
                       avatarData={user.avatarData}
@@ -356,11 +284,10 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                       showTitle={false}
                       showAccessories={true}
                     />
-                  </motion.div>
+                  </div>
                 </Link>
               )}
               <div>
-                {/* แสดง Title Badge เป็นส่วนหนึ่งของชื่อ */}
                 <h3 className="font-bold text-lg text-white flex items-center gap-2">
                   {titleData && (
                     <span 
@@ -416,18 +343,7 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                       {user.experience}
                     </p>
                     {!hideActions && (
-                      <motion.div
-                        animate={{ 
-                          rotate: [0, -10, 10, -10, 0],
-                        }}
-                        transition={{ 
-                          duration: 2,
-                          repeat: Infinity,
-                          ease: "easeInOut"
-                        }}
-                      >
-                        <Info className="w-3.5 h-3.5 text-yellow-400" />
-                      </motion.div>
+                      <Info className="w-3.5 h-3.5 text-yellow-400" />
                     )}
                   </div>
                   <p className="text-[10px] text-white/60">EXP</p>
@@ -439,36 +355,15 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
                 <>
                   <div className="w-px h-8 bg-white/20" />
                   <div className="flex items-center gap-2">
-                    {/* Reward Shop - More prominent */}
-                    <Link
-                      href="/rewards"
-                      className="relative group"
-                    >
-                      <motion.div
-                        className="p-2 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full shadow-lg"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.95 }}
-                        animate={{ 
-                          boxShadow: ['0 0 15px rgba(251, 191, 36, 0.5)', '0 0 25px rgba(251, 191, 36, 0.8)', '0 0 15px rgba(251, 191, 36, 0.5)']
-                        }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      >
+                    {/* Reward Shop */}
+                    <Link href="/rewards" className="relative group">
+                      {/* ✅ ลด animation */}
+                      <div className="p-2 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full shadow-lg">
                         <ShoppingBag className="w-5 h-5 text-white" />
-                      </motion.div>
-                      
-                      {/* Label */}
-                      <motion.div
-                        className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full px-2 py-0.5 shadow-md"
-                        animate={{ scale: [1, 1.1, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      >
+                      </div>
+                      <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full px-2 py-0.5 shadow-md">
                         SHOP
-                      </motion.div>
-                      
-                      {/* Tooltip */}
-                      <span className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-white/0 group-hover:text-white/80 transition whitespace-nowrap bg-black/90 px-2 py-1 rounded opacity-0 group-hover:opacity-100 pointer-events-none">
-                        Reward Shop
-                      </span>
+                      </div>
                     </Link>
                     
                     <EnhancedSoundToggle />
@@ -644,3 +539,16 @@ export default function GameHeader({ user, hideActions = false }: GameHeaderProp
     </>
   );
 }
+
+// ✅ เพิ่ม React.memo พร้อม custom comparison
+export default memo(GameHeader, (prevProps, nextProps) => {
+  // Only re-render if these specific fields change
+  return (
+    prevProps.user.id === nextProps.user.id &&
+    prevProps.user.totalScore === nextProps.user.totalScore &&
+    prevProps.user.experience === nextProps.user.experience &&
+    prevProps.user.level === nextProps.user.level &&
+    prevProps.user.currentTitleBadge === nextProps.user.currentTitleBadge &&
+    prevProps.hideActions === nextProps.hideActions
+  );
+});

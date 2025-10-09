@@ -1,5 +1,8 @@
 // app/(game)/layout.tsx
-import AuthGuard from '@/components/auth/AuthGuard';
+'use client';
+
+import { AuthProvider } from '@/lib/contexts/AuthContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function GameLayout({
   children,
@@ -7,8 +10,10 @@ export default function GameLayout({
   children: React.ReactNode;
 }) {
   return (
-    <AuthGuard requireAuth={true}>
-      {children}
-    </AuthGuard>
+    <AuthProvider>
+      <ErrorBoundary>
+        {children}
+      </ErrorBoundary>
+    </AuthProvider>
   );
 }
