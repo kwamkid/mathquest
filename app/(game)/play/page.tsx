@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -36,7 +37,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function PlayPage() {
+// ✅ Component หลักที่ใช้ useSearchParams
+function PlayPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, refreshUser } = useAuth();
@@ -366,36 +368,6 @@ export default function PlayPage() {
   // Calculate score percentage
   const getScorePercentage = () => {
     return Math.round((score / totalQuestions) * 100);
-  };
-
-  // Get level change message
-  const getLevelChangeMessage = () => {
-    const percentage = getScorePercentage();
-    const levelChange = calculateLevelChange(percentage);
-    
-    switch (levelChange) {
-      case 'decrease':
-        return { 
-          type: 'down', 
-          message: 'ระดับลดลง', 
-          icon: <TrendingDown className="w-6 h-6" />,
-          color: 'text-red-400'
-        };
-      case 'increase':
-        return { 
-          type: 'up', 
-          message: 'ระดับเพิ่มขึ้น', 
-          icon: <TrendingUp className="w-6 h-6" />,
-          color: 'text-green-400'
-        };
-      default:
-        return { 
-          type: 'same', 
-          message: 'คงระดับเดิม', 
-          icon: '➡️',
-          color: 'text-orange-400'
-        };
-    }
   };
 
   if (loading || !user) {
@@ -909,5 +881,32 @@ export default function PlayPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// ✅ Default export - wrap ด้วย Suspense
+export default function PlayPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-metaverse-black flex items-center justify-center">
+        <div className="absolute inset-0 bg-metaverse-gradient opacity-30"></div>
+        <motion.div
+          animate={{ 
+            rotate: [0, -10, 10, -10, 0],
+            scale: [1, 1.1, 0.9, 1.1, 1],
+          }}
+          transition={{ 
+            duration: 2, 
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="relative z-10"
+        >
+          <Pi className="w-24 h-24 text-metaverse-purple filter drop-shadow-[0_0_50px_rgba(147,51,234,0.7)]" />
+        </motion.div>
+      </div>
+    }>
+      <PlayPageContent />
+    </Suspense>
   );
 }
