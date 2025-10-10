@@ -15,53 +15,41 @@ export class M3Generator extends BaseGenerator {
   }
 
   generateQuestion(level: number, config: LevelConfig): Question {
-    // M3 ใช้แค่ MIXED (ตัวเลขล้วน) ไม่มีโจทย์ปัญหา
     return this.generateMixed(level, config);
   }
 
   generateWordProblem(level: number, config: LevelConfig): Question {
-    // M3 ไม่มีโจทย์ปัญหา ให้ส่ง MIXED แทน
     return this.generateMixed(level, config);
   }
 
   getAvailableQuestionTypes(level: number): QuestionType[] {
-    // M3 มีแค่ MIXED (ตัวเลขล้วน)
     return [QuestionType.MIXED];
   }
 
   private generateMixed(level: number, config: LevelConfig): Question {
     if (level <= 15) {
-      // Level 1-15: อสมการเชิงเส้นตัวแปรเดียว
       return this.generateLinearInequality(level, config);
     } else if (level <= 30) {
-      // Level 16-30: ระบบสมการเชิงเส้นสองตัวแปร
       return this.generateSystemOfEquations(level, config);
     } else if (level <= 45) {
-      // Level 31-45: ฟังก์ชันกำลังสอง
       return this.generateQuadraticFunction(level, config);
     } else if (level <= 60) {
-      // Level 46-60: สมการกำลังสองตัวแปรเดียว
       return this.generateQuadraticEquation(level, config);
     } else if (level <= 70) {
-      // Level 61-70: ความคล้าย (อัตราส่วนที่เท่ากัน)
       return this.generateSimilarity(level, config);
     } else if (level <= 85) {
-      // Level 71-85: อัตราส่วนตรีโกณมิติ
       return this.generateTrigonometry(level, config);
     } else if (level <= 95) {
-      // Level 86-95: วงกลม (พื้นที่ เส้นรอบวง)
       return this.generateCircle(level, config);
     } else {
-      // Level 96-100: โจทย์ผสม
       return this.generateMixedProblems(level, config);
     }
   }
 
-  // Level 1-15: อสมการเชิงเส้นตัวแปรเดียว
+  // Level 1-15: อสมการเชิงเส้น
   private generateLinearInequality(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // x + a < b
         const x = random(1, 10);
         const a = random(2, 8);
         const b = a + x + random(1, 5);
@@ -71,7 +59,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // x - a > b
         const x = random(5, 15);
         const a = random(1, 5);
         const b = x - a - random(1, 3);
@@ -81,7 +68,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // ax < b
         const a = random(2, 5);
         const x = random(2, 8);
         const b = a * x;
@@ -91,7 +77,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // ax ≥ b
         const a = random(2, 6);
         const x = random(3, 10);
         const b = a * x;
@@ -101,7 +86,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // -x < a
         const x = random(3, 12);
         return {
           question: `-x < -${x}, x > ?`,
@@ -111,6 +95,11 @@ export class M3Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('x + 5 < 10, x < ?', 5, QuestionType.MIXED, level, [4, 5, 6, 7]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -120,11 +109,10 @@ export class M3Generator extends BaseGenerator {
     );
   }
 
-  // Level 16-30: ระบบสมการเชิงเส้นสองตัวแปร
+  // Level 16-30: ระบบสมการ
   private generateSystemOfEquations(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // วิธีบวก/ลบ
         const x = random(2, 8);
         const y = random(1, 6);
         const a1 = random(2, 5);
@@ -139,7 +127,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // วิธีแทนค่า
         const x = random(1, 10);
         const y = random(1, 10);
         const sum = x + y;
@@ -150,7 +137,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // ระบบสมการพิเศษ
         const x = random(3, 12);
         const y = random(2, 8);
         const eq1 = 3 * x + 2 * y;
@@ -161,7 +147,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // หา x จากระบบสมการ
         const x = random(2, 10);
         const y = random(1, 8);
         const eq1 = 2 * x + 3 * y;
@@ -174,6 +159,11 @@ export class M3Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('x + y = 10, x - y = 2, x = ?', 6, QuestionType.MIXED, level, [5, 6, 7, 8]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -187,7 +177,6 @@ export class M3Generator extends BaseGenerator {
   private generateQuadraticFunction(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // f(x) = x² + c
         const x = random(-5, 5);
         const c = random(-10, 10);
         const answer = x * x + c;
@@ -197,7 +186,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // f(x) = ax²
         const a = random(1, 4);
         const x = random(-4, 4);
         const answer = a * x * x;
@@ -207,7 +195,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // จุดยอดของพาราโบลา y = x² + c
         const c = random(-20, 20);
         return {
           question: `y = x² + ${c}, จุดยอดอยู่ที่ (0, ?)`,
@@ -215,7 +202,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // หาค่า x² จากค่า y
         const x = random(2, 8);
         const y = x * x;
         return {
@@ -224,7 +210,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // f(x) = (x + a)²
         const a = random(1, 5);
         const x = random(-3, 3);
         const answer = (x + a) * (x + a);
@@ -236,6 +221,11 @@ export class M3Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('f(x) = x² + 3, f(2) = ?', 7, QuestionType.MIXED, level, [6, 7, 8, 9]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -245,11 +235,10 @@ export class M3Generator extends BaseGenerator {
     );
   }
 
-  // Level 46-60: สมการกำลังสองตัวแปรเดียว
+  // Level 46-60: สมการกำลังสอง
   private generateQuadraticEquation(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // x² = a
         const x = random(2, 12);
         const a = x * x;
         return {
@@ -258,7 +247,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // x² + bx = 0
         const x = random(2, 10);
         const b = -x;
         return {
@@ -267,7 +255,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // (x - a)(x - b) = 0
         const a = random(1, 8);
         const b = random(1, 8);
         const larger = Math.max(a, b);
@@ -277,7 +264,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // x² - (a+b)x + ab = 0
         const a = random(2, 7);
         const b = random(3, 8);
         const sum = a + b;
@@ -288,7 +274,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // กำลังสองสมบูรณ์
         const a = random(3, 9);
         const a2 = a * a;
         return {
@@ -299,6 +284,11 @@ export class M3Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('x² = 9, x = ?', 3, QuestionType.MIXED, level, [2, 3, 4, 5]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -312,7 +302,6 @@ export class M3Generator extends BaseGenerator {
   private generateSimilarity(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // อัตราส่วนด้านที่สมนัยกัน
         const ratio = random(2, 5);
         const a = random(3, 8);
         const b = a * ratio;
@@ -322,7 +311,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // หาด้านที่สมนัยกัน
         const scale = random(2, 4);
         const side1 = random(4, 10);
         const side2 = side1 * scale;
@@ -332,7 +320,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // อัตราส่วนพื้นที่
         const ratio = random(2, 5);
         const area1 = random(4, 16);
         const area2 = area1 * ratio * ratio;
@@ -342,10 +329,9 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // หาอัตราส่วน
         const a1 = random(3, 9);
-        const a2 = random(2, 6) * a1;
-        const ratio = a2 / a1;
+        const ratio = random(2, 4);
+        const a2 = a1 * ratio;
         return {
           question: `รูปคล้าย ด้าน ${a1} และ ${a2} อัตราส่วน 1:?`,
           answer: ratio
@@ -354,6 +340,11 @@ export class M3Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('รูปคล้าย 3:6 = 4:?', 8, QuestionType.MIXED, level, [6, 7, 8, 9]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -363,15 +354,14 @@ export class M3Generator extends BaseGenerator {
     );
   }
 
-  // Level 71-85: อัตราส่วนตรีโกณมิติ (มุมพิเศษ)
+  // Level 71-85: ตรีโกณมิติ
   private generateTrigonometry(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // sin, cos, tan ของมุม 30, 45, 60
         const angles = [
-          { angle: 30, sin: 1, cos: 3, tan: 1 }, // sin30 = 1/2, cos30 = √3/2, tan30 = 1/√3
-          { angle: 45, sin: 1, cos: 1, tan: 1 }, // sin45 = cos45 = 1/√2, tan45 = 1
-          { angle: 60, sin: 3, cos: 1, tan: 3 }  // sin60 = √3/2, cos60 = 1/2, tan60 = √3
+          { angle: 30, sin: 1, cos: 3, tan: 1 },
+          { angle: 45, sin: 1, cos: 1, tan: 1 },
+          { angle: 60, sin: 3, cos: 1, tan: 3 }
         ];
         const selected = randomChoice(angles);
         const funcs = ['sin', 'cos', 'tan'];
@@ -387,7 +377,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // พีทาโกรัสในสามเหลี่ยมมุมฉาก
         const triangles = [
           { a: 3, b: 4, c: 5 },
           { a: 5, b: 12, c: 13 },
@@ -401,9 +390,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // sin² + cos² = 1
-        const sinVal = randomChoice([3, 4, 5, 12]);
-        const cosVal = randomChoice([4, 3, 12, 5]);
         const result = 1;
         return {
           question: `sin²θ + cos²θ = ?`,
@@ -411,10 +397,14 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // tan = sin/cos (ค่าง่ายๆ)
+        // ✅ แก้ไข: ป้องกัน division by zero
         const sin = random(1, 5);
-        const cos = random(1, 5);
-        const tan = Math.round((sin / cos) * 10); // คูณ 10 เพื่อได้จำนวนเต็ม
+        let cos = random(1, 5);
+        
+        // ป้องกัน cos = 0
+        if (cos === 0) cos = 1;
+        
+        const tan = Math.round((sin / cos) * 10);
         return {
           question: `sinθ = ${sin}, cosθ = ${cos}, tanθ × 10 = ?`,
           answer: tan
@@ -423,6 +413,11 @@ export class M3Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('sin²θ + cos²θ = ?', 1, QuestionType.MIXED, level, [0, 1, 2, 3]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -436,7 +431,6 @@ export class M3Generator extends BaseGenerator {
   private generateCircle(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // เส้นรอบวง (ใช้ π = 22/7 หรือ 3.14)
         const r = random(7, 21);
         const circumference = 2 * 22 * r / 7;
         return {
@@ -445,7 +439,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // พื้นที่วงกลม
         const r = random(3, 10);
         const area = 22 * r * r / 7;
         return {
@@ -454,7 +447,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // หารัศมีจากเส้นรอบวง
         const r = randomChoice([7, 14, 21]);
         const c = 2 * 22 * r / 7;
         return {
@@ -463,7 +455,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // เส้นผ่านศูนย์กลาง
         const r = random(5, 20);
         const d = 2 * r;
         return {
@@ -472,7 +463,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // ความยาวส่วนโค้ง (องศาง่ายๆ)
         const r = random(6, 18);
         const angle = randomChoice([90, 180, 270]);
         const arcLength = Math.round(2 * 22 * r * angle / (7 * 360));
@@ -484,6 +474,11 @@ export class M3Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('วงกลมรัศมี 7 เส้นรอบวง = ?', 44, QuestionType.MIXED, level, [40, 42, 44, 46]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -497,7 +492,6 @@ export class M3Generator extends BaseGenerator {
   private generateMixedProblems(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // สมการกำลังสอง + อสมการ
         const x = random(3, 10);
         const x2 = x * x;
         return {
@@ -506,7 +500,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // ระบบสมการ + กำลังสอง
         const a = random(2, 6);
         const b = random(3, 8);
         const sum = a + b;
@@ -517,22 +510,18 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // ตรีโกณ + พีทาโกรัส
         const a = 6;
         const b = 8;
         const c = 10;
         return {
-          question: `สามเหลี่ยม 6-8-10, sin(มุมตรงข้าม 6) = 6/? `,
+          question: `สามเหลี่ยม 6-8-10, sin(มุมตรงข้าม 6) = 6/?`,
           answer: c
         };
       },
       () => {
-        // วงกลม + ความคล้าย
         const r1 = random(3, 8);
         const scale = random(2, 4);
         const r2 = r1 * scale;
-        const area1 = 22 * r1 * r1 / 7;
-        const area2 = 22 * r2 * r2 / 7;
         const areaRatio = scale * scale;
         return {
           question: `วงกลม 2 วง รัศมี ${r1}:${r2} อัตราส่วนพื้นที่ 1:?`,
@@ -540,7 +529,6 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // ฟังก์ชันกำลังสอง + อสมการ
         const x = random(2, 8);
         const y = x * x;
         return {
@@ -551,6 +539,11 @@ export class M3Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('x² = 9 และ x > 0, x = ?', 3, QuestionType.MIXED, level, [2, 3, 4, 5]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,

@@ -31,24 +31,61 @@ export const randomChoices = <T>(array: T[], count: number): T[] => {
 };
 
 /**
- * สร้างตัวเลือกสำหรับโจทย์ปรนัย
+ * ✅ แก้ไข: สร้างตัวเลือกสำหรับโจทย์ปรนัย (รองรับคำตอบลบและป้องกัน infinite loop)
  */
 export const generateChoices = (
   correctAnswer: number,
   count: number = 4,
   range: number = 10
 ): number[] => {
+  // ✅ ป้องกัน invalid input
+  if (!Number.isFinite(correctAnswer)) {
+    console.error('Invalid correctAnswer:', correctAnswer);
+    return [0, 1, 2, 3]; // fallback
+  }
+  
+  if (count < 2) count = 2;
+  if (count > 10) count = 10;
+  if (range < 1) range = 1;
+  
   const choices = new Set<number>();
   choices.add(correctAnswer);
   
+  let attempts = 0;
+  const maxAttempts = count * 20; // ✅ ป้องกัน infinite loop
+  
   // สร้างตัวเลือกผิด
-  while (choices.size < count) {
-    const offset = random(-range, range);
-    const wrongAnswer = correctAnswer + offset;
+  while (choices.size < count && attempts < maxAttempts) {
+    attempts++;
     
-    // หลีกเลี่ยงคำตอบที่เป็นลบหรือ 0 (ถ้าไม่เหมาะสม)
-    if (wrongAnswer > 0 && wrongAnswer !== correctAnswer) {
+    const offset = random(-range, range);
+    let wrongAnswer = correctAnswer + offset;
+    
+    // ✅ แก้ไข: รองรับคำตอบลบ ไม่บังคับให้เป็นบวก
+    // เช็คแค่ว่าไม่เท่ากับคำตอบที่ถูกต้อง และเป็นจำนวนจริง
+    if (wrongAnswer !== correctAnswer && Number.isFinite(wrongAnswer)) {
       choices.add(wrongAnswer);
+    }
+  }
+  
+  // ✅ ถ้ายังได้ไม่ครบ ให้สร้างแบบ manual
+  if (choices.size < count) {
+    console.warn(`Could not generate enough unique choices, creating manual choices`);
+    
+    // สร้างเพิ่มด้วยการบวก/ลบตัวเลขต่างๆ
+    const additions = [1, -1, 2, -2, 5, -5, 10, -10, range, -range];
+    for (const add of additions) {
+      if (choices.size >= count) break;
+      const newChoice = correctAnswer + add;
+      if (newChoice !== correctAnswer && Number.isFinite(newChoice)) {
+        choices.add(newChoice);
+      }
+    }
+    
+    // ถ้ายังไม่ครบ ใส่ตัวเลขสุ่มเลย
+    while (choices.size < count) {
+      const randomNum = random(correctAnswer - range * 2, correctAnswer + range * 2);
+      choices.add(randomNum);
     }
   }
   
@@ -68,13 +105,23 @@ export const generateFractionChoices = (
   const choices = new Set<string>();
   choices.add(correctAnswer);
   
-  while (choices.size < count) {
+  let attempts = 0;
+  const maxAttempts = count * 20;
+  
+  while (choices.size < count && attempts < maxAttempts) {
+    attempts++;
+    
     const wrongNum = numerator + random(-3, 3);
     const wrongDen = denominator + random(-2, 2);
     
     if (wrongNum > 0 && wrongDen > 0) {
       choices.add(`${wrongNum}/${wrongDen}`);
     }
+  }
+  
+  // ถ้าไม่ครบ ใส่เพิ่ม
+  while (choices.size < count) {
+    choices.add(`${random(1, 10)}/${random(1, 10)}`);
   }
   
   return Array.from(choices).sort(() => 0.5 - Math.random());

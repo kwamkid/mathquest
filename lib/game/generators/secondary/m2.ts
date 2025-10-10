@@ -15,55 +15,43 @@ export class M2Generator extends BaseGenerator {
   }
 
   generateQuestion(level: number, config: LevelConfig): Question {
-    // M2 ใช้แค่ MIXED (ตัวเลขล้วน) ไม่มีโจทย์ปัญหา
     return this.generateMixed(level, config);
   }
 
   generateWordProblem(level: number, config: LevelConfig): Question {
-    // M2 ไม่มีโจทย์ปัญหา ให้ส่ง MIXED แทน
     return this.generateMixed(level, config);
   }
 
   getAvailableQuestionTypes(level: number): QuestionType[] {
-    // M2 มีแค่ MIXED (ตัวเลขล้วน)
     return [QuestionType.MIXED];
   }
 
   private generateMixed(level: number, config: LevelConfig): Question {
     if (level <= 15) {
-      // Level 1-15: เลขยกกำลังที่มีเลขชี้กำลังเป็นจำนวนเต็ม (รวมลบ)
       return this.generateIntegerExponents(level, config);
     } else if (level <= 30) {
-      // Level 16-30: พหุนาม (บวก ลบ คูณ)
       return this.generatePolynomials(level, config);
     } else if (level <= 45) {
-      // Level 31-45: การแยกตัวประกอบพหุนาม
       return this.generateFactoring(level, config);
     } else if (level <= 60) {
-      // Level 46-60: สมการเชิงเส้นสองตัวแปร
       return this.generateLinearTwoVariables(level, config);
     } else if (level <= 75) {
-      // Level 61-75: ฟังก์ชันเชิงเส้น
       return this.generateLinearFunctions(level, config);
     } else if (level <= 85) {
-      // Level 76-85: ทฤษฎีบทพีทาโกรัส
       return this.generatePythagorean(level, config);
     } else if (level <= 95) {
-      // Level 86-95: ความน่าจะเป็นเบื้องต้น
       return this.generateProbability(level, config);
     } else {
-      // Level 96-100: โจทย์ผสม
       return this.generateMixedProblems(level, config);
     }
   }
 
-  // Level 1-15: เลขยกกำลังที่มีเลขชี้กำลังเป็นจำนวนเต็ม
+  // Level 1-15: เลขยกกำลัง
   private generateIntegerExponents(level: number, config: LevelConfig): Question {
     const types = [
       () => {
         const base = random(2, 8);
         const exp = random(-3, -1);
-        // คำตอบเป็นเศษส่วน เช่น 2^-2 = 1/4
         const denominator = Math.pow(base, -exp);
         return {
           question: `${base}^${exp} = 1/?`,
@@ -91,7 +79,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // (a^m)^n = a^(mn)
         const base = random(2, 5);
         const exp1 = random(-2, 3);
         const exp2 = random(2, 3);
@@ -104,6 +91,11 @@ export class M2Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('2^2 × 2^3 = 2^?', 5, QuestionType.MIXED, level, [4, 5, 6, 7]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -117,7 +109,6 @@ export class M2Generator extends BaseGenerator {
   private generatePolynomials(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // บวกพหุนาม เช่น (3x + 2) + (2x + 5) = ?x + ?
         const a1 = random(1, 5);
         const b1 = random(1, 10);
         const a2 = random(1, 5);
@@ -130,7 +121,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // ลบพหุนาม
         const a1 = random(3, 8);
         const b1 = random(5, 15);
         const a2 = random(1, 4);
@@ -143,7 +133,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // คูณพหุนามด้วยค่าคงที่
         const mult = random(2, 5);
         const a = random(1, 6);
         const b = random(1, 10);
@@ -155,7 +144,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // พหุนามกำลัง 2
         const a = random(1, 4);
         const b = random(1, 4);
         const c = random(1, 8);
@@ -169,6 +157,11 @@ export class M2Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('2x + 3x = ?x', 5, QuestionType.MIXED, level, [4, 5, 6, 7]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -178,11 +171,10 @@ export class M2Generator extends BaseGenerator {
     );
   }
 
-  // Level 31-45: การแยกตัวประกอบพหุนาม
+  // Level 31-45: การแยกตัวประกอบ
   private generateFactoring(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // ดึงตัวประกอบร่วม
         const common = random(2, 6);
         const a = random(2, 8);
         const b = random(3, 10);
@@ -192,7 +184,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // x² - a² = (x + a)(x - ?)
         const a = random(2, 10);
         return {
           question: `x² - ${a*a} = (x + ${a})(x - ?)`,
@@ -200,7 +191,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // แยกตัวประกอบ x² + bx + c
         const p = random(2, 8);
         const q = random(1, 7);
         const b = p + q;
@@ -211,7 +201,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // กำลังสองสมบูรณ์
         const a = random(2, 6);
         const b = 2 * a;
         const c = a * a;
@@ -223,6 +212,11 @@ export class M2Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('6x + 9 = ?(2x + 3)', 3, QuestionType.MIXED, level, [2, 3, 4, 5]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -232,11 +226,10 @@ export class M2Generator extends BaseGenerator {
     );
   }
 
-  // Level 46-60: สมการเชิงเส้นสองตัวแปร
+  // Level 46-60: สมการสองตัวแปร
   private generateLinearTwoVariables(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // แทนค่า x หา y
         const x = random(1, 10);
         const y = random(1, 10);
         const a = random(2, 5);
@@ -248,7 +241,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // แทนค่า y หา x
         const x = random(1, 10);
         const y = random(1, 10);
         const a = random(1, 5);
@@ -260,7 +252,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // ระบบสมการง่าย (บวก)
         const x = random(2, 8);
         const y = random(1, 7);
         const sum = x + y;
@@ -271,7 +262,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // หาค่า x หรือ y จากระบบสมการ
         const x = random(1, 6);
         const y = random(1, 5);
         const eq1 = 2 * x + y;
@@ -284,6 +274,11 @@ export class M2Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('x + y = 10, x = 6, y = ?', 4, QuestionType.MIXED, level, [3, 4, 5, 6]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -293,11 +288,10 @@ export class M2Generator extends BaseGenerator {
     );
   }
 
-  // Level 61-75: ฟังก์ชันเชิงเส้น
+  // Level 61-75: ฟังก์ชันเชิงเส้น (✅ แก้ไข division by zero)
   private generateLinearFunctions(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // f(x) = ax + b, หา f(x)
         const a = random(2, 8);
         const b = random(-10, 15);
         const x = random(-5, 10);
@@ -308,7 +302,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // หา x จาก f(x)
         const a = random(2, 6);
         const b = random(-8, 12);
         const y = random(10, 50);
@@ -320,19 +313,33 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // หาความชัน
-        const x1 = random(0, 5);
+        // ✅ แก้ไข: ป้องกัน division by zero
+        let x1 = random(0, 5);
+        let x2 = random(6, 10);
+        // ตรวจสอบว่า x1 != x2
+        if (x1 === x2) x2 = x1 + random(1, 5);
+        
         const y1 = random(0, 10);
-        const x2 = random(6, 10);
         const y2 = random(12, 25);
-        const slope = Math.floor((y2 - y1) / (x2 - x1));
+        
+        const deltaX = x2 - x1;
+        const deltaY = y2 - y1;
+        
+        // ✅ ป้องกัน division by zero
+        if (deltaX === 0) {
+          return {
+            question: `ผ่านจุด (1, 5) และ (3, 11) ความชัน = ?`,
+            answer: 3
+          };
+        }
+        
+        const slope = Math.floor(deltaY / deltaX);
         return {
           question: `ผ่านจุด (${x1}, ${y1}) และ (${x2}, ${y2}) ความชัน = ?`,
           answer: slope
         };
       },
       () => {
-        // หาจุดตัดแกน y
         const m = random(2, 6);
         const x0 = random(1, 5);
         const y0 = random(5, 20);
@@ -345,6 +352,12 @@ export class M2Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      console.error('Invalid answer in generateLinearFunctions:', type.answer);
+      return this.createQuestion('f(x) = 2x + 3, f(5) = ?', 13, QuestionType.MIXED, level, [11, 12, 13, 14]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -358,7 +371,6 @@ export class M2Generator extends BaseGenerator {
   private generatePythagorean(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // หาด้านตรงข้ามมุมฉาก (3-4-5)
         const a = 3;
         const b = 4;
         const c = 5;
@@ -368,7 +380,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // หาด้านตรงข้ามมุมฉาก (5-12-13)
         const a = 5;
         const b = 12;
         const c = 13;
@@ -378,7 +389,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // หาด้านตรงข้ามมุมฉาก (8-15-17)
         const a = 8;
         const b = 15;
         const c = 17;
@@ -388,7 +398,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // หาด้านประกอบมุมฉาก
         const c = 10;
         const a = 6;
         const b = 8;
@@ -398,7 +407,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // a² + b² = c²
         const a = random(3, 12);
         const answer = a * a;
         return {
@@ -409,6 +417,11 @@ export class M2Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('3² + 4² = ?²', 5, QuestionType.MIXED, level, [4, 5, 6, 7]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -418,11 +431,10 @@ export class M2Generator extends BaseGenerator {
     );
   }
 
-  // Level 86-95: ความน่าจะเป็นเบื้องต้น
+  // Level 86-95: ความน่าจะเป็น
   private generateProbability(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // ความน่าจะเป็นของลูกเต๋า
         const favorable = random(1, 3);
         const total = 6;
         const percentage = Math.round((favorable / total) * 100);
@@ -434,9 +446,8 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // ความน่าจะเป็นของการ์ด
         const total = 52;
-        const favorable = 13; // 1 ชุด
+        const favorable = 13;
         const percentage = Math.round((favorable / total) * 100);
         return {
           question: `จั่วไพ่ 1 ใบจาก 52 ใบ ความน่าจะเป็นได้โพดำ = ?%`,
@@ -444,18 +455,13 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // ความน่าจะเป็นของเหรียญ
-        const flips = 2;
-        const favorable = 1; // HH หรือ TT
-        const total = 4; // HH, HT, TH, TT
-        const percentage = Math.round((favorable / total) * 100);
+        const percentage = 25;
         return {
           question: `โยนเหรียญ 2 ครั้ง ความน่าจะเป็นได้หัว 2 ครั้ง = ?%`,
           answer: percentage
         };
       },
       () => {
-        // ความน่าจะเป็นง่ายๆ
         const red = random(5, 15);
         const blue = random(5, 15);
         const total = red + blue;
@@ -468,6 +474,11 @@ export class M2Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('ทอยลูกเต๋า ความน่าจะเป็นได้หน้า 6 = ?%', 17, QuestionType.MIXED, level, [15, 16, 17, 18]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -481,7 +492,6 @@ export class M2Generator extends BaseGenerator {
   private generateMixedProblems(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // เลขยกกำลัง + พหุนาม
         const base = random(2, 4);
         const exp = random(2, 3);
         const a = random(2, 5);
@@ -493,7 +503,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // ฟังก์ชันเชิงเส้นผสม
         const m1 = random(2, 4);
         const m2 = random(1, 3);
         const x = random(1, 5);
@@ -504,7 +513,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // พีทาโกรัสง่ายๆ
         const squares = [9, 16, 25, 36, 49, 64, 81, 100];
         const a2 = randomChoice(squares);
         const b2 = randomChoice(squares);
@@ -515,7 +523,6 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // แยกตัวประกอบ + แทนค่า
         const common = random(3, 7);
         const x = random(2, 6);
         const answer = common * x;
@@ -527,6 +534,11 @@ export class M2Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    if (!Number.isFinite(type.answer)) {
+      return this.createQuestion('2^2 + 5 = ?', 9, QuestionType.MIXED, level, [8, 9, 10, 11]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,

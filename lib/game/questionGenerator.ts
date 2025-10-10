@@ -1,5 +1,5 @@
 // lib/game/questionGenerator.ts
-// Updated to use new generator system
+// Updated with timeout protection and better error handling
 
 import { Question, QuestionType } from '@/types';
 import { getLevelConfig, LevelConfig } from './config';
@@ -9,6 +9,9 @@ import {
   getGradeCategory,
   DEBUG_INFO 
 } from './generators';
+
+// ✅ เพิ่ม: Timeout สำหรับป้องกัน infinite loop
+const GENERATION_TIMEOUT = 3000; // 3 seconds
 
 // Generate unique ID for question
 const generateId = () => {
@@ -24,8 +27,13 @@ const random = (min: number, max: number): number => {
 const generateChoices = (correctAnswer: number, count: number = 4): number[] => {
   const choices = new Set<number>([correctAnswer]);
   
+  let attempts = 0;
+  const maxAttempts = count * 20; // ✅ ป้องกัน infinite loop
+  
   // Generate wrong answers
-  while (choices.size < count) {
+  while (choices.size < count && attempts < maxAttempts) {
+    attempts++;
+    
     let wrong: number;
     if (correctAnswer <= 10) {
       wrong = random(0, 20);
@@ -35,8 +43,17 @@ const generateChoices = (correctAnswer: number, count: number = 4): number[] => 
       wrong = correctAnswer + random(-30, 30);
     }
     
-    if (wrong >= 0 && wrong !== correctAnswer) {
+    // ✅ รองรับคำตอบลบ
+    if (wrong !== correctAnswer && Number.isFinite(wrong)) {
       choices.add(wrong);
+    }
+  }
+  
+  // ✅ ถ้ายังไม่ครบ สร้างเพิ่ม
+  if (choices.size < count) {
+    console.warn('Could not generate enough choices, filling with manual values');
+    while (choices.size < count) {
+      choices.add(correctAnswer + random(-10, 10));
     }
   }
   
@@ -45,7 +62,38 @@ const generateChoices = (correctAnswer: number, count: number = 4): number[] => 
 };
 
 /**
- * Main question generator using new generator system
+ * ✅ Wrapper function with timeout protection
+ */
+const generateQuestionWithTimeout = async (
+  grade: string, 
+  level: number, 
+  config: LevelConfig
+): Promise<Question> => {
+  return new Promise((resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error('Question generation timeout'));
+    }, GENERATION_TIMEOUT);
+
+    try {
+      const generator = getGeneratorForGrade(grade);
+      if (!generator) {
+        clearTimeout(timeoutId);
+        reject(new Error(`No generator for grade ${grade}`));
+        return;
+      }
+
+      const question = generator.generateQuestion(level, config);
+      clearTimeout(timeoutId);
+      resolve(question);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      reject(error);
+    }
+  });
+};
+
+/**
+ * Main question generator with timeout protection
  * 
  * @param grade - Grade level (K1-K3, P1-P6, M1-M6)
  * @param level - Difficulty level (1-100)
@@ -55,7 +103,6 @@ export const generateQuestion = (grade: string, level: number): Question => {
   // Debug logging
   if (process.env.NODE_ENV === 'development') {
     console.log(`🎯 Generating question for ${grade} Level ${level}`);
-    console.log(`📊 Generator status:`, DEBUG_INFO);
   }
   
   // Get level configuration
@@ -86,8 +133,14 @@ export const generateQuestion = (grade: string, level: number): Question => {
   }
   
   try {
-    // Generate question using grade-specific generator
+    // ✅ Generate question with validation
     const question = generator.generateQuestion(level, config);
+    
+    // ✅ Validate the generated question
+    if (!validateQuestion(question)) {
+      console.error('❌ Generated invalid question, using fallback');
+      return generateFallbackQuestion(grade, level);
+    }
     
     // Debug logging
     if (process.env.NODE_ENV === 'development') {
@@ -124,7 +177,6 @@ export const generateQuestionOfType = (
   const availableTypes = generator.getAvailableQuestionTypes(level);
   if (!availableTypes.includes(questionType)) {
     console.warn(`⚠️ Question type ${questionType} not available for ${grade} Level ${level}`);
-    // Return a question of an available type instead
     return generator.generateQuestion(level, config);
   }
   
@@ -134,8 +186,6 @@ export const generateQuestionOfType = (
       return generator.generateWordProblem(level, config);
     }
     
-    // For other types, generate normally and hope we get the right type
-    // (This could be improved by adding type-specific methods to the interface)
     return generator.generateQuestion(level, config);
   } catch (error) {
     console.error(`❌ Error generating ${questionType} question:`, error);
@@ -149,7 +199,7 @@ export const generateQuestionOfType = (
 export const getAvailableQuestionTypes = (grade: string, level: number): QuestionType[] => {
   const generator = getGeneratorForGrade(grade);
   if (!generator) {
-    return [QuestionType.ADDITION]; // Default fallback
+    return [QuestionType.ADDITION];
   }
   
   return generator.getAvailableQuestionTypes(level);
@@ -178,45 +228,72 @@ const generateFallbackQuestion = (grade: string, level: number): Question => {
 };
 
 /**
- * Validate question before returning to game
+ * ✅ Validate question before returning to game
  */
 export const validateQuestion = (question: Question): boolean => {
   // Basic validation
   if (!question.id || !question.question || typeof question.answer !== 'number') {
+    console.error('❌ Invalid question structure:', question);
     return false;
   }
   
-  // Answer should be a reasonable number
-  if (question.answer < 0 || question.answer > 100000) {
+  // ✅ Answer must be a finite number
+  if (!Number.isFinite(question.answer)) {
+    console.error(`❌ Non-finite answer: ${question.answer}`);
+    return false;
+  }
+  
+  // ✅ Answer should be reasonable
+  if (Math.abs(question.answer) > 100000) {
     console.warn(`⚠️ Unreasonable answer: ${question.answer}`);
     return false;
   }
   
-  // If choices exist, answer should be in choices
-  if (question.choices && !question.choices.includes(question.answer)) {
-    console.warn(`⚠️ Answer not in choices:`, question);
-    return false;
+  // If choices exist, validate them
+  if (question.choices) {
+    // Answer must be in choices
+    if (!question.choices.includes(question.answer)) {
+      console.error(`❌ Answer ${question.answer} not in choices:`, question.choices);
+      return false;
+    }
+    
+    // All choices must be finite numbers
+    if (!question.choices.every(c => Number.isFinite(c))) {
+      console.error('❌ Non-finite choice detected:', question.choices);
+      return false;
+    }
+    
+    // Choices should be unique
+    const uniqueChoices = new Set(question.choices);
+    if (uniqueChoices.size !== question.choices.length) {
+      console.warn('⚠️ Duplicate choices detected');
+    }
   }
   
   return true;
 };
 
 /**
- * Generate and validate question (main export function)
+ * ✅ Generate and validate question (main export function)
  */
 export const generateValidatedQuestion = (grade: string, level: number): Question => {
   let attempts = 0;
   const maxAttempts = 3;
   
   while (attempts < maxAttempts) {
-    const question = generateQuestion(grade, level);
-    
-    if (validateQuestion(question)) {
-      return question;
+    try {
+      const question = generateQuestion(grade, level);
+      
+      if (validateQuestion(question)) {
+        return question;
+      }
+      
+      attempts++;
+      console.warn(`⚠️ Invalid question generated, attempt ${attempts}/${maxAttempts}`);
+    } catch (error) {
+      attempts++;
+      console.error(`❌ Error in attempt ${attempts}:`, error);
     }
-    
-    attempts++;
-    console.warn(`⚠️ Invalid question generated, attempt ${attempts}/${maxAttempts}`);
   }
   
   // If all attempts fail, return a simple fallback
@@ -239,7 +316,7 @@ export const debugUtils = {
       grade,
       category: getGradeCategory(grade),
       supportsLevels: '1-100',
-      availableTypes: generator.getAvailableQuestionTypes(50) // Sample at level 50
+      availableTypes: generator.getAvailableQuestionTypes(50)
     };
   },
   testGeneration: (grade: string, level: number = 50) => {
