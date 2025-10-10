@@ -16,32 +16,25 @@ export class M4Generator extends BaseGenerator {
   }
 
   generateQuestion(level: number, config: LevelConfig): Question {
-    // M4 จะเน้นแค่โจทย์ตัวเลขล้วนๆ ไม่มี word problems
     return this.generateMixed(level, config);
   }
 
   generateWordProblem(level: number, config: LevelConfig): Question {
-    // ไม่ทำ word problem - return โจทย์ตัวเลขแทน
     return this.generateMixed(level, config);
   }
 
   getAvailableQuestionTypes(level: number): QuestionType[] {
-    // ทุก level ใช้ MIXED เพราะเป็นโจทย์ตัวเลขล้วนๆ
     return [QuestionType.MIXED];
   }
 
   private generateMixed(level: number, config: LevelConfig): Question {
     if (level <= 25) {
-      // Level 1-25: ลอการิทึม
       return this.generateLogarithms(level, config);
     } else if (level <= 50) {
-      // Level 26-50: เมทริกซ์เบื้องต้น
       return this.generateMatrices(level, config);
     } else if (level <= 75) {
-      // Level 51-75: ตรีโกณมิติขั้นสูง
       return this.generateAdvancedTrigonometry(level, config);
     } else {
-      // Level 76-100: เวกเตอร์เบื้องต้น
       return this.generateVectors(level, config);
     }
   }
@@ -55,9 +48,22 @@ export class M4Generator extends BaseGenerator {
           const base = randomChoice(bases);
           const power = random(1, 4);
           const value = Math.pow(base, power);
+          
+          // ✅ ป้องกัน invalid log
+          if (value <= 0 || base <= 0 || base === 1) {
+            return { question: 'log₂(8) = ?', answer: 3 };
+          }
+          
+          const answer = Math.log(value) / Math.log(base);
+          
+          // ✅ ตรวจสอบว่าได้จำนวนเต็ม
+          if (!Number.isFinite(answer) || Math.abs(answer - Math.round(answer)) > 0.01) {
+            return { question: 'log₂(8) = ?', answer: 3 };
+          }
+          
           return {
             question: `log₂(${value}) = ?`,
-            answer: Math.log(value) / Math.log(2)
+            answer: Math.round(answer)
           };
         }
       },
@@ -110,6 +116,13 @@ export class M4Generator extends BaseGenerator {
     ];
     
     const logType = randomChoice(logTypes).generate();
+    
+    // ✅ Validate answer
+    if (!Number.isFinite(logType.answer)) {
+      console.error('Invalid answer in generateLogarithms:', logType.answer);
+      return this.createQuestion('log₂(8) = ?', 3, QuestionType.MIXED, level, [2, 3, 4, 5]);
+    }
+    
     const answer = Math.round(logType.answer);
     
     return this.createQuestion(
@@ -117,7 +130,7 @@ export class M4Generator extends BaseGenerator {
       answer,
       QuestionType.MIXED,
       level,
-      generateChoices(answer, 4, Math.max(2, Math.floor(answer * 0.5)))
+      generateChoices(answer, 4, Math.max(2, Math.floor(Math.abs(answer) * 0.5)))
     );
   }
 
@@ -191,6 +204,12 @@ export class M4Generator extends BaseGenerator {
     
     const matrixType = randomChoice(matrixTypes).generate();
     
+    // ✅ Validate answer
+    if (!Number.isFinite(matrixType.answer)) {
+      console.error('Invalid answer in generateMatrices:', matrixType.answer);
+      return this.createQuestion('[2 3] + [4 5] = [? ...]', 6, QuestionType.MIXED, level, [5, 6, 7, 8]);
+    }
+    
     return this.createQuestion(
       matrixType.question,
       matrixType.answer,
@@ -209,16 +228,15 @@ export class M4Generator extends BaseGenerator {
           const angle = randomChoice(angles);
           const doubleAngle = 2 * angle;
           
-          // sin(2θ) = 2sin(θ)cos(θ)
           const sinValues: Record<number, number> = {
-            60: 87,  // sin(60°) ≈ 0.866 → 87%
-            90: 100, // sin(90°) = 1 → 100%
-            120: 87  // sin(120°) ≈ 0.866 → 87%
+            60: 87,
+            90: 100,
+            120: 87
           };
           
           return {
             question: `sin(${doubleAngle}°) = ? (%)`,
-            answer: sinValues[doubleAngle] || 0
+            answer: sinValues[doubleAngle] || 50
           };
         }
       },
@@ -229,11 +247,11 @@ export class M4Generator extends BaseGenerator {
           const angle = randomChoice(angles);
           
           const cos2Values: Record<number, number> = {
-            0: 100,   // cos²(0°) = 1 → 100%
-            30: 75,   // cos²(30°) = 0.75 → 75%
-            45: 50,   // cos²(45°) = 0.5 → 50%
-            60: 25,   // cos²(60°) = 0.25 → 25%
-            90: 0     // cos²(90°) = 0 → 0%
+            0: 100,
+            30: 75,
+            45: 50,
+            60: 25,
+            90: 0
           };
           
           return {
@@ -244,26 +262,35 @@ export class M4Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // tan(α + β) where tan(α) and tan(β) are known
+          // tan(α + β)
           const tanA = random(1, 3);
           const tanB = random(1, 2);
-          // tan(α + β) = (tanα + tanβ)/(1 - tanα×tanβ)
+          
           const numerator = tanA + tanB;
           const denominator = 1 - tanA * tanB;
           
-          if (denominator !== 0) {
-            const result = Math.round(numerator / denominator);
-            return {
-              question: `tan(α) = ${tanA}, tan(β) = ${tanB}, tan(α+β) = ?`,
-              answer: result
-            };
-          } else {
-            // Fallback
+          // ✅ ป้องกัน division by zero
+          if (denominator === 0 || Math.abs(denominator) < 0.1) {
             return {
               question: `tan(45°) = ?`,
               answer: 1
             };
           }
+          
+          const result = numerator / denominator;
+          
+          // ✅ ตรวจสอบว่าได้จำนวนที่สมเหตุสมผล
+          if (!Number.isFinite(result) || Math.abs(result) > 100) {
+            return {
+              question: `tan(45°) = ?`,
+              answer: 1
+            };
+          }
+          
+          return {
+            question: `tan(α) = ${tanA}, tan(β) = ${tanB}, tan(α+β) = ?`,
+            answer: Math.round(result)
+          };
         }
       },
       {
@@ -273,8 +300,8 @@ export class M4Generator extends BaseGenerator {
           const angle = randomChoice(angles);
           
           const secValues: Record<number, number> = {
-            0: 100,   // sec(0°) = 1 → 100%
-            60: 200   // sec(60°) = 2 → 200%
+            0: 100,
+            60: 200
           };
           
           return {
@@ -285,10 +312,27 @@ export class M4Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // Pythagorean identity: sin²θ + cos²θ = 1
-          const sin = random(3, 8) / 10; // 0.3 to 0.8
+          // Pythagorean identity
+          const sin = random(3, 8) / 10;
           const cos2 = 1 - sin * sin;
+          
+          // ✅ ป้องกัน sqrt ของจำนวนลบ
+          if (cos2 < 0) {
+            return {
+              question: `sin(θ) = 60%, cos(θ) = ? (%)`,
+              answer: 80
+            };
+          }
+          
           const cos = Math.round(Math.sqrt(cos2) * 100);
+          
+          // ✅ Validate
+          if (!Number.isFinite(cos) || cos < 0 || cos > 100) {
+            return {
+              question: `sin(θ) = 60%, cos(θ) = ? (%)`,
+              answer: 80
+            };
+          }
           
           return {
             question: `sin(θ) = ${Math.round(sin * 100)}%, cos(θ) = ? (%)`,
@@ -300,12 +344,18 @@ export class M4Generator extends BaseGenerator {
     
     const trigType = randomChoice(trigTypes).generate();
     
+    // ✅ Validate answer
+    if (!Number.isFinite(trigType.answer)) {
+      console.error('Invalid answer in generateAdvancedTrigonometry:', trigType.answer);
+      return this.createQuestion('sin(90°) = ? (%)', 100, QuestionType.MIXED, level, [87, 90, 93, 100]);
+    }
+    
     return this.createQuestion(
       trigType.question,
       trigType.answer,
       QuestionType.MIXED,
       level,
-      generateChoices(trigType.answer, 4, Math.max(10, Math.floor(trigType.answer * 0.2)))
+      generateChoices(trigType.answer, 4, Math.max(10, Math.floor(Math.abs(trigType.answer) * 0.2)))
     );
   }
 
@@ -317,6 +367,15 @@ export class M4Generator extends BaseGenerator {
           const x = random(3, 12);
           const y = random(4, 9);
           const magnitude = Math.round(Math.sqrt(x * x + y * y));
+          
+          // ✅ Validate
+          if (!Number.isFinite(magnitude) || magnitude <= 0) {
+            return {
+              question: `|⟨3, 4⟩| = ?`,
+              answer: 5
+            };
+          }
+          
           return {
             question: `|⟨${x}, ${y}⟩| = ?`,
             answer: magnitude
@@ -325,7 +384,7 @@ export class M4Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // Dot product a·b = a₁b₁ + a₂b₂
+          // Dot product
           const a1 = random(-5, 8);
           const a2 = random(-4, 6);
           const b1 = random(-3, 7);
@@ -366,13 +425,13 @@ export class M4Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // Unit vector (direction only)
+          // Unit vector
           const angle = randomChoice([0, 90, 180, 270]);
           const unitVectors: Record<number, { x: number, y: number }> = {
-            0: { x: 100, y: 0 },    // (1, 0) → (100, 0)
-            90: { x: 0, y: 100 },   // (0, 1) → (0, 100)
-            180: { x: -100, y: 0 }, // (-1, 0) → (-100, 0)
-            270: { x: 0, y: -100 }  // (0, -1) → (0, -100)
+            0: { x: 100, y: 0 },
+            90: { x: 0, y: 100 },
+            180: { x: -100, y: 0 },
+            270: { x: 0, y: -100 }
           };
           
           const result = unitVectors[angle].x;
@@ -385,6 +444,12 @@ export class M4Generator extends BaseGenerator {
     ];
     
     const vectorType = randomChoice(vectorTypes).generate();
+    
+    // ✅ Validate answer
+    if (!Number.isFinite(vectorType.answer)) {
+      console.error('Invalid answer in generateVectors:', vectorType.answer);
+      return this.createQuestion('⟨3, 4⟩ · ⟨2, 1⟩ = ?', 10, QuestionType.MIXED, level, [8, 9, 10, 11]);
+    }
     
     return this.createQuestion(
       vectorType.question,

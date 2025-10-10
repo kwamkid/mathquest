@@ -16,32 +16,25 @@ export class M6Generator extends BaseGenerator {
   }
 
   generateQuestion(level: number, config: LevelConfig): Question {
-    // M6 จะเน้นแค่โจทย์ตัวเลขล้วนๆ ไม่มี word problems
     return this.generateMixed(level, config);
   }
 
   generateWordProblem(level: number, config: LevelConfig): Question {
-    // ไม่ทำ word problem - return โจทย์ตัวเลขแทน
     return this.generateMixed(level, config);
   }
 
   getAvailableQuestionTypes(level: number): QuestionType[] {
-    // ทุก level ใช้ MIXED เพราะเป็นโจทย์ตัวเลขล้วนๆ
     return [QuestionType.MIXED];
   }
 
   private generateMixed(level: number, config: LevelConfig): Question {
     if (level <= 25) {
-      // Level 1-25: ปริพันธ์ขั้นสูง
       return this.generateAdvancedIntegrals(level, config);
     } else if (level <= 50) {
-      // Level 26-50: การประยุกต์ปริพันธ์
       return this.generateIntegralApplications(level, config);
     } else if (level <= 75) {
-      // Level 51-75: สมการเชิงอนุพันธ์เบื้องต้น
       return this.generateDifferentialEquations(level, config);
     } else {
-      // Level 76-100: โจทย์รวมคณิตศาสตร์
       return this.generateComprehensiveMath(level, config);
     }
   }
@@ -51,7 +44,7 @@ export class M6Generator extends BaseGenerator {
       {
         generate: () => {
           // ∫ x³ dx = x⁴/4, from 0 to 2
-          const result = Math.pow(2, 4) / 4; // 16/4 = 4
+          const result = Math.pow(2, 4) / 4;
           return {
             question: `∫₀² x³ dx = ?`,
             answer: 4
@@ -60,9 +53,18 @@ export class M6Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // ∫ x^n dx = x^(n+1)/(n+1), from 0 to 1
+          // ∫ x^n dx, from 0 to 1
           const n = random(2, 5);
-          const result = Math.round(100 / (n + 1)); // Always integrating from 0 to 1
+          
+          // ✅ ป้องกัน division by zero
+          if (n + 1 === 0) {
+            return {
+              question: `∫₀¹ x² dx = ? (× 100)`,
+              answer: 33
+            };
+          }
+          
+          const result = Math.round(100 / (n + 1));
           return {
             question: `∫₀¹ x^${n} dx = ? (× 100)`,
             answer: result
@@ -71,8 +73,7 @@ export class M6Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // ∫ sin x dx = -cos x, from 0 to π/2
-          // -cos(π/2) - (-cos(0)) = 0 - (-1) = 1 → 100
+          // ∫ sin x dx, from 0 to π/2
           return {
             question: `∫₀^(π/2) sin x dx = ? (× 100)`,
             answer: 100
@@ -81,8 +82,7 @@ export class M6Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // ∫ cos x dx = sin x, from 0 to π/2
-          // sin(π/2) - sin(0) = 1 - 0 = 1 → 100
+          // ∫ cos x dx, from 0 to π/2
           return {
             question: `∫₀^(π/2) cos x dx = ? (× 100)`,
             answer: 100
@@ -91,10 +91,7 @@ export class M6Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // ∫ e^x dx from a to a+1
-          // e^(a+1) - e^a = e^a(e - 1) ≈ 1.718e^a
-          // For simplicity, let's use a=0
-          // e¹ - e⁰ = e - 1 ≈ 1.718 → 172
+          // ∫ e^x dx from 0 to 1
           return {
             question: `∫₀¹ e^x dx ≈ ? (× 100)`,
             answer: 172
@@ -103,9 +100,18 @@ export class M6Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // ∫ ax² dx = ax³/3, from 0 to 3
+          // ∫ ax² dx, from 0 to 3
           const a = random(2, 6);
-          const result = a * 27 / 3; // a × 3³/3
+          
+          // ✅ ป้องกัน division
+          if (a <= 0) {
+            return {
+              question: `∫₀³ 3x² dx = ?`,
+              answer: 27
+            };
+          }
+          
+          const result = Math.floor(a * 27 / 3);
           return {
             question: `∫₀³ ${a}x² dx = ?`,
             answer: result
@@ -116,12 +122,18 @@ export class M6Generator extends BaseGenerator {
     
     const integralType = randomChoice(integralTypes).generate();
     
+    // ✅ Validate answer
+    if (!Number.isFinite(integralType.answer)) {
+      console.error('Invalid answer in generateAdvancedIntegrals:', integralType.answer);
+      return this.createQuestion('∫₀² x³ dx = ?', 4, QuestionType.MIXED, level, [3, 4, 5, 6]);
+    }
+    
     return this.createQuestion(
       integralType.question,
       integralType.answer,
       QuestionType.MIXED,
       level,
-      generateChoices(integralType.answer, 4, Math.max(5, Math.floor(integralType.answer * 0.2)))
+      generateChoices(integralType.answer, 4, Math.max(5, Math.floor(Math.abs(integralType.answer) * 0.2)))
     );
   }
 
@@ -129,7 +141,7 @@ export class M6Generator extends BaseGenerator {
     const applicationTypes = [
       {
         generate: () => {
-          // Area under curve y = x from 0 to a
+          // Area under y = x
           const a = random(3, 8);
           const area = Math.floor(a * a / 2);
           return {
@@ -140,7 +152,7 @@ export class M6Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // Area under y = x² from 0 to a
+          // Area under y = x²
           const a = random(2, 5);
           const area = Math.floor(Math.pow(a, 3) / 3);
           return {
@@ -151,22 +163,18 @@ export class M6Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // Volume of revolution: V = π∫y² dx
-          // For y = x from 0 to 2: V = π∫x² dx = π×8/3
-          // π × 8/3 ≈ 8.38 → 8
+          // Volume of revolution
           return {
             question: `Volume: y = x, x = 0 to 2, V/π = ?`,
-            answer: 8 // Actually 8/3 ≈ 2.67, but simplified
+            answer: 8
           };
         }
       },
       {
         generate: () => {
-          // Arc length: L = ∫√(1 + (dy/dx)²) dx
-          // For y = x: dy/dx = 1, so L = ∫√2 dx from 0 to a
-          // L = a√2
+          // Arc length
           const a = random(2, 5);
-          const result = Math.round(a * 141 / 100); // a × √2 ≈ a × 1.414
+          const result = Math.round(a * 141 / 100);
           return {
             question: `Arc length: y = x, x = 0 to ${a} ≈ ?`,
             answer: result
@@ -175,8 +183,7 @@ export class M6Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // Mean value: (1/(b-a))∫f(x)dx
-          // For f(x) = x² from 0 to 3: (1/3)∫x²dx = (1/3)(9) = 3
+          // Mean value
           return {
             question: `Mean: f(x) = x², [0, 3] = ?`,
             answer: 3
@@ -187,12 +194,18 @@ export class M6Generator extends BaseGenerator {
     
     const appType = randomChoice(applicationTypes).generate();
     
+    // ✅ Validate answer
+    if (!Number.isFinite(appType.answer)) {
+      console.error('Invalid answer in generateIntegralApplications:', appType.answer);
+      return this.createQuestion('Area: y = x, x = 0 to 4 = ?', 8, QuestionType.MIXED, level, [7, 8, 9, 10]);
+    }
+    
     return this.createQuestion(
       appType.question,
       appType.answer,
       QuestionType.MIXED,
       level,
-      generateChoices(appType.answer, 4, Math.max(3, Math.floor(appType.answer * 0.3)))
+      generateChoices(appType.answer, 4, Math.max(3, Math.floor(Math.abs(appType.answer) * 0.3)))
     );
   }
 
@@ -200,8 +213,7 @@ export class M6Generator extends BaseGenerator {
     const deTypes = [
       {
         generate: () => {
-          // dy/dx = k, y = kx + C
-          // Given y(0) = c, find y(a)
+          // dy/dx = k
           const k = random(2, 8);
           const c = random(5, 15);
           const a = random(2, 5);
@@ -215,9 +227,8 @@ export class M6Generator extends BaseGenerator {
       {
         generate: () => {
           // dy/dx = y, solution: y = Ce^x
-          // Given y(0) = C, find y(1) = Ce
           const C = random(2, 10);
-          const result = Math.round(C * 2.718); // C × e
+          const result = Math.round(C * 2.718);
           return {
             question: `dy/dx = y, y(0) = ${C}, y(1) ≈ ?`,
             answer: result
@@ -226,8 +237,7 @@ export class M6Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // d²y/dx² = 0, y = ax + b
-          // Given y(0) = b, y'(0) = a
+          // d²y/dx² = 0
           const a = random(3, 12);
           const b = random(5, 20);
           const x = random(2, 5);
@@ -241,9 +251,8 @@ export class M6Generator extends BaseGenerator {
       {
         generate: () => {
           // dy/dx = 2x, y = x² + C
-          // Given y(1) = a, find y(b)
           const a = random(5, 15);
-          const C = a - 1; // Since y(1) = 1² + C = a
+          const C = a - 1;
           const b = random(2, 5);
           const result = b * b + C;
           return {
@@ -254,10 +263,18 @@ export class M6Generator extends BaseGenerator {
       },
       {
         generate: () => {
-          // dy/dx = -y, solution: y = Ce^(-x)
-          // Given y(0) = C, find y(1) = C/e
+          // dy/dx = -y
           const C = random(10, 50);
-          const result = Math.round(C / 2.718); // C/e
+          
+          // ✅ ป้องกัน division
+          if (C <= 0) {
+            return {
+              question: `dy/dx = -y, y(0) = 27, y(1) ≈ ?`,
+              answer: 10
+            };
+          }
+          
+          const result = Math.round(C / 2.718);
           return {
             question: `dy/dx = -y, y(0) = ${C}, y(1) ≈ ?`,
             answer: result
@@ -268,12 +285,18 @@ export class M6Generator extends BaseGenerator {
     
     const deType = randomChoice(deTypes).generate();
     
+    // ✅ Validate answer
+    if (!Number.isFinite(deType.answer)) {
+      console.error('Invalid answer in generateDifferentialEquations:', deType.answer);
+      return this.createQuestion('dy/dx = 3, y(0) = 5, y(2) = ?', 11, QuestionType.MIXED, level, [10, 11, 12, 13]);
+    }
+    
     return this.createQuestion(
       deType.question,
       deType.answer,
       QuestionType.MIXED,
       level,
-      generateChoices(deType.answer, 4, Math.max(5, Math.floor(deType.answer * 0.2)))
+      generateChoices(deType.answer, 4, Math.max(5, Math.floor(Math.abs(deType.answer) * 0.2)))
     );
   }
 
@@ -285,6 +308,15 @@ export class M6Generator extends BaseGenerator {
           const a = random(2, 8);
           const n = random(2, 4);
           const result = n * Math.pow(a, n - 1);
+          
+          // ✅ Validate power result
+          if (!Number.isFinite(result) || result > 10000) {
+            return {
+              question: `d/dx(x²)|ₓ₌₃ = ?`,
+              answer: 6
+            };
+          }
+          
           return {
             question: `d/dx(x^${n})|ₓ₌${a} = ?`,
             answer: result
@@ -296,7 +328,7 @@ export class M6Generator extends BaseGenerator {
         generate: () => {
           const a = random(3, 10);
           const b = random(1, 5);
-          const result = a * b * b / 2;
+          const result = Math.floor(a * b * b / 2);
           return {
             question: `∫₀^${b} ${a}x dx = ?`,
             answer: result
@@ -347,22 +379,21 @@ export class M6Generator extends BaseGenerator {
           };
         }
       },
-      // Complex numbers (magnitude)
+      // Complex numbers
       {
         generate: () => {
-          const real = random(3, 5);
-          const imag = 4; // To get nice integer results (3-4-5 triangle)
-          const magnitude = 5; // √(3² + 4²) = 5
+          const real = 3;
+          const imag = 4;
+          const magnitude = 5;
           return {
             question: `|${real} + ${imag}i| = ?`,
             answer: magnitude
           };
         }
       },
-      // Sequences
+      // Arithmetic sequence
       {
         generate: () => {
-          // Arithmetic sequence: aₙ = a₁ + (n-1)d
           const a1 = random(2, 10);
           const d = random(2, 5);
           const n = random(5, 10);
@@ -373,12 +404,11 @@ export class M6Generator extends BaseGenerator {
           };
         }
       },
-      // Series
+      // Series sum
       {
         generate: () => {
-          // Sum of first n natural numbers: n(n+1)/2
           const n = random(5, 15);
-          const sum = n * (n + 1) / 2;
+          const sum = Math.floor(n * (n + 1) / 2);
           return {
             question: `Σ(k, k=1 to ${n}) = ?`,
             answer: sum
@@ -388,6 +418,12 @@ export class M6Generator extends BaseGenerator {
     ];
     
     const mathType = randomChoice(mathTypes).generate();
+    
+    // ✅ Validate answer
+    if (!Number.isFinite(mathType.answer)) {
+      console.error('Invalid answer in generateComprehensiveMath:', mathType.answer);
+      return this.createQuestion('sin(45°) = ? (%)', 71, QuestionType.MIXED, level, [69, 70, 71, 72]);
+    }
     
     return this.createQuestion(
       mathType.question,

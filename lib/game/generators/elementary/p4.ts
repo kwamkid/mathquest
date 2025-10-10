@@ -31,40 +31,28 @@ export class P4Generator extends BaseGenerator {
 
   private generateMixed(level: number, config: LevelConfig): Question {
     if (level <= 10) {
-      // Level 1-10: บวกลบคูณหาร หลักล้าน
       return this.generateMillionOperations(level, config);
     } else if (level <= 20) {
-      // Level 11-20: การหารยาว
       return this.generateLongDivision(level, config);
     } else if (level <= 30) {
-      // Level 21-30: เศษส่วน (บวก ลบ ตัวส่วนเท่ากัน)
       return this.generateFractionSameDenominator(level, config);
     } else if (level <= 40) {
-      // Level 31-40: เศษส่วน (บวก ลบ ตัวส่วนต่างกัน)
       return this.generateFractionDifferentDenominator(level, config);
     } else if (level <= 50) {
-      // Level 41-50: เศษส่วน (คูณ)
       return this.generateFractionMultiply(level, config);
     } else if (level <= 60) {
-      // Level 51-60: เศษส่วน (หาร)
       return this.generateFractionDivide(level, config);
     } else if (level <= 70) {
-      // Level 61-70: ทศนิยม 1-2 ตำแหน่ง
       return this.generateDecimals(level, config);
     } else if (level <= 80) {
-      // Level 71-80: ทศนิยม (บวก ลบ)
       return this.generateDecimalOperations(level, config);
     } else if (level <= 85) {
-      // Level 81-85: มุมและการวัดมุม
       return this.generateAngles(level, config);
     } else if (level <= 90) {
-      // Level 86-90: พื้นที่สี่เหลี่ยม สามเหลี่ยม
       return this.generateArea(level, config);
     } else if (level <= 95) {
-      // Level 91-95: เส้นรอบรูป
       return this.generatePerimeter(level, config);
     } else {
-      // Level 96-100: โจทย์ผสม
       return this.generateMixedProblems(level, config);
     }
   }
@@ -99,6 +87,13 @@ export class P4Generator extends BaseGenerator {
     ];
     
     const op = randomChoice(operations)();
+    
+    // ✅ Validate answer
+    if (!Number.isFinite(op.answer)) {
+      console.error('P4: Invalid answer in generateMillionOperations:', op.answer);
+      return this.createQuestion('100000 + 50000 = ?', 150000, QuestionType.MIXED, level, [140000, 150000, 160000, 170000]);
+    }
+    
     return this.createQuestion(
       op.question,
       op.answer,
@@ -113,6 +108,12 @@ export class P4Generator extends BaseGenerator {
     const divisor = random(11, 99);
     const quotient = random(10, 99);
     const dividend = divisor * quotient;
+    
+    // ✅ Validate
+    if (!Number.isFinite(quotient) || !Number.isFinite(dividend)) {
+      console.error('P4: Invalid values in generateLongDivision');
+      return this.createQuestion('144 ÷ 12 = ?', 12, QuestionType.MIXED, level, [10, 11, 12, 13]);
+    }
     
     return this.createQuestion(
       `${dividend} ÷ ${divisor} = ?`,
@@ -143,6 +144,13 @@ export class P4Generator extends BaseGenerator {
     ];
     
     const op = randomChoice(operations)();
+    
+    // ✅ Validate
+    if (!Number.isFinite(op.answer)) {
+      console.error('P4: Invalid answer in generateFractionSameDenominator:', op.answer);
+      return this.createQuestion('2/5 + 1/5 = ?/5', 3, QuestionType.MIXED, level, [2, 3, 4, 5]);
+    }
+    
     return this.createQuestion(
       op.question,
       op.answer,
@@ -154,7 +162,6 @@ export class P4Generator extends BaseGenerator {
 
   // Level 31-40: เศษส่วน (บวก ลบ ตัวส่วนต่างกัน)
   private generateFractionDifferentDenominator(level: number, config: LevelConfig): Question {
-    // เลือกตัวส่วนที่หา ค.ร.น. ได้ง่าย
     const pairs = [
       { den1: 2, den2: 3, lcm: 6 },
       { den1: 2, den2: 4, lcm: 4 },
@@ -172,6 +179,12 @@ export class P4Generator extends BaseGenerator {
     const newNum1 = num1 * (pair.lcm / pair.den1);
     const newNum2 = num2 * (pair.lcm / pair.den2);
     const answer = newNum1 + newNum2;
+    
+    // ✅ Validate
+    if (!Number.isFinite(answer)) {
+      console.error('P4: Invalid answer in generateFractionDifferentDenominator:', answer);
+      return this.createQuestion('1/2 + 1/3 = ?/6', 5, QuestionType.MIXED, level, [4, 5, 6, 7]);
+    }
     
     return this.createQuestion(
       `${num1}/${pair.den1} + ${num2}/${pair.den2} = ?/${pair.lcm}`,
@@ -193,8 +206,21 @@ export class P4Generator extends BaseGenerator {
     
     // ลดรูปถ้าทำได้
     const gcd = this.gcd(answerNum, answerDen);
+    
+    // ✅ Validate GCD
+    if (!Number.isFinite(gcd) || gcd === 0) {
+      console.error('P4: Invalid GCD in generateFractionMultiply');
+      return this.createQuestion('1/2 × 1/3 = 1/?', 6, QuestionType.MIXED, level, [4, 5, 6, 7]);
+    }
+    
     const finalNum = answerNum / gcd;
     const finalDen = answerDen / gcd;
+    
+    // ✅ Validate final values
+    if (!Number.isFinite(finalDen)) {
+      console.error('P4: Invalid finalDen in generateFractionMultiply:', finalDen);
+      return this.createQuestion('1/2 × 1/3 = 1/?', 6, QuestionType.MIXED, level, [4, 5, 6, 7]);
+    }
     
     return this.createQuestion(
       `${num1}/${den1} × ${num2}/${den2} = ${finalNum}/?`,
@@ -218,8 +244,21 @@ export class P4Generator extends BaseGenerator {
     
     // ลดรูปถ้าทำได้
     const gcd = this.gcd(answerNum, answerDen);
+    
+    // ✅ Validate GCD
+    if (!Number.isFinite(gcd) || gcd === 0) {
+      console.error('P4: Invalid GCD in generateFractionDivide');
+      return this.createQuestion('1/2 ÷ 1/3 = 3/?', 2, QuestionType.MIXED, level, [1, 2, 3, 4]);
+    }
+    
     const finalNum = answerNum / gcd;
     const finalDen = answerDen / gcd;
+    
+    // ✅ Validate final values
+    if (!Number.isFinite(finalDen)) {
+      console.error('P4: Invalid finalDen in generateFractionDivide:', finalDen);
+      return this.createQuestion('1/2 ÷ 1/3 = 3/?', 2, QuestionType.MIXED, level, [1, 2, 3, 4]);
+    }
     
     return this.createQuestion(
       `${num1}/${den1} ÷ ${num2}/${den2} = ${finalNum}/?`,
@@ -234,21 +273,18 @@ export class P4Generator extends BaseGenerator {
   private generateDecimals(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // ทศนิยม 1 ตำแหน่ง
         const whole = random(1, 50);
         const decimal = random(1, 9);
         const value = whole * 10 + decimal;
         return { question: `${whole}.${decimal} × 10 = ?`, answer: value };
       },
       () => {
-        // ทศนิยม 2 ตำแหน่ง
         const whole = random(1, 20);
         const decimal = random(10, 99);
         const value = whole * 100 + decimal;
         return { question: `${whole}.${decimal} × 100 = ?`, answer: value };
       },
       () => {
-        // เปรียบเทียบทศนิยม
         const a = random(10, 99);
         const b = random(10, 99);
         const answer = a > b ? 1 : (a < b ? 2 : 3);
@@ -257,6 +293,13 @@ export class P4Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    // ✅ Validate
+    if (!Number.isFinite(type.answer)) {
+      console.error('P4: Invalid answer in generateDecimals:', type.answer);
+      return this.createQuestion('5.5 × 10 = ?', 55, QuestionType.MIXED, level, [50, 55, 60, 65]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -290,6 +333,13 @@ export class P4Generator extends BaseGenerator {
     ];
     
     const op = randomChoice(operations)();
+    
+    // ✅ Validate
+    if (!Number.isFinite(op.answer)) {
+      console.error('P4: Invalid answer in generateDecimalOperations:', op.answer);
+      return this.createQuestion('2.5 + 3.5 = ? (ตอบ × 10)', 60, QuestionType.MIXED, level, [55, 60, 65, 70]);
+    }
+    
     return this.createQuestion(
       op.question,
       op.answer,
@@ -303,33 +353,35 @@ export class P4Generator extends BaseGenerator {
   private generateAngles(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // มุมฉาก
         return { question: `มุมฉาก = ? องศา`, answer: 90 };
       },
       () => {
-        // มุมตรง
         return { question: `มุมตรง = ? องศา`, answer: 180 };
       },
       () => {
-        // มุมในสามเหลี่ยม
         const angle1 = random(30, 80);
         const angle2 = random(30, 80);
         const angle3 = 180 - angle1 - angle2;
         return { question: `สามเหลี่ยม มุม ${angle1}° และ ${angle2}° มุมที่ 3 = ?°`, answer: angle3 };
       },
       () => {
-        // มุมรอบจุด
         return { question: `มุมรอบจุด = ? องศา`, answer: 360 };
       },
       () => {
-        // มุมแหลม/มุมป้าน
         const angle = randomChoice([30, 45, 60, 120, 135, 150]);
-        const type = angle < 90 ? 1 : 2; // 1=แหลม, 2=ป้าน
+        const type = angle < 90 ? 1 : 2;
         return { question: `มุม ${angle}° เป็นมุม? (1=แหลม, 2=ป้าน, 3=ฉาก)`, answer: type };
       }
     ];
     
     const type = randomChoice(types)();
+    
+    // ✅ Validate
+    if (!Number.isFinite(type.answer)) {
+      console.error('P4: Invalid answer in generateAngles:', type.answer);
+      return this.createQuestion('มุมฉาก = ? องศา', 90, QuestionType.MIXED, level, [80, 90, 100, 180]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -343,20 +395,17 @@ export class P4Generator extends BaseGenerator {
   private generateArea(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // พื้นที่สี่เหลี่ยมผืนผ้า
         const length = random(5, 20);
         const width = random(3, 15);
         const area = length * width;
         return { question: `สี่เหลี่ยม กว้าง ${width} ยาว ${length} พื้นที่ = ?`, answer: area };
       },
       () => {
-        // พื้นที่สี่เหลี่ยมจัตุรัส
         const side = random(4, 15);
         const area = side * side;
         return { question: `จัตุรัส ด้าน ${side} พื้นที่ = ?`, answer: area };
       },
       () => {
-        // พื้นที่สามเหลี่ยม
         const base = random(6, 20);
         const height = random(4, 16);
         const area = (base * height) / 2;
@@ -365,6 +414,13 @@ export class P4Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    // ✅ Validate
+    if (!Number.isFinite(type.answer)) {
+      console.error('P4: Invalid answer in generateArea:', type.answer);
+      return this.createQuestion('สี่เหลี่ยม กว้าง 5 ยาว 10 พื้นที่ = ?', 50, QuestionType.MIXED, level, [40, 50, 60, 70]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -378,20 +434,17 @@ export class P4Generator extends BaseGenerator {
   private generatePerimeter(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // เส้นรอบสี่เหลี่ยมผืนผ้า
         const length = random(5, 25);
         const width = random(3, 20);
         const perimeter = 2 * (length + width);
         return { question: `สี่เหลี่ยม กว้าง ${width} ยาว ${length} เส้นรอบรูป = ?`, answer: perimeter };
       },
       () => {
-        // เส้นรอบสี่เหลี่ยมจัตุรัส
         const side = random(5, 20);
         const perimeter = 4 * side;
         return { question: `จัตุรัส ด้าน ${side} เส้นรอบรูป = ?`, answer: perimeter };
       },
       () => {
-        // เส้นรอบสามเหลี่ยม
         const a = random(5, 15);
         const b = random(6, 16);
         const c = random(7, 17);
@@ -401,6 +454,13 @@ export class P4Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    // ✅ Validate
+    if (!Number.isFinite(type.answer)) {
+      console.error('P4: Invalid answer in generatePerimeter:', type.answer);
+      return this.createQuestion('จัตุรัส ด้าน 10 เส้นรอบรูป = ?', 40, QuestionType.MIXED, level, [35, 40, 45, 50]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -414,14 +474,12 @@ export class P4Generator extends BaseGenerator {
   private generateMixedProblems(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // คูณเลขใหญ่
         const a = random(100, 999);
         const b = randomChoice([10, 100, 1000]);
         const answer = a * b;
         return { question: `${a} × ${b} = ?`, answer };
       },
       () => {
-        // เศษส่วน + ทศนิยม
         const frac = randomChoice([
           { num: 1, den: 2, dec: 5 },
           { num: 1, den: 4, dec: 25 },
@@ -430,7 +488,6 @@ export class P4Generator extends BaseGenerator {
         return { question: `${frac.num}/${frac.den} = 0.?? (ตอบตัวเลขหลังจุด)`, answer: frac.dec };
       },
       () => {
-        // พื้นที่กับเส้นรอบรูป
         const side = random(5, 15);
         const area = side * side;
         const perimeter = 4 * side;
@@ -438,7 +495,6 @@ export class P4Generator extends BaseGenerator {
         return { question: `จัตุรัส ด้าน ${side} พื้นที่ + เส้นรอบรูป = ?`, answer };
       },
       () => {
-        // การแปลงหน่วย
         const m = random(3, 15);
         const cm = m * 100;
         const mm = cm * 10;
@@ -447,6 +503,13 @@ export class P4Generator extends BaseGenerator {
     ];
     
     const type = randomChoice(types)();
+    
+    // ✅ Validate
+    if (!Number.isFinite(type.answer)) {
+      console.error('P4: Invalid answer in generateMixedProblems:', type.answer);
+      return this.createQuestion('100 × 10 = ?', 1000, QuestionType.MIXED, level, [900, 1000, 1100, 1200]);
+    }
+    
     return this.createQuestion(
       type.question,
       type.answer,
@@ -457,6 +520,10 @@ export class P4Generator extends BaseGenerator {
   }
 
   private gcd(a: number, b: number): number {
+    // ✅ Validate inputs
+    if (!Number.isFinite(a) || !Number.isFinite(b) || b === 0) {
+      return 1; // Return safe fallback
+    }
     return b === 0 ? a : this.gcd(b, a % b);
   }
 }
