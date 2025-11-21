@@ -173,57 +173,64 @@ export class M3Generator extends BaseGenerator {
     );
   }
 
-  // Level 31-45: ฟังก์ชันกำลังสอง
+  // Level 31-45: สมการกำลังสอง (แทนค่า) - ไม่ใช้ f(x) notation
   private generateQuadraticFunction(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        const x = random(-5, 5);
-        const c = random(-10, 10);
+        // y = x² + c, แทนค่า x
+        const x = random(2, 6);
+        const c = random(1, 10);
         const answer = x * x + c;
         return {
-          question: `f(x) = x² + ${c}, f(${x}) = ?`,
+          question: `y = x² + ${c}, ถ้า x = ${x} แล้ว y = ?`,
           answer: answer
         };
       },
       () => {
-        const a = random(1, 4);
-        const x = random(-4, 4);
+        // y = ax², แทนค่า x
+        const a = random(2, 4);
+        const x = random(2, 5);
         const answer = a * x * x;
         return {
-          question: `f(x) = ${a}x², f(${x}) = ?`,
+          question: `y = ${a}x², ถ้า x = ${x} แล้ว y = ?`,
           answer: answer
         };
       },
       () => {
-        const c = random(-20, 20);
+        // หา x จาก x² = a
+        const x = random(2, 10);
+        const a = x * x;
         return {
-          question: `y = x² + ${c}, จุดยอดอยู่ที่ (0, ?)`,
-          answer: c
-        };
-      },
-      () => {
-        const x = random(2, 8);
-        const y = x * x;
-        return {
-          question: `y = x², ถ้า y = ${y} แล้ว x = ? (ตอบค่าบวก)`,
+          question: `x² = ${a}, x = ? (ตอบค่าบวก)`,
           answer: x
         };
       },
       () => {
-        const a = random(1, 5);
-        const x = random(-3, 3);
-        const answer = (x + a) * (x + a);
+        // คำนวณ (a + b)²
+        const a = random(2, 6);
+        const b = random(1, 4);
+        const answer = (a + b) * (a + b);
         return {
-          question: `f(x) = (x + ${a})², f(${x}) = ?`,
+          question: `(${a} + ${b})² = ?`,
+          answer: answer
+        };
+      },
+      () => {
+        // คำนวณ a² + b²
+        const a = random(3, 8);
+        const b = random(2, 6);
+        const answer = a * a + b * b;
+        return {
+          question: `${a}² + ${b}² = ?`,
           answer: answer
         };
       }
     ];
-    
+
     const type = randomChoice(types)();
-    
+
     if (!Number.isFinite(type.answer)) {
-      return this.createQuestion('f(x) = x² + 3, f(2) = ?', 7, QuestionType.MIXED, level, [6, 7, 8, 9]);
+      return this.createQuestion('3² + 4² = ?', 25, QuestionType.MIXED, level, [23, 24, 25, 26]);
     }
     
     return this.createQuestion(
@@ -541,10 +548,11 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
+        // คำนวณ x² เมื่อรู้ค่า x
         const x = random(2, 8);
         const y = x * x;
         return {
-          question: `f(x) = x², f(x) < ${y + 10}, f(${x}) = ?`,
+          question: `x² เมื่อ x = ${x} มีค่า = ?`,
           answer: y
         };
       }

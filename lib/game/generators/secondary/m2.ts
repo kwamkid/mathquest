@@ -499,12 +499,13 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
+        // โจทย์รวมค่า: ax + bx เมื่อ x = ?
         const m1 = random(2, 4);
         const m2 = random(1, 3);
-        const x = random(1, 5);
+        const x = random(2, 5);
         const answer = m1 * x + m2 * x;
         return {
-          question: `f(x) = ${m1}x, g(x) = ${m2}x, f(${x}) + g(${x}) = ?`,
+          question: `${m1}x + ${m2}x เมื่อ x = ${x} มีค่า = ?`,
           answer: answer
         };
       },
