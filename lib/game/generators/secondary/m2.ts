@@ -288,64 +288,66 @@ export class M2Generator extends BaseGenerator {
     );
   }
 
-  // Level 61-75: ฟังก์ชันเชิงเส้น (✅ แก้ไข division by zero)
+  // Level 61-75: สมการเชิงเส้นและกราฟ (✅ แก้ไข: เปลี่ยนเป็นโจทย์ที่เข้าใจง่าย)
   private generateLinearFunctions(level: number, config: LevelConfig): Question {
     const types = [
       () => {
+        // โจทย์แทนค่า y = ax + b
         const a = random(2, 8);
-        const b = random(-10, 15);
-        const x = random(-5, 10);
+        const b = random(1, 10);
+        const x = random(2, 8);
         const answer = a * x + b;
         return {
-          question: `f(x) = ${a}x + ${b}, f(${x}) = ?`,
+          question: `y = ${a}x + ${b}, ถ้า x = ${x} แล้ว y = ?`,
           answer: answer
         };
       },
       () => {
+        // โจทย์หา x จาก y = ax + b
         const a = random(2, 6);
-        const b = random(-8, 12);
-        const y = random(10, 50);
-        const x = Math.floor((y - b) / a);
-        const actualY = a * x + b;
+        const x = random(2, 8);
+        const b = random(1, 10);
+        const y = a * x + b;
         return {
-          question: `f(x) = ${a}x + ${b}, ถ้า f(x) = ${actualY} แล้ว x = ?`,
+          question: `y = ${a}x + ${b}, ถ้า y = ${y} แล้ว x = ?`,
           answer: x
         };
       },
       () => {
-        // ✅ แก้ไข: ใช้ค่าที่หารลงตัวเพื่อให้ได้ความชันเป็นจำนวนเต็ม
+        // โจทย์หาความชัน (ใช้ค่าที่หารลงตัว)
         const precomputed = [
-          { x1: 0, y1: 0, x2: 3, y2: 6, slope: 2 },    // (6-0)/(3-0) = 2
-          { x1: 1, y1: 2, x2: 4, y2: 11, slope: 3 },   // (11-2)/(4-1) = 3
-          { x1: 0, y1: 5, x2: 5, y2: 15, slope: 2 },   // (15-5)/(5-0) = 2
-          { x1: 2, y1: 1, x2: 6, y2: 9, slope: 2 },    // (9-1)/(6-2) = 2
-          { x1: 1, y1: 3, x2: 5, y2: 7, slope: 1 },    // (7-3)/(5-1) = 1
-          { x1: 0, y1: 1, x2: 2, y2: 9, slope: 4 },    // (9-1)/(2-0) = 4
-          { x1: 3, y1: 2, x2: 6, y2: 17, slope: 5 },   // (17-2)/(6-3) = 5
+          { x1: 0, y1: 0, x2: 3, y2: 6, slope: 2 },
+          { x1: 1, y1: 2, x2: 4, y2: 11, slope: 3 },
+          { x1: 0, y1: 5, x2: 5, y2: 15, slope: 2 },
+          { x1: 2, y1: 1, x2: 6, y2: 9, slope: 2 },
+          { x1: 1, y1: 3, x2: 5, y2: 7, slope: 1 },
+          { x1: 0, y1: 1, x2: 2, y2: 9, slope: 4 },
+          { x1: 3, y1: 2, x2: 6, y2: 17, slope: 5 },
         ];
         const selected = randomChoice(precomputed);
         return {
-          question: `ผ่านจุด (${selected.x1}, ${selected.y1}) และ (${selected.x2}, ${selected.y2}) ความชัน = ?`,
+          question: `เส้นตรงผ่านจุด (${selected.x1}, ${selected.y1}) และ (${selected.x2}, ${selected.y2}) มีความชันเท่าไร?`,
           answer: selected.slope
         };
       },
       () => {
-        const m = random(2, 6);
-        const x0 = random(1, 5);
-        const y0 = random(5, 20);
-        const b = y0 - m * x0;
+        // โจทย์หาจุดตัดแกน y
+        const m = random(2, 5);
+        const x0 = random(2, 5);
+        const b = random(1, 15);
+        const y0 = m * x0 + b;
         return {
-          question: `ความชัน ${m} ผ่านจุด (${x0}, ${y0}) จุดตัดแกน y = ?`,
+          question: `เส้นตรงความชัน ${m} ผ่านจุด (${x0}, ${y0}) ตัดแกน y ที่จุด (0, ?)`,
           answer: b
         };
       }
     ];
-    
+
     const type = randomChoice(types)();
-    
+
     if (!Number.isFinite(type.answer)) {
       console.error('Invalid answer in generateLinearFunctions:', type.answer);
-      return this.createQuestion('f(x) = 2x + 3, f(5) = ?', 13, QuestionType.MIXED, level, [11, 12, 13, 14]);
+      return this.createQuestion('y = 2x + 3, ถ้า x = 5 แล้ว y = ?', 13, QuestionType.MIXED, level, [11, 12, 13, 14]);
     }
     
     return this.createQuestion(
