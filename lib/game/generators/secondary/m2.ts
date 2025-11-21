@@ -288,57 +288,61 @@ export class M2Generator extends BaseGenerator {
     );
   }
 
-  // Level 61-75: สมการเชิงเส้นและกราฟ (✅ แก้ไข: เปลี่ยนเป็นโจทย์ที่เข้าใจง่าย)
+  // Level 61-75: สมการเชิงเส้น (ไม่ใช้กราฟ)
   private generateLinearFunctions(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        // โจทย์แทนค่า y = ax + b
-        const a = random(2, 8);
-        const b = random(1, 10);
-        const x = random(2, 8);
-        const answer = a * x + b;
-        return {
-          question: `y = ${a}x + ${b}, ถ้า x = ${x} แล้ว y = ?`,
-          answer: answer
-        };
-      },
-      () => {
-        // โจทย์หา x จาก y = ax + b
+        // แก้สมการ ax + b = c
         const a = random(2, 6);
-        const x = random(2, 8);
+        const x = random(2, 10);
         const b = random(1, 10);
-        const y = a * x + b;
+        const c = a * x + b;
         return {
-          question: `y = ${a}x + ${b}, ถ้า y = ${y} แล้ว x = ?`,
+          question: `${a}x + ${b} = ${c}, x = ?`,
           answer: x
         };
       },
       () => {
-        // โจทย์หาความชัน (ใช้ค่าที่หารลงตัว)
-        const precomputed = [
-          { x1: 0, y1: 0, x2: 3, y2: 6, slope: 2 },
-          { x1: 1, y1: 2, x2: 4, y2: 11, slope: 3 },
-          { x1: 0, y1: 5, x2: 5, y2: 15, slope: 2 },
-          { x1: 2, y1: 1, x2: 6, y2: 9, slope: 2 },
-          { x1: 1, y1: 3, x2: 5, y2: 7, slope: 1 },
-          { x1: 0, y1: 1, x2: 2, y2: 9, slope: 4 },
-          { x1: 3, y1: 2, x2: 6, y2: 17, slope: 5 },
-        ];
-        const selected = randomChoice(precomputed);
+        // แก้สมการ ax - b = c
+        const a = random(2, 5);
+        const x = random(3, 10);
+        const b = random(1, 8);
+        const c = a * x - b;
         return {
-          question: `เส้นตรงผ่านจุด (${selected.x1}, ${selected.y1}) และ (${selected.x2}, ${selected.y2}) มีความชันเท่าไร?`,
-          answer: selected.slope
+          question: `${a}x - ${b} = ${c}, x = ?`,
+          answer: x
         };
       },
       () => {
-        // โจทย์หาจุดตัดแกน y
-        const m = random(2, 5);
-        const x0 = random(2, 5);
-        const b = random(1, 15);
-        const y0 = m * x0 + b;
+        // แก้สมการ ax = bx + c
+        const x = random(2, 8);
+        const a = random(4, 8);
+        const b = random(1, 3);
+        const c = (a - b) * x;
         return {
-          question: `เส้นตรงความชัน ${m} ผ่านจุด (${x0}, ${y0}) ตัดแกน y ที่จุด (0, ?)`,
-          answer: b
+          question: `${a}x = ${b}x + ${c}, x = ?`,
+          answer: x
+        };
+      },
+      () => {
+        // โจทย์ปัญหา: ราคาสินค้า
+        const price = random(10, 50);
+        const qty = random(3, 8);
+        const total = price * qty;
+        return {
+          question: `ซื้อของ ${qty} ชิ้น ราคารวม ${total} บาท ชิ้นละกี่บาท?`,
+          answer: price
+        };
+      },
+      () => {
+        // โจทย์ปัญหา: อายุ
+        const age1 = random(8, 15);
+        const diff = random(2, 5);
+        const age2 = age1 + diff;
+        const sum = age1 + age2;
+        return {
+          question: `พี่อายุมากกว่าน้อง ${diff} ปี รวมอายุ ${sum} ปี น้องอายุกี่ปี?`,
+          answer: age1
         };
       }
     ];
@@ -347,7 +351,7 @@ export class M2Generator extends BaseGenerator {
 
     if (!Number.isFinite(type.answer)) {
       console.error('Invalid answer in generateLinearFunctions:', type.answer);
-      return this.createQuestion('y = 2x + 3, ถ้า x = 5 แล้ว y = ?', 13, QuestionType.MIXED, level, [11, 12, 13, 14]);
+      return this.createQuestion('3x + 5 = 20, x = ?', 5, QuestionType.MIXED, level, [4, 5, 6, 7]);
     }
     
     return this.createQuestion(
