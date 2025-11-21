@@ -397,17 +397,20 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        // ✅ แก้ไข: ป้องกัน division by zero
-        const sin = random(1, 5);
-        let cos = random(1, 5);
-        
-        // ป้องกัน cos = 0
-        if (cos === 0) cos = 1;
-        
-        const tan = Math.round((sin / cos) * 10);
+        // ✅ แก้ไข: ใช้ค่าที่หารลงตัวเพื่อหลีกเลี่ยง floating-point errors
+        const pairs = [
+          { sin: 3, cos: 4, tan10: 8 },   // tan = 0.75 → × 10 = 7.5 ≈ 8
+          { sin: 4, cos: 3, tan10: 13 },  // tan = 1.33 → × 10 = 13.3 ≈ 13
+          { sin: 1, cos: 2, tan10: 5 },   // tan = 0.5 → × 10 = 5
+          { sin: 2, cos: 1, tan10: 20 },  // tan = 2 → × 10 = 20
+          { sin: 3, cos: 5, tan10: 6 },   // tan = 0.6 → × 10 = 6
+          { sin: 5, cos: 4, tan10: 13 },  // tan = 1.25 → × 10 = 12.5 ≈ 13
+          { sin: 2, cos: 5, tan10: 4 },   // tan = 0.4 → × 10 = 4
+        ];
+        const selected = randomChoice(pairs);
         return {
-          question: `sinθ = ${sin}, cosθ = ${cos}, tanθ × 10 = ?`,
-          answer: tan
+          question: `sinθ = ${selected.sin}, cosθ = ${selected.cos}, tanθ × 10 = ? (ปัดเศษ)`,
+          answer: selected.tan10
         };
       }
     ];
@@ -427,30 +430,32 @@ export class M3Generator extends BaseGenerator {
     );
   }
 
-  // Level 86-95: วงกลม
+  // Level 86-95: วงกลม (✅ แก้ไข: ใช้ค่าที่หารลงตัวกับ π = 22/7)
   private generateCircle(level: number, config: LevelConfig): Question {
     const types = [
       () => {
-        const r = random(7, 21);
-        const circumference = 2 * 22 * r / 7;
+        // ✅ ใช้รัศมีที่เป็นพหุคูณของ 7 เพื่อให้หารลงตัว
+        const r = randomChoice([7, 14, 21]);
+        const circumference = 2 * 22 * r / 7; // จะได้เลขจำนวนเต็มเสมอ
         return {
           question: `วงกลมรัศมี ${r} เส้นรอบวง = ? (ใช้ π = 22/7)`,
-          answer: Math.round(circumference)
+          answer: circumference
         };
       },
       () => {
-        const r = random(3, 10);
-        const area = 22 * r * r / 7;
+        // ✅ ใช้รัศมีที่เป็นพหุคูณของ 7 เพื่อให้หารลงตัว
+        const r = randomChoice([7, 14, 21]);
+        const area = 22 * r * r / 7; // จะได้เลขจำนวนเต็มเสมอ
         return {
           question: `วงกลมรัศมี ${r} พื้นที่ = ? (ใช้ π = 22/7)`,
-          answer: Math.round(area)
+          answer: area
         };
       },
       () => {
         const r = randomChoice([7, 14, 21]);
         const c = 2 * 22 * r / 7;
         return {
-          question: `วงกลมเส้นรอบวง ${Math.round(c)} รัศมี = ? (ใช้ π = 22/7)`,
+          question: `วงกลมเส้นรอบวง ${c} รัศมี = ? (ใช้ π = 22/7)`,
           answer: r
         };
       },
@@ -463,12 +468,19 @@ export class M3Generator extends BaseGenerator {
         };
       },
       () => {
-        const r = random(6, 18);
-        const angle = randomChoice([90, 180, 270]);
-        const arcLength = Math.round(2 * 22 * r * angle / (7 * 360));
+        // ✅ ใช้ค่าที่คำนวณไว้ล่วงหน้าเพื่อหลีกเลี่ยง floating-point errors
+        const precomputed = [
+          { r: 7, angle: 90, arc: 11 },   // 2×22×7×90/(7×360) = 11
+          { r: 7, angle: 180, arc: 22 },  // 2×22×7×180/(7×360) = 22
+          { r: 14, angle: 90, arc: 22 },  // 2×22×14×90/(7×360) = 22
+          { r: 14, angle: 180, arc: 44 }, // 2×22×14×180/(7×360) = 44
+          { r: 21, angle: 90, arc: 33 },  // 2×22×21×90/(7×360) = 33
+          { r: 21, angle: 180, arc: 66 }, // 2×22×21×180/(7×360) = 66
+        ];
+        const selected = randomChoice(precomputed);
         return {
-          question: `วงกลมรัศมี ${r} ส่วนโค้ง ${angle}° ยาว = ? (ใช้ π = 22/7)`,
-          answer: arcLength
+          question: `วงกลมรัศมี ${selected.r} ส่วนโค้ง ${selected.angle}° ยาว = ? (ใช้ π = 22/7)`,
+          answer: selected.arc
         };
       }
     ];

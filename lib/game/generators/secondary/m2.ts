@@ -313,30 +313,20 @@ export class M2Generator extends BaseGenerator {
         };
       },
       () => {
-        // ✅ แก้ไข: ป้องกัน division by zero
-        let x1 = random(0, 5);
-        let x2 = random(6, 10);
-        // ตรวจสอบว่า x1 != x2
-        if (x1 === x2) x2 = x1 + random(1, 5);
-        
-        const y1 = random(0, 10);
-        const y2 = random(12, 25);
-        
-        const deltaX = x2 - x1;
-        const deltaY = y2 - y1;
-        
-        // ✅ ป้องกัน division by zero
-        if (deltaX === 0) {
-          return {
-            question: `ผ่านจุด (1, 5) และ (3, 11) ความชัน = ?`,
-            answer: 3
-          };
-        }
-        
-        const slope = Math.floor(deltaY / deltaX);
+        // ✅ แก้ไข: ใช้ค่าที่หารลงตัวเพื่อให้ได้ความชันเป็นจำนวนเต็ม
+        const precomputed = [
+          { x1: 0, y1: 0, x2: 3, y2: 6, slope: 2 },    // (6-0)/(3-0) = 2
+          { x1: 1, y1: 2, x2: 4, y2: 11, slope: 3 },   // (11-2)/(4-1) = 3
+          { x1: 0, y1: 5, x2: 5, y2: 15, slope: 2 },   // (15-5)/(5-0) = 2
+          { x1: 2, y1: 1, x2: 6, y2: 9, slope: 2 },    // (9-1)/(6-2) = 2
+          { x1: 1, y1: 3, x2: 5, y2: 7, slope: 1 },    // (7-3)/(5-1) = 1
+          { x1: 0, y1: 1, x2: 2, y2: 9, slope: 4 },    // (9-1)/(2-0) = 4
+          { x1: 3, y1: 2, x2: 6, y2: 17, slope: 5 },   // (17-2)/(6-3) = 5
+        ];
+        const selected = randomChoice(precomputed);
         return {
-          question: `ผ่านจุด (${x1}, ${y1}) และ (${x2}, ${y2}) ความชัน = ?`,
-          answer: slope
+          question: `ผ่านจุด (${selected.x1}, ${selected.y1}) และ (${selected.x2}, ${selected.y2}) ความชัน = ?`,
+          answer: selected.slope
         };
       },
       () => {

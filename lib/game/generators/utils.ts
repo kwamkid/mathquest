@@ -8,11 +8,21 @@ export const random = (min: number, max: number): number => {
 };
 
 /**
- * สุ่มตัวเลขทศนิยม
+ * สุ่มตัวเลขทศนิยม (แก้ไข floating-point precision)
  */
 export const randomFloat = (min: number, max: number, decimals: number = 2): number => {
   const value = Math.random() * (max - min) + min;
-  return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  const multiplier = Math.pow(10, decimals);
+  // ใช้ Number() เพื่อแก้ปัญหา floating-point precision
+  return Number((Math.round(value * multiplier) / multiplier).toFixed(decimals));
+};
+
+/**
+ * ✅ ปัดเศษทศนิยมอย่างแม่นยำ (แก้ปัญหา 0.1 + 0.2 !== 0.3)
+ */
+export const roundDecimal = (value: number, decimals: number = 2): number => {
+  if (!Number.isFinite(value)) return 0;
+  return Number(value.toFixed(decimals));
 };
 
 /**
@@ -137,10 +147,22 @@ export const simplifyFraction = (numerator: number, denominator: number): [numbe
 };
 
 /**
- * แปลงเศษส่วนเป็นทศนิยม
+ * แปลงเศษส่วนเป็นทศนิยม (✅ แก้ไข: เพิ่ม division by zero check และ precision fix)
  */
 export const fractionToDecimal = (numerator: number, denominator: number, decimals: number = 2): number => {
-  return Math.round((numerator / denominator) * Math.pow(10, decimals)) / Math.pow(10, decimals);
+  // ป้องกัน division by zero
+  if (denominator === 0 || !Number.isFinite(denominator)) {
+    console.error('fractionToDecimal: division by zero');
+    return 0;
+  }
+  if (!Number.isFinite(numerator)) {
+    console.error('fractionToDecimal: invalid numerator');
+    return 0;
+  }
+
+  const result = numerator / denominator;
+  // ใช้ toFixed เพื่อแก้ปัญหา floating-point precision
+  return Number(result.toFixed(decimals));
 };
 
 /**
