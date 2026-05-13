@@ -146,7 +146,7 @@ export default function HighScoresPage() {
           className="flex items-center justify-between mb-4"
         >
           <button
-            onClick={() => router.push('/play')}
+            onClick={() => router.push('/learn')}
             className="flex items-center gap-2 text-white/60 hover:text-white transition"
           >
             <ArrowLeft className="w-5 h-5" />

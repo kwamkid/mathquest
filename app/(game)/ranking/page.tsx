@@ -242,7 +242,7 @@ export default function RankingPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 md:gap-3">
               <button
-                onClick={() => router.push('/play')}
+                onClick={() => router.push('/learn')}
                 className="p-1.5 md:p-2 glass rounded-full hover:bg-white/10 transition"
               >
                 <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-white" />

@@ -19,10 +19,10 @@ export default function HomePage() {
     setMounted(true);
   }, []);
 
-  // ถ้า login แล้ว redirect ไป play
+  // ถ้า login แล้ว redirect ไปหน้าเรียน (Phase 1: /learn เป็น default แทน /play)
   useEffect(() => {
     if (!loading && user) {
-      router.push('/play');
+      router.push('/learn');
     }
   }, [user, loading, router]);
 

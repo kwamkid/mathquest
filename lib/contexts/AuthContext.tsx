@@ -113,8 +113,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Not logged in and trying to access protected route
         router.push('/login');
       } else if (user && publicPaths.includes(pathname) && pathname !== '/') {
-        // Logged in and on login/register page
-        router.push('/play');
+        // Logged in and on login/register page — Phase 1 default is /learn
+        router.push('/learn');
       }
     }
   }, [user, loading, router, pathname]);

@@ -183,7 +183,7 @@ export default function ProfilePage() {
             className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between"
           >
             <button
-              onClick={() => router.push('/play')}
+              onClick={() => router.push('/learn')}
               className="flex items-center gap-2 text-white/60 hover:text-white transition"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -513,7 +513,7 @@ export default function ProfilePage() {
                         
                         <button
                           type="button"
-                          onClick={() => router.push('/play')}
+                          onClick={() => router.push('/learn')}
                           className="px-8 py-3 glass border border-metaverse-purple/50 text-white font-bold rounded-xl shadow-lg hover:bg-white/10 transition"
                         >
                           ยกเลิก

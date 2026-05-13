@@ -509,7 +509,7 @@ export default function MyAvatarPage() {
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => router.push('/play')}
+                onClick={() => router.push('/learn')}
                 className="p-2 glass rounded-full hover:bg-white/10 transition"
               >
                 <ChevronLeft className="w-5 h-5 text-white" />
@@ -606,7 +606,7 @@ export default function MyAvatarPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => router.push('/play')}
+                onClick={() => router.push('/learn')}
                 className="p-2 glass rounded-full hover:bg-white/10 transition"
               >
                 <ArrowLeft className="w-5 h-5 text-white" />

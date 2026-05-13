@@ -1,6 +1,7 @@
 // types/index.ts
 
 import { UserAvatarData } from './avatar';
+import type { CurriculumProgress } from './curriculum';
 
 export interface User {
   id: string;
@@ -25,6 +26,9 @@ export interface User {
   currentTitleBadge?: string;  // ฉายาที่เลือกใช้
   ownedTitleBadges?: string[]; // ฉายาที่มี
   badges?: string[];      // เหรียญตราที่ได้รับ
+  // Phase 1: multi-curriculum learning system (optional, backward compatible)
+  curriculumProgress?: Record<string, CurriculumProgress>;
+  currentCurriculumId?: string;
 }
 
 export enum Grade {
