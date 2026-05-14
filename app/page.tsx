@@ -3,28 +3,19 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Swords, Target, Trophy, Gift, Pi, UserPlus } from 'lucide-react';
+import { Swords, Target, Trophy, Gift, Pi, UserPlus, BookOpen, Gamepad2 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
 
 // Math symbols for floating animation
 const mathSymbols = ['+', '-', '×', '÷', '=', '>', '<', '√', 'π', '∞', '∑', '∫'];
 
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // ถ้า login แล้ว redirect ไปหน้าเรียน (Phase 1: /learn เป็น default แทน /play)
-  useEffect(() => {
-    if (!loading && user) {
-      router.push('/learn');
-    }
-  }, [user, loading, router]);
 
   // Generate floating symbols with fixed positions
   const floatingSymbols = Array.from({ length: 20 }, (_, i) => ({
@@ -136,38 +127,95 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.6 }}
-          className="space-y-4 mb-16"
+          className="space-y-4 mb-16 w-full max-w-2xl"
         >
-          {/* Main Login Button */}
-          <div className="text-center">
-            <Link
-              href="/login"
-              className="group relative px-12 py-5 metaverse-button text-white font-bold text-xl rounded-full shadow-2xl overflow-hidden transition-all hover:shadow-metaverse-purple/50 inline-block"
-            >
-              <span className="relative z-10 flex items-center justify-center gap-2">
-                <Swords className="w-6 h-6" />
-                เริ่มการผจญภัย
-              </span>
-            </Link>
-          </div>
+          {user ? (
+            <>
+              {/* Welcome message */}
+              <div className="text-center mb-6">
+                <p className="text-white/80 text-lg md:text-xl">
+                  สวัสดี <span className="font-bold text-white">{user.displayName || user.username}</span> 👋
+                </p>
+                <p className="text-white/60 text-base md:text-lg mt-1">
+                  วันนี้อยากทำอะไรดี?
+                </p>
+              </div>
 
-          {/* Register Section */}
-          <div className="text-center">
-            <p className="text-white/60 mb-2">ยังไม่มีบัญชี?</p>
-            <Link
-              href="/register"
-              className="px-8 py-3 glass text-white font-medium text-lg rounded-full shadow-xl border border-metaverse-purple/50 hover:bg-white/10 transition-all inline-block"
-            >
-              <motion.span 
-                className="flex items-center justify-center gap-2"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <UserPlus className="w-5 h-5" />
-                สมัครสมาชิก
-              </motion.span>
-            </Link>
-          </div>
+              {/* Two-choice grid: Play vs Learn */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                <Link href="/learn" className="group block">
+                  <motion.div
+                    whileHover={{ y: -6, scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative glass-dark rounded-3xl p-8 shadow-xl border border-metaverse-purple/30 h-full overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-metaverse-purple/30 to-metaverse-pink/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-metaverse-purple to-metaverse-pink flex items-center justify-center mb-4 shadow-lg shadow-metaverse-purple/40">
+                        <BookOpen className="w-10 h-10 text-white" />
+                      </div>
+                      <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">เรียน</h3>
+                      <p className="text-white/70 text-sm md:text-base">
+                        บทเรียนคณิตศาสตร์ พร้อมแบบฝึก
+                      </p>
+                    </div>
+                  </motion.div>
+                </Link>
+
+                <Link href="/play" className="group block">
+                  <motion.div
+                    whileHover={{ y: -6, scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative glass-dark rounded-3xl p-8 shadow-xl border border-metaverse-red/30 h-full overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-metaverse-red/30 to-metaverse-darkRed/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-metaverse-red to-metaverse-darkRed flex items-center justify-center mb-4 shadow-lg shadow-metaverse-red/40">
+                        <Gamepad2 className="w-10 h-10 text-white" />
+                      </div>
+                      <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">เล่นเกม</h3>
+                      <p className="text-white/70 text-sm md:text-base">
+                        ผจญภัย 100 ด่าน เก็บคะแนน
+                      </p>
+                    </div>
+                  </motion.div>
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Main Login Button */}
+              <div className="text-center">
+                <Link
+                  href="/login"
+                  className="group relative px-12 py-5 metaverse-button text-white font-bold text-xl rounded-full shadow-2xl overflow-hidden transition-all hover:shadow-metaverse-purple/50 inline-block"
+                >
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    <Swords className="w-6 h-6" />
+                    เริ่มการผจญภัย
+                  </span>
+                </Link>
+              </div>
+
+              {/* Register Section */}
+              <div className="text-center">
+                <p className="text-white/60 mb-2">ยังไม่มีบัญชี?</p>
+                <Link
+                  href="/register"
+                  className="px-8 py-3 glass text-white font-medium text-lg rounded-full shadow-xl border border-metaverse-purple/50 hover:bg-white/10 transition-all inline-block"
+                >
+                  <motion.span
+                    className="flex items-center justify-center gap-2"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    สมัครสมาชิก
+                  </motion.span>
+                </Link>
+              </div>
+            </>
+          )}
         </motion.div>
 
         {/* Features Grid */}

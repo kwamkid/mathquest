@@ -10,6 +10,11 @@ interface Props {
   onAnswered: (result: { correct: boolean; value: string }) => void;
   disabled?: boolean;
   resetSignal?: number;
+  // When set, the question reports validity to the parent and submits only when
+  // the parent's submitSignal changes — used to centralise the submit button
+  // in LessonPlayer's footer.
+  onDraftValidityChange?: (valid: boolean) => void;
+  submitSignal?: number;
 }
 
 // Normalise a fraction-style string: "3 / 5" → "3/5", trims spaces.
@@ -40,19 +45,40 @@ export default function TextInputQuestionView({
   onAnswered,
   disabled,
   resetSignal,
+  onDraftValidityChange,
+  submitSignal,
 }: Props) {
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  // Track the last value so submitSignal-triggered submit reads it fresh.
+  const valueRef = useRef('');
+  valueRef.current = value;
 
   useEffect(() => {
     setValue('');
     inputRef.current?.focus();
-  }, [resetSignal, question.id]);
+    onDraftValidityChange?.(false);
+  }, [resetSignal, question.id, onDraftValidityChange]);
+
+  // Notify the parent whenever input validity changes.
+  useEffect(() => {
+    onDraftValidityChange?.(value.trim().length > 0);
+  }, [value, onDraftValidityChange]);
 
   const submit = () => {
     if (disabled) return;
-    onAnswered({ correct: isCorrect(question, value), value: value.trim() });
+    const v = valueRef.current.trim();
+    if (v.length === 0) return;
+    onAnswered({ correct: isCorrect(question, v), value: v });
   };
+
+  // External submit (from LessonPlayer footer or Enter key handler in parent).
+  useEffect(() => {
+    if (submitSignal === undefined) return;
+    // skip the initial mount (when signal is its initial value)
+    submit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitSignal]);
 
   return (
     <div className="space-y-4">
@@ -83,13 +109,6 @@ export default function TextInputQuestionView({
           <span className="text-lg font-semibold text-white/80">{question.unit}</span>
         )}
       </div>
-      <button
-        onClick={submit}
-        disabled={disabled || value.trim().length === 0}
-        className="learn-btn-primary"
-      >
-        ตรวจคำตอบ
-      </button>
     </div>
   );
 }

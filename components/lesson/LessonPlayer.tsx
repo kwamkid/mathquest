@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Lesson, LessonStep, Question } from '@/types/curriculum';
 import { useSound } from '@/lib/game/soundManager';
@@ -35,6 +35,15 @@ export interface LessonRunResult {
   durationSeconds: number;
   passed: boolean;
   mistakes: LessonRunMistake[];
+}
+
+// Step views set this to override the footer's primary action — used so the
+// footer is the single primary button on the page (e.g. "ตรวจคำตอบ" while a
+// question is open, "ข้อถัดไป" after feedback). null means "use default goNext".
+export interface FooterAction {
+  label: string;
+  enabled: boolean;
+  onClick: () => void;
 }
 
 interface Props {
@@ -86,6 +95,10 @@ export default function LessonPlayer({
   const [allCorrectIndependent, setAllCorrectIndependent] = useState(true);
   // For worked-example: how many sub-steps are currently revealed.
   const [revealed, setRevealed] = useState(0);
+  // Step-supplied footer override; null means "use default goNext".
+  const [footerAction, setFooterAction] = useState<FooterAction | null>(null);
+  // Reset the timer whenever the lesson changes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const startedAt = useMemo(() => Date.now(), [lesson.id]);
 
   const totalSteps = lesson.steps.length;
@@ -96,6 +109,7 @@ export default function LessonPlayer({
   const onEnterStep = useCallback((s: LessonStep | undefined) => {
     if (!s) return;
     setRevealed(0);
+    setFooterAction(null);
     switch (s.type) {
       case 'concept':
       case 'reflection':
@@ -132,7 +146,7 @@ export default function LessonPlayer({
     [topic],
   );
 
-  const goNext = () => {
+  const goNext = useCallback(() => {
     // For worked-example: reveal next sub-step before advancing the lesson step.
     if (step?.type === 'worked-example' && revealed < step.steps.length) {
       setRevealed((r) => r + 1);
@@ -159,15 +173,83 @@ export default function LessonPlayer({
         mistakes,
       });
     }
-  };
+  }, [
+    step,
+    revealed,
+    stepIndex,
+    totalSteps,
+    onStepChange,
+    startedAt,
+    stars,
+    allCorrectIndependent,
+    mistakes,
+    playSound,
+    onLessonComplete,
+    lesson.id,
+    badge,
+  ]);
 
-  const goPrev = () => {
+  const goPrev = useCallback(() => {
     if (stepIndex > 0) {
       const prevIndex = stepIndex - 1;
       setStepIndex(prevIndex);
       onStepChange?.(prevIndex);
     }
-  };
+  }, [stepIndex, onStepChange]);
+
+  // Compose the effective footer (label/enabled/onClick) from either the
+  // step-supplied override or the default goNext path.
+  const isLast = stepIndex === totalSteps - 1;
+  const isWorkedExampleRevealing =
+    step?.type === 'worked-example' && revealed < step.steps.length;
+  const defaultNextLabel = isWorkedExampleRevealing
+    ? `ดูขั้นที่ ${revealed + 1}`
+    : isLast
+      ? 'จบบทเรียน'
+      : 'ถัดไป';
+
+  const footer = useMemo<FooterAction>(
+    () =>
+      footerAction ?? {
+        label: defaultNextLabel,
+        enabled: canAdvance,
+        onClick: goNext,
+      },
+    [footerAction, defaultNextLabel, canAdvance, goNext],
+  );
+
+  // Keyboard: Enter / → fire the primary footer action when enabled.
+  // ← goes back. Esc closes the lesson.
+  useEffect(() => {
+    if (finished) return;
+    const handler = (e: KeyboardEvent) => {
+      // Don't hijack typing in the answer input — it has its own Enter handler.
+      const target = e.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      if (isTyping) return;
+      if (e.key === 'Enter' || e.key === 'ArrowRight') {
+        if (footer.enabled) {
+          e.preventDefault();
+          footer.onClick();
+        }
+      } else if (e.key === 'ArrowLeft') {
+        if (stepIndex > 0) {
+          e.preventDefault();
+          goPrev();
+        }
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [footer, stepIndex, goPrev, onClose, finished]);
 
   if (finished) {
     return (
@@ -195,6 +277,7 @@ export default function LessonPlayer({
         <GuidedPracticeStepView
           step={step}
           onCorrect={() => setCanAdvance(true)}
+          onFooterAction={setFooterAction}
         />
       );
       break;
@@ -207,6 +290,7 @@ export default function LessonPlayer({
             if (r.correct < r.total) setAllCorrectIndependent(false);
           }}
           onMistake={recordMistake}
+          onFooterAction={setFooterAction}
         />
       );
       break;
@@ -221,6 +305,7 @@ export default function LessonPlayer({
             if (r.correct < r.total) setAllCorrectIndependent(false);
           }}
           onMistake={recordMistake}
+          onFooterAction={setFooterAction}
         />
       );
       break;
@@ -228,16 +313,6 @@ export default function LessonPlayer({
       stepView = <ReflectionStepView step={step} />;
       break;
   }
-
-  const isLast = stepIndex === totalSteps - 1;
-  // Worked-example Next label cycles through sub-steps before advancing.
-  const isWorkedExampleRevealing =
-    step?.type === 'worked-example' && revealed < step.steps.length;
-  const nextLabel = isWorkedExampleRevealing
-    ? `ดูขั้นที่ ${revealed + 1}`
-    : isLast
-      ? 'จบบทเรียน'
-      : 'ถัดไป';
 
   return (
     <div className="learn-bg flex min-h-screen flex-col">
@@ -263,10 +338,10 @@ export default function LessonPlayer({
       </main>
       <LessonFooter
         onPrev={goPrev}
-        onNext={goNext}
+        onNext={footer.onClick}
         prevDisabled={stepIndex === 0}
-        nextDisabled={!canAdvance}
-        nextLabel={nextLabel}
+        nextDisabled={!footer.enabled}
+        nextLabel={footer.label}
       />
     </div>
   );

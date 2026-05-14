@@ -8,11 +8,12 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import AuthGuard from '@/components/auth/AuthGuard';
 import LearnTopBar from '@/components/lesson/LearnTopBar';
+import LearnBreadcrumb from '@/components/lesson/LearnBreadcrumb';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { getFamily } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
 import { getTopicProgress } from '@/lib/curricula/progress-helpers';
-import { ChevronLeft, Lock, CheckCircle2 } from 'lucide-react';
+import { Lock, CheckCircle2 } from 'lucide-react';
 
 export default function GradePickerPage() {
   const params = useParams();
@@ -49,13 +50,9 @@ export default function GradePickerPage() {
       <div className="learn-bg min-h-screen">
         {user && <LearnTopBar user={user} />}
         <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
-          <Link
-            href="/learn"
-            className="inline-flex items-center gap-1 text-sm font-semibold text-white/70 hover:text-white"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            หลักสูตรทั้งหมด
-          </Link>
+          <LearnBreadcrumb
+            items={[{ label: family.thaiName ?? family.name }]}
+          />
 
           <header className="space-y-1">
             <div className="flex items-center gap-3">

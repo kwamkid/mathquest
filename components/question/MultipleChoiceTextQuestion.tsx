@@ -10,6 +10,10 @@ interface Props {
   onAnswered: (result: { correct: boolean; value: string }) => void;
   disabled?: boolean;
   resetSignal?: number;
+  // MCQ commits on click — these props are accepted (for API uniformity with
+  // text-input/click-fraction) but ignored.
+  onDraftValidityChange?: (valid: boolean) => void;
+  submitSignal?: number;
 }
 
 // Stable Fisher-Yates with a string seed (question id) for deterministic shuffles.

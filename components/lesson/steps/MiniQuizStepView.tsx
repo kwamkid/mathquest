@@ -9,6 +9,9 @@ import { useCallback, useEffect, useState } from 'react';
 import type { MiniQuizStep, Question } from '@/types/curriculum';
 import QuestionRenderer from '@/components/question/QuestionRenderer';
 import { useSound } from '@/lib/game/soundManager';
+import type { FooterAction } from '../LessonPlayer';
+
+const noop = () => undefined;
 
 export interface MiniQuizResult {
   correct: number;
@@ -23,14 +26,22 @@ interface Props {
   step: MiniQuizStep;
   onComplete?: (result: MiniQuizResult) => void;
   onMistake?: (question: Question, userAnswer: string) => void;
+  onFooterAction?: (action: FooterAction | null) => void;
 }
 
-export default function MiniQuizStepView({ step, onComplete, onMistake }: Props) {
+export default function MiniQuizStepView({
+  step,
+  onComplete,
+  onMistake,
+  onFooterAction,
+}: Props) {
   const { playSound } = useSound();
   const [index, setIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [feedback, setFeedback] = useState<null | { correct: boolean }>(null);
   const [resetSignal, setResetSignal] = useState(0);
+  const [submitSignal, setSubmitSignal] = useState(0);
+  const [draftValid, setDraftValid] = useState(false);
   const [done, setDone] = useState<MiniQuizResult | null>(null);
 
   useEffect(() => {
@@ -39,6 +50,7 @@ export default function MiniQuizStepView({ step, onComplete, onMistake }: Props)
     setFeedback(null);
     setDone(null);
     setResetSignal((s) => s + 1);
+    setDraftValid(false);
   }, [step.id]);
 
   const total = step.questions.length;
@@ -57,21 +69,70 @@ export default function MiniQuizStepView({ step, onComplete, onMistake }: Props)
     [playSound, onMistake, current],
   );
 
-  const handleNext = () => {
+  const handleAdvance = useCallback(() => {
     if (index < total - 1) {
       setIndex((i) => i + 1);
       setFeedback(null);
+      setDraftValid(false);
       setResetSignal((s) => s + 1);
     } else {
       const perfect = correctCount === total;
       const passed = correctCount / total >= step.passingScore;
       const stars = perfect ? step.starsOnPerfect : passed ? step.starsOnPass : 0;
       const badge = perfect ? step.badgeOnPerfect : undefined;
-      const result: MiniQuizResult = { correct: correctCount, total, passed, perfect, stars, badge };
+      const result: MiniQuizResult = {
+        correct: correctCount,
+        total,
+        passed,
+        perfect,
+        stars,
+        badge,
+      };
       setDone(result);
       onComplete?.(result);
     }
-  };
+  }, [index, total, correctCount, step, onComplete]);
+
+  useEffect(() => {
+    if (!onFooterAction) return;
+    if (done) {
+      onFooterAction(null);
+      return;
+    }
+    if (feedback) {
+      onFooterAction({
+        label: index === total - 1 ? 'ดูผลทดสอบ' : 'ข้อถัดไป',
+        enabled: true,
+        onClick: handleAdvance,
+      });
+    } else {
+      const isMcq =
+        current?.format === 'mcq-text' || current?.format === 'mcq-visual';
+      if (isMcq) {
+        onFooterAction({
+          label: 'เลือกคำตอบ',
+          enabled: false,
+          onClick: noop,
+        });
+      } else {
+        onFooterAction({
+          label: 'ตรวจคำตอบ',
+          enabled: draftValid,
+          onClick: () => setSubmitSignal((s) => s + 1),
+        });
+      }
+    }
+    return () => onFooterAction(null);
+  }, [
+    onFooterAction,
+    done,
+    feedback,
+    index,
+    total,
+    handleAdvance,
+    current,
+    draftValid,
+  ]);
 
   if (done) {
     return (
@@ -113,6 +174,8 @@ export default function MiniQuizStepView({ step, onComplete, onMistake }: Props)
         onAnswered={handleAnswered}
         disabled={feedback !== null}
         resetSignal={resetSignal}
+        onDraftValidityChange={setDraftValid}
+        submitSignal={submitSignal}
       />
 
       {feedback && (
@@ -120,9 +183,6 @@ export default function MiniQuizStepView({ step, onComplete, onMistake }: Props)
           <p className="text-lg font-bold">
             {feedback.correct ? 'ถูกต้อง! 🎉' : 'ยังไม่ใช่'}
           </p>
-          <button onClick={handleNext} className="learn-btn-primary mt-3 w-auto px-5">
-            {index === total - 1 ? 'ดูผลทดสอบ' : 'ข้อถัดไป'}
-          </button>
         </div>
       )}
     </article>

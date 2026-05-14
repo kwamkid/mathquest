@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ClickFractionQuestion } from '@/types/curriculum';
 import FractionBar from '@/components/visuals/FractionBar';
 import FractionCircle from '@/components/visuals/FractionCircle';
@@ -15,6 +15,8 @@ interface Props {
   onAnswered: (result: { correct: boolean; value: string }) => void;
   disabled?: boolean;
   resetSignal?: number;
+  onDraftValidityChange?: (valid: boolean) => void;
+  submitSignal?: number;
 }
 
 export default function ClickFractionQuestionView({
@@ -22,12 +24,22 @@ export default function ClickFractionQuestionView({
   onAnswered,
   disabled,
   resetSignal,
+  onDraftValidityChange,
+  submitSignal,
 }: Props) {
   const [filled, setFilled] = useState<number[]>([]);
+  const filledRef = useRef<number[]>([]);
+  filledRef.current = filled;
 
   useEffect(() => {
     setFilled([]);
-  }, [resetSignal, question.id]);
+    onDraftValidityChange?.(false);
+  }, [resetSignal, question.id, onDraftValidityChange]);
+
+  useEffect(() => {
+    // Any selection counts as valid — the learner has expressed intent.
+    onDraftValidityChange?.(filled.length > 0);
+  }, [filled, onDraftValidityChange]);
 
   const togglePart = (i: number) => {
     if (disabled) return;
@@ -38,9 +50,17 @@ export default function ClickFractionQuestionView({
 
   const submit = () => {
     if (disabled) return;
-    const correct = filled.length === question.expectedFilled;
-    onAnswered({ correct, value: `${filled.length}/${question.totalParts}` });
+    const f = filledRef.current;
+    if (f.length === 0) return;
+    const correct = f.length === question.expectedFilled;
+    onAnswered({ correct, value: `${f.length}/${question.totalParts}` });
   };
+
+  useEffect(() => {
+    if (submitSignal === undefined) return;
+    submit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [submitSignal]);
 
   return (
     <div className="space-y-4">
@@ -73,9 +93,6 @@ export default function ClickFractionQuestionView({
           ระบายแล้ว: {filled.length} / {question.totalParts}
         </p>
       </div>
-      <button onClick={submit} disabled={disabled} className="learn-btn-primary">
-        ตรวจคำตอบ
-      </button>
     </div>
   );
 }

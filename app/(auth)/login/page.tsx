@@ -84,8 +84,8 @@ function LoginForm() {
       // Firebase authentication with remember me option
       await signIn(formData.username, formData.password, rememberMe);
       
-      // Success - redirect to learn (Phase 1: /learn is the default landing)
-      router.push('/learn');
+      // Success - redirect to home so user can choose between play / learn
+      router.push('/');
     } catch (error: unknown) {
         // Get error message
         let errorMessage = 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';

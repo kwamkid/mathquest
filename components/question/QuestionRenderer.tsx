@@ -21,6 +21,12 @@ export interface QuestionRendererProps {
   disabled?: boolean;
   // Force-clear input when parent moves to a new question.
   resetSignal?: number;
+  // For non-MCQ formats: report whether the draft is ready to submit.
+  // MCQ formats commit immediately on selection and ignore this.
+  onDraftValidityChange?: (valid: boolean) => void;
+  // For non-MCQ formats: bumping this number triggers a submit. Used so the
+  // lesson footer can be the single "check answer" affordance.
+  submitSignal?: number;
 }
 
 export default function QuestionRenderer(props: QuestionRendererProps) {

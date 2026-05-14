@@ -12,27 +12,35 @@ import type { GuidedPracticeStep } from '@/types/curriculum';
 import ConceptBlockRenderer from '@/components/visuals/ConceptBlockRenderer';
 import QuestionRenderer from '@/components/question/QuestionRenderer';
 import { useSound } from '@/lib/game/soundManager';
+import type { FooterAction } from '../LessonPlayer';
+
+const noop = () => undefined;
 
 interface Props {
   step: GuidedPracticeStep;
   onCorrect?: () => void;
   onWrongAttempt?: (attempt: number) => void;
+  onFooterAction?: (action: FooterAction | null) => void;
 }
 
 export default function GuidedPracticeStepView({
   step,
   onCorrect,
   onWrongAttempt,
+  onFooterAction,
 }: Props) {
   const { playSound } = useSound();
   const [wrongCount, setWrongCount] = useState(0);
   const [solved, setSolved] = useState(false);
   const [resetSignal, setResetSignal] = useState(0);
+  const [submitSignal, setSubmitSignal] = useState(0);
+  const [draftValid, setDraftValid] = useState(false);
 
   useEffect(() => {
     setWrongCount(0);
     setSolved(false);
     setResetSignal((s) => s + 1);
+    setDraftValid(false);
   }, [step.id]);
 
   const hintsToShow = Math.min(step.hints.length, Math.floor(wrongCount / 2));
@@ -54,10 +62,38 @@ export default function GuidedPracticeStepView({
         });
         // allow another try
         setResetSignal((s) => s + 1);
+        setDraftValid(false);
       }
     },
     [solved, playSound, onCorrect, onWrongAttempt],
   );
+
+  // Drive the footer: while not solved, show "ตรวจคำตอบ" that submits this
+  // question; once solved, hand back to the player's default "ถัดไป" handler.
+  useEffect(() => {
+    if (!onFooterAction) return;
+    if (solved) {
+      onFooterAction(null);
+      return;
+    }
+    const isMcq =
+      step.question.format === 'mcq-text' || step.question.format === 'mcq-visual';
+    if (isMcq) {
+      onFooterAction({
+        label: 'เลือกคำตอบ',
+        enabled: false,
+        // MCQ commits on click — the footer is disabled, so this never fires.
+        onClick: noop,
+      });
+    } else {
+      onFooterAction({
+        label: 'ตรวจคำตอบ',
+        enabled: draftValid,
+        onClick: () => setSubmitSignal((s) => s + 1),
+      });
+    }
+    return () => onFooterAction(null);
+  }, [onFooterAction, solved, step.question.format, draftValid]);
 
   return (
     <article className="space-y-5">
@@ -68,6 +104,8 @@ export default function GuidedPracticeStepView({
         onAnswered={handleAnswered}
         disabled={solved}
         resetSignal={resetSignal}
+        onDraftValidityChange={setDraftValid}
+        submitSignal={submitSignal}
       />
 
       {solved && (

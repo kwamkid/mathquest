@@ -3,6 +3,10 @@
 // Sequence of questions, no hints, immediate feedback on each.
 // After the last question the learner sees a summary screen with their score.
 // Reports {correct, total, passed} via onComplete once the summary renders.
+//
+// Submit flow is driven by the LessonPlayer footer — this view reports its
+// current footer state (label/enabled/onClick) via `onFooterAction` so there
+// is only ever a single primary button on the page.
 
 'use client';
 
@@ -10,6 +14,9 @@ import { useCallback, useEffect, useState } from 'react';
 import type { IndependentPracticeStep, Question } from '@/types/curriculum';
 import QuestionRenderer from '@/components/question/QuestionRenderer';
 import { useSound } from '@/lib/game/soundManager';
+import type { FooterAction } from '../LessonPlayer';
+
+const noop = () => undefined;
 
 interface SummaryResult {
   correct: number;
@@ -21,18 +28,22 @@ interface Props {
   step: IndependentPracticeStep;
   onComplete?: (result: SummaryResult) => void;
   onMistake?: (question: Question, userAnswer: string) => void;
+  onFooterAction?: (action: FooterAction | null) => void;
 }
 
 export default function IndependentPracticeStepView({
   step,
   onComplete,
   onMistake,
+  onFooterAction,
 }: Props) {
   const { playSound } = useSound();
   const [index, setIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
   const [feedback, setFeedback] = useState<null | { correct: boolean }>(null);
   const [resetSignal, setResetSignal] = useState(0);
+  const [submitSignal, setSubmitSignal] = useState(0);
+  const [draftValid, setDraftValid] = useState(false);
   const [summary, setSummary] = useState<SummaryResult | null>(null);
 
   useEffect(() => {
@@ -41,6 +52,7 @@ export default function IndependentPracticeStepView({
     setFeedback(null);
     setSummary(null);
     setResetSignal((s) => s + 1);
+    setDraftValid(false);
   }, [step.id]);
 
   const total = step.questions.length;
@@ -60,10 +72,11 @@ export default function IndependentPracticeStepView({
     [playSound, onMistake, current],
   );
 
-  const handleNext = () => {
+  const handleAdvance = useCallback(() => {
     if (index < total - 1) {
       setIndex((i) => i + 1);
       setFeedback(null);
+      setDraftValid(false);
       setResetSignal((s) => s + 1);
     } else {
       const passed = correctCount / total >= step.passingScore;
@@ -71,7 +84,49 @@ export default function IndependentPracticeStepView({
       setSummary(result);
       onComplete?.(result);
     }
-  };
+  }, [index, total, correctCount, step.passingScore, onComplete]);
+
+  // Report current footer action to the parent. Cleared on unmount.
+  useEffect(() => {
+    if (!onFooterAction) return;
+    if (summary) {
+      onFooterAction(null); // let parent footer default to "ถัดไป"
+      return;
+    }
+    if (feedback) {
+      onFooterAction({
+        label: finished ? 'ดูสรุป' : 'ข้อถัดไป',
+        enabled: true,
+        onClick: handleAdvance,
+      });
+    } else {
+      const isMcq =
+        current?.format === 'mcq-text' || current?.format === 'mcq-visual';
+      if (isMcq) {
+        // MCQ commits on click — disable footer until feedback arrives.
+        onFooterAction({
+          label: 'เลือกคำตอบ',
+          enabled: false,
+          onClick: noop,
+        });
+      } else {
+        onFooterAction({
+          label: 'ตรวจคำตอบ',
+          enabled: draftValid,
+          onClick: () => setSubmitSignal((s) => s + 1),
+        });
+      }
+    }
+    return () => onFooterAction(null);
+  }, [
+    onFooterAction,
+    summary,
+    feedback,
+    finished,
+    handleAdvance,
+    current,
+    draftValid,
+  ]);
 
   if (summary) {
     const pct = Math.round((summary.correct / summary.total) * 100);
@@ -110,6 +165,8 @@ export default function IndependentPracticeStepView({
         onAnswered={handleAnswered}
         disabled={feedback !== null}
         resetSignal={resetSignal}
+        onDraftValidityChange={setDraftValid}
+        submitSignal={submitSignal}
       />
 
       {feedback && (
@@ -117,9 +174,6 @@ export default function IndependentPracticeStepView({
           <p className="text-lg font-bold">
             {feedback.correct ? 'ถูกต้อง! 🎉' : 'ยังไม่ใช่ ลองครั้งต่อไปนะ'}
           </p>
-          <button onClick={handleNext} className="learn-btn-primary mt-3 w-auto px-5">
-            {finished ? 'ดูสรุป' : 'ข้อถัดไป'}
-          </button>
         </div>
       )}
     </article>

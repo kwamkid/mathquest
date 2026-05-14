@@ -9,6 +9,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import AuthGuard from '@/components/auth/AuthGuard';
 import LearnTopBar from '@/components/lesson/LearnTopBar';
+import LearnBreadcrumb from '@/components/lesson/LearnBreadcrumb';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { getFamilyGrade } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
@@ -18,7 +19,6 @@ import {
   lessonStarsEarned,
 } from '@/lib/curricula/progress-helpers';
 import {
-  ChevronLeft,
   ChevronRight,
   BookOpen,
   CheckCircle2,
@@ -64,13 +64,23 @@ export default function SubTopicPage() {
       <div className="learn-bg min-h-screen">
         {user && <LearnTopBar user={user} />}
         <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
-          <Link
-            href={`/learn/${family.key}/${grade.key}/topic/${topic.slug}`}
-            className="inline-flex items-center gap-1 text-sm font-semibold text-white/70 hover:text-white"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            กลับไป {topic.thaiTitle ?? topic.title}
-          </Link>
+          <LearnBreadcrumb
+            items={[
+              {
+                label: family.thaiName ?? family.name,
+                href: `/learn/${family.key}`,
+              },
+              {
+                label: grade.label,
+                href: `/learn/${family.key}/${grade.key}`,
+              },
+              {
+                label: topic.thaiTitle ?? topic.title,
+                href: `/learn/${family.key}/${grade.key}/topic/${topic.slug}`,
+              },
+              { label: subTopic.thaiTitle ?? subTopic.title },
+            ]}
+          />
 
           <header className="space-y-2">
             <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
