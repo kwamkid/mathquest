@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Lesson, LessonStep, Question } from '@/types/curriculum';
 import { useSound } from '@/lib/game/soundManager';
@@ -96,7 +96,37 @@ export default function LessonPlayer({
   // For worked-example: how many sub-steps are currently revealed.
   const [revealed, setRevealed] = useState(0);
   // Step-supplied footer override; null means "use default goNext".
-  const [footerAction, setFooterAction] = useState<FooterAction | null>(null);
+  const [footerAction, setFooterActionRaw] = useState<FooterAction | null>(null);
+  // Wrap setState so step views can call us on every render without producing
+  // an infinite loop — we only flip state when the *visible* footer shape
+  // changes (label / enabled). The onClick handler is held in a ref so the
+  // latest closure is always used, regardless of when it was registered.
+  const footerOnClickRef = useRef<() => void>(() => undefined);
+  const setFooterAction = useCallback((next: FooterAction | null) => {
+    if (next === null) {
+      footerOnClickRef.current = () => undefined;
+      setFooterActionRaw((prev) => (prev === null ? prev : null));
+      return;
+    }
+    footerOnClickRef.current = next.onClick;
+    setFooterActionRaw((prev) => {
+      if (
+        prev !== null &&
+        prev.label === next.label &&
+        prev.enabled === next.enabled
+      ) {
+        return prev;
+      }
+      // Store a stable onClick that dispatches through the ref so future
+      // renders don't need to update state just because the callback identity
+      // changed.
+      return {
+        label: next.label,
+        enabled: next.enabled,
+        onClick: () => footerOnClickRef.current(),
+      };
+    });
+  }, []);
   // Reset the timer whenever the lesson changes.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const startedAt = useMemo(() => Date.now(), [lesson.id]);
@@ -106,27 +136,30 @@ export default function LessonPlayer({
 
   // Some steps require interaction before "Next" enables.
   // Reset gating when the step changes.
-  const onEnterStep = useCallback((s: LessonStep | undefined) => {
-    if (!s) return;
-    setRevealed(0);
-    setFooterAction(null);
-    switch (s.type) {
-      case 'concept':
-      case 'reflection':
-        setCanAdvance(true);
-        break;
-      case 'worked-example':
-        setCanAdvance(true); // Next reveals first sub-step, then advances on last
-        break;
-      case 'guided-practice':
-        setCanAdvance(false); // unlocks on correct
-        break;
-      case 'independent-practice':
-      case 'mini-quiz':
-        setCanAdvance(false); // unlocks on completion
-        break;
-    }
-  }, []);
+  const onEnterStep = useCallback(
+    (s: LessonStep | undefined) => {
+      if (!s) return;
+      setRevealed(0);
+      setFooterAction(null);
+      switch (s.type) {
+        case 'concept':
+        case 'reflection':
+          setCanAdvance(true);
+          break;
+        case 'worked-example':
+          setCanAdvance(true); // Next reveals first sub-step, then advances on last
+          break;
+        case 'guided-practice':
+          setCanAdvance(false); // unlocks on correct
+          break;
+        case 'independent-practice':
+        case 'mini-quiz':
+          setCanAdvance(false); // unlocks on completion
+          break;
+      }
+    },
+    [setFooterAction],
+  );
 
   // initialise gating once per step
   useMemo(() => onEnterStep(step), [step?.id]); // eslint-disable-line react-hooks/exhaustive-deps
