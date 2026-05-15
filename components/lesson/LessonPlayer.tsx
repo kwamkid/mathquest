@@ -13,6 +13,7 @@ import { useSound } from '@/lib/game/soundManager';
 import LessonHeader from './LessonHeader';
 import LessonFooter from './LessonFooter';
 import LessonComplete from './LessonComplete';
+import { Dialog } from '@/components/ui/Dialog';
 import ConceptStepView from './steps/ConceptStepView';
 import WorkedExampleStepView from './steps/WorkedExampleStepView';
 import GuidedPracticeStepView from './steps/GuidedPracticeStepView';
@@ -95,6 +96,8 @@ export default function LessonPlayer({
   const [allCorrectIndependent, setAllCorrectIndependent] = useState(true);
   // For worked-example: how many sub-steps are currently revealed.
   const [revealed, setRevealed] = useState(0);
+  // Confirm dialog before bailing out mid-lesson.
+  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
   // Step-supplied footer override; null means "use default goNext".
   const [footerAction, setFooterActionRaw] = useState<FooterAction | null>(null);
   // Wrap setState so step views can call us on every render without producing
@@ -230,6 +233,18 @@ export default function LessonPlayer({
     }
   }, [stepIndex, onStepChange]);
 
+  // Wrap onClose so X / Esc surface a confirm dialog first.
+  const requestClose = useCallback(() => {
+    setShowCloseConfirm(true);
+  }, []);
+  const confirmClose = useCallback(() => {
+    setShowCloseConfirm(false);
+    onClose();
+  }, [onClose]);
+  const cancelClose = useCallback(() => {
+    setShowCloseConfirm(false);
+  }, []);
+
   // Compose the effective footer (label/enabled/onClick) from either the
   // step-supplied override or the default goNext path.
   const isLast = stepIndex === totalSteps - 1;
@@ -264,7 +279,12 @@ export default function LessonPlayer({
         target?.isContentEditable;
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        // If the confirm dialog is already open, let its own handler close it.
+        if (showCloseConfirm) {
+          setShowCloseConfirm(false);
+        } else {
+          requestClose();
+        }
         return;
       }
       if (isTyping) return;
@@ -282,7 +302,7 @@ export default function LessonPlayer({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [footer, stepIndex, goPrev, onClose, finished]);
+  }, [footer, stepIndex, goPrev, requestClose, showCloseConfirm, finished]);
 
   if (finished) {
     return (
@@ -354,7 +374,7 @@ export default function LessonPlayer({
         stepTitle={step.title}
         currentStep={stepIndex}
         totalSteps={totalSteps}
-        onClose={onClose}
+        onClose={requestClose}
       />
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6">
         <AnimatePresence mode="wait">
@@ -375,6 +395,16 @@ export default function LessonPlayer({
         prevDisabled={stepIndex === 0}
         nextDisabled={!footer.enabled}
         nextLabel={footer.label}
+      />
+      <Dialog
+        isOpen={showCloseConfirm}
+        type="confirm"
+        title="ออกจากบทเรียน?"
+        message="ความคืบหน้าของคุณจะถูกบันทึกไว้"
+        confirmLabel="ออกจากบทเรียน"
+        cancelLabel="เรียนต่อ"
+        onClose={cancelClose}
+        onConfirm={confirmClose}
       />
     </div>
   );
