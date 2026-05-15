@@ -92,8 +92,15 @@ export default function GuidedPracticeStepView({
         onClick: () => setSubmitSignal((s) => s + 1),
       });
     }
-    return () => onFooterAction(null);
   }, [onFooterAction, solved, step.question.format, draftValid]);
+
+  // Clear the footer override when this step view unmounts.
+  useEffect(() => {
+    return () => {
+      onFooterAction?.(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <article className="space-y-5">

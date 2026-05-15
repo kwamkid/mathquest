@@ -117,7 +117,6 @@ export default function IndependentPracticeStepView({
         });
       }
     }
-    return () => onFooterAction(null);
   }, [
     onFooterAction,
     summary,
@@ -127,6 +126,14 @@ export default function IndependentPracticeStepView({
     current,
     draftValid,
   ]);
+
+  // Clear the footer override when this step view unmounts.
+  useEffect(() => {
+    return () => {
+      onFooterAction?.(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (summary) {
     const pct = Math.round((summary.correct / summary.total) * 100);

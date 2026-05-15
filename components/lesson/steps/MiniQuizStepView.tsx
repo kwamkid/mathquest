@@ -122,7 +122,6 @@ export default function MiniQuizStepView({
         });
       }
     }
-    return () => onFooterAction(null);
   }, [
     onFooterAction,
     done,
@@ -133,6 +132,15 @@ export default function MiniQuizStepView({
     current,
     draftValid,
   ]);
+
+  // Clear the footer override when this step view unmounts so the player
+  // falls back to its default goNext button.
+  useEffect(() => {
+    return () => {
+      onFooterAction?.(null);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (done) {
     return (
