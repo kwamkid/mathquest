@@ -82,7 +82,7 @@ export default function TextInputQuestionView({
 
   return (
     <div className="space-y-4">
-      <p className="text-lg font-medium text-white">{question.prompt}</p>
+      <p className="text-xl font-medium text-white sm:text-2xl">{question.prompt}</p>
       {question.promptVisual && (
         <div className="flex justify-center">
           <ConceptBlockRenderer block={question.promptVisual} />

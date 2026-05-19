@@ -34,7 +34,10 @@ export default function LessonPlayerPage() {
   const subTopic = topic?.subTopics.find((s) => s.slug === subTopicSlug);
   const lesson = subTopic?.lessons.find((l) => l.id === lessonId);
 
-  const chapterHref = `/learn/${familyKey}/${gradeKey}/topic/${topicSlug}/chapter/${subTopicSlug}`;
+  // Send the learner back to /learn (the timeline they started from) on close.
+  // The chapter detail page still exists for deep links, but jumping to it on
+  // exit confused users — they don't recognise the page and lose their place.
+  const exitHref = '/learn';
 
   if (!resolved || !curriculum || !topic || !subTopic || !lesson) {
     return (
@@ -57,12 +60,20 @@ export default function LessonPlayerPage() {
   const handleLessonComplete = async (result: LessonRunResult) => {
     if (!user) return;
     try {
+      // Sub-topics whose prerequisites include this one — they unlock when
+      // every lesson in this sub-topic is complete.
+      const unlocksSubTopicIds = topic.subTopics
+        .filter((s) => s.prerequisites?.includes(subTopic.id))
+        .map((s) => s.id);
+
       await saveLessonRunResult({
         userId: user.id,
         curriculumId: curriculum.id,
         topicId: topic.id,
         subTopicId: subTopic.id,
         result,
+        subTopicLessonIds: subTopic.lessons.map((l) => l.id),
+        unlocksSubTopicIds,
       });
       await refreshUser();
     } catch (err) {
@@ -95,7 +106,7 @@ export default function LessonPlayerPage() {
       <LessonPlayer
         lesson={lesson}
         topic={topic.slug}
-        onClose={() => router.push(chapterHref)}
+        onClose={() => router.push(exitHref)}
         onLessonComplete={handleLessonComplete}
         startStepIndex={startStepIndex}
         onStepChange={handleStepChange}

@@ -10,6 +10,7 @@ import { updateUserProfile } from '@/lib/firebase/auth';
 import { User as UserIcon, School, GraduationCap, Save, ArrowLeft, AlertCircle, Edit, TrendingUp, Pi, Sparkles, Gift, Trophy, Zap, AlertTriangle, X } from 'lucide-react';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import LevelProgressDisplay from '@/components/game/LevelProgressDisplay';
+import AppHeader from '@/components/layout/AppHeader';
 
 const grades = [
   { value: 'K1', label: 'อนุบาล 1' },
@@ -175,26 +176,13 @@ export default function ProfilePage() {
 
       {/* Content Container - ปรับให้เป็น scroll ทั้งหน้า */}
       <div className="relative z-10 min-h-screen">
-        {/* Header - Fixed */}
-        <div className="sticky top-0 z-20 bg-metaverse-black/80 backdrop-blur-md border-b border-metaverse-purple/20">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between"
-          >
-            <button
-              onClick={() => router.push('/learn')}
-              className="flex items-center gap-2 text-white/60 hover:text-white transition"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              กลับ
-            </button>
-            
-            <h1 className="text-2xl md:text-3xl font-bold text-white">ข้อมูลส่วนตัว</h1>
-            
-            <div className="w-20" />
-          </motion.div>
-        </div>
+        <AppHeader
+          user={user}
+          variant="sub"
+          title="ข้อมูลส่วนตัว"
+          titleIcon={<UserIcon className="h-4 w-4 text-metaverse-purple" />}
+          backHref="/learn"
+        />
 
         {/* Main Content - Scrollable */}
         <div className="px-4 py-6 max-w-4xl mx-auto">

@@ -20,25 +20,26 @@ export default function LessonHeader({
   onClose,
 }: Props) {
   return (
-    <header className="sticky top-0 z-10 border-b border-white/10 bg-[#0a0a0a]/80 px-4 py-3 backdrop-blur-md sm:px-6">
-      <div className="mx-auto flex max-w-3xl items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-bold text-white sm:text-lg">
-            {lessonTitle}
-          </h1>
-          {stepTitle && (
-            <p className="truncate text-sm text-white/60">{stepTitle}</p>
-          )}
-        </div>
-        <button
-          onClick={onClose}
-          aria-label="ออกจากบทเรียน"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
-        >
-          <X className="h-6 w-6" />
-        </button>
+    <header className="sticky top-0 z-10 border-b border-white/10 bg-[#0a0a0a]/80 px-4 pb-3 pt-5 backdrop-blur-md sm:px-6 sm:pt-7">
+      {/* Close button pinned to the actual screen edge (outside the
+        * centred max-w-3xl column) so it lands top-right on every screen. */}
+      <button
+        onClick={onClose}
+        aria-label="ออกจากบทเรียน"
+        className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white sm:right-4 sm:top-4"
+      >
+        <X className="h-6 w-6" />
+      </button>
+
+      <div className="mx-auto max-w-3xl pr-12 sm:pr-14">
+        <h1 className="truncate text-base font-bold text-white sm:text-lg">
+          {lessonTitle}
+        </h1>
+        {stepTitle && (
+          <p className="truncate text-sm text-white/60">{stepTitle}</p>
+        )}
       </div>
-      <div className="mx-auto mt-2 max-w-3xl">
+      <div className="mx-auto mt-3 max-w-3xl">
         <LessonProgress current={currentStep} total={totalSteps} />
       </div>
     </header>

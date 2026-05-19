@@ -29,7 +29,7 @@ export default function WorkedExampleStepView({ step, revealed }: Props) {
       <header className="space-y-2">
         <h2 className="text-2xl font-bold text-white">{step.title}</h2>
         <div
-          className="rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-center text-xl font-semibold text-amber-100"
+          className="rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-4 text-center text-2xl font-semibold text-amber-100 sm:text-3xl"
           style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}
         >
           {step.problemStatement}

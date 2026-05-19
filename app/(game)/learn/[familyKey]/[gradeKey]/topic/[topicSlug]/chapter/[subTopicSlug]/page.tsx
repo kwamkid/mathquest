@@ -8,7 +8,7 @@
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import AuthGuard from '@/components/auth/AuthGuard';
-import LearnTopBar from '@/components/lesson/LearnTopBar';
+import AppHeader from '@/components/layout/AppHeader';
 import LearnBreadcrumb from '@/components/lesson/LearnBreadcrumb';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { getFamilyGrade } from '@/lib/curricula/families';
@@ -54,7 +54,7 @@ export default function SubTopicPage() {
 
   const { family, grade } = resolved;
   const progress = user?.curriculumProgress?.[curriculum.id];
-  const sp = getSubTopicProgress(progress, subTopic);
+  const sp = getSubTopicProgress(progress, subTopic, topic);
   const sortedLessons = [...subTopic.lessons].sort((a, b) => a.order - b.order);
   const continueLesson = sp.nextLesson ?? sortedLessons[0];
   const base = `/learn/${family.key}/${grade.key}/topic/${topic.slug}/chapter/${subTopic.slug}`;
@@ -62,8 +62,8 @@ export default function SubTopicPage() {
   return (
     <AuthGuard>
       <div className="learn-bg min-h-screen">
-        {user && <LearnTopBar user={user} />}
-        <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
+        {user && <AppHeader user={user} />}
+        <div className="mx-auto max-w-3xl space-y-6 px-4 pb-6 pt-8 sm:px-6 sm:pb-8 sm:pt-12">
           <LearnBreadcrumb
             items={[
               {

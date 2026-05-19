@@ -97,7 +97,9 @@ export default function LessonPlayer({
   // For worked-example: how many sub-steps are currently revealed.
   const [revealed, setRevealed] = useState(0);
   // Confirm dialog before bailing out mid-lesson.
-  const [showCloseConfirm, setShowCloseConfirm] = useState(false);
+  // `closeIntent` doubles as a "dialog is open" flag — non-null means the
+  // user pressed X / Esc and we're waiting on their confirmation.
+  const [closeIntent, setCloseIntent] = useState<null | 'chapter'>(null);
   // Step-supplied footer override; null means "use default goNext".
   const [footerAction, setFooterActionRaw] = useState<FooterAction | null>(null);
   // Wrap setState so step views can call us on every render without producing
@@ -235,14 +237,14 @@ export default function LessonPlayer({
 
   // Wrap onClose so X / Esc surface a confirm dialog first.
   const requestClose = useCallback(() => {
-    setShowCloseConfirm(true);
+    setCloseIntent('chapter');
   }, []);
   const confirmClose = useCallback(() => {
-    setShowCloseConfirm(false);
+    setCloseIntent(null);
     onClose();
   }, [onClose]);
   const cancelClose = useCallback(() => {
-    setShowCloseConfirm(false);
+    setCloseIntent(null);
   }, []);
 
   // Compose the effective footer (label/enabled/onClick) from either the
@@ -280,8 +282,8 @@ export default function LessonPlayer({
       if (e.key === 'Escape') {
         e.preventDefault();
         // If the confirm dialog is already open, let its own handler close it.
-        if (showCloseConfirm) {
-          setShowCloseConfirm(false);
+        if (closeIntent !== null) {
+          setCloseIntent(null);
         } else {
           requestClose();
         }
@@ -302,7 +304,7 @@ export default function LessonPlayer({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [footer, stepIndex, goPrev, requestClose, showCloseConfirm, finished]);
+  }, [footer, stepIndex, goPrev, requestClose, closeIntent, finished]);
 
   if (finished) {
     return (
@@ -376,7 +378,7 @@ export default function LessonPlayer({
         totalSteps={totalSteps}
         onClose={requestClose}
       />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-6 pt-10 sm:px-6 sm:pt-12">
         <AnimatePresence mode="wait">
           <motion.div
             key={step.id}
@@ -397,7 +399,7 @@ export default function LessonPlayer({
         nextLabel={footer.label}
       />
       <Dialog
-        isOpen={showCloseConfirm}
+        isOpen={closeIntent !== null}
         type="confirm"
         title="ออกจากบทเรียน?"
         message="ความคืบหน้าของคุณจะถูกบันทึกไว้"

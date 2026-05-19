@@ -10,7 +10,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/auth/AuthGuard';
-import LearnTopBar from '@/components/lesson/LearnTopBar';
+import AppHeader from '@/components/layout/AppHeader';
 import { families } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
 import {
@@ -30,6 +30,7 @@ import type {
 } from '@/types/curriculum';
 import {
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Circle,
   Lock,
@@ -70,8 +71,8 @@ export default function LearnHomePage() {
   return (
     <AuthGuard>
       <div className="learn-bg min-h-screen">
-        {user && <LearnTopBar user={user} />}
-        <div className="p-4 sm:p-6">
+        {user && <AppHeader user={user} />}
+        <div className="px-4 pb-6 pt-8 sm:px-6 sm:pb-8 sm:pt-12">
           <div className="mx-auto max-w-3xl space-y-6">
             <header>
               <h1 className="text-3xl font-bold text-white">เรียนคณิตศาสตร์</h1>
@@ -304,57 +305,99 @@ function ChapterTimeline({
   continueLessonId,
   buildLessonHref,
 }: ChapterTimelineProps) {
-  const chapterProgress = getSubTopicProgress(progress, subTopic);
-  const unlocked = isSubTopicUnlocked(progress, subTopic);
+  const chapterProgress = getSubTopicProgress(progress, subTopic, topic);
+  const unlocked = isSubTopicUnlocked(progress, subTopic, topic);
+
+  // Default open state mirrors the user's focus:
+  //   - finished chapter → collapsed (done, get it out of the way)
+  //   - locked chapter   → collapsed (no reason to peek inside)
+  //   - holds the "continue" lesson, or is partially complete → open
+  //   - otherwise (next-up but untouched) → collapsed
+  const hasContinue = subTopic.lessons.some((l) => l.id === continueLessonId);
+  const partiallyStarted =
+    chapterProgress.completed > 0 && chapterProgress.completed < chapterProgress.total;
+  const defaultOpen = unlocked && (hasContinue || partiallyStarted);
+
+  const [open, setOpen] = useState(defaultOpen);
+
+  // The header doubles as the expand/collapse trigger. Locked chapters still
+  // toggle (so users can peek), but inner rows stay click-disabled.
+  // Finished chapters fade back so the active one pops; locked chapters fade
+  // further still. Active chapters keep full opacity.
+  const wrapperOpacity = !unlocked
+    ? 'opacity-40'
+    : chapterProgress.done
+      ? 'opacity-55'
+      : '';
 
   return (
-    <div className="learn-card overflow-hidden rounded-2xl">
-      {/* Chapter header */}
-      <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-        <div className="min-w-0">
+    <div
+      className={`learn-card overflow-hidden rounded-2xl ${wrapperOpacity}`}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/[0.03]"
+        aria-expanded={open}
+      >
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h4
               className={`truncate text-base font-bold ${
-                chapterProgress.done ? 'text-white/60 line-through' : 'text-white'
+                chapterProgress.done
+                  ? 'text-white/50 line-through'
+                  : !unlocked
+                    ? 'text-white/50'
+                    : 'text-white'
               }`}
             >
               {subTopic.thaiTitle ?? subTopic.title}
             </h4>
             {!unlocked && <Lock className="h-4 w-4 shrink-0 text-white/40" />}
           </div>
-          <p className="mt-0.5 text-xs text-white/50">
-            {chapterProgress.completed}/{chapterProgress.total} บทเรียน
+          <p className="mt-0.5 text-xs text-white/45">
+            {chapterProgress.done
+              ? 'เรียนจบแล้ว'
+              : `${chapterProgress.completed}/${chapterProgress.total} บทเรียน`}
           </p>
         </div>
-        {chapterProgress.done && (
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" />
-        )}
-      </div>
+        <div className="flex shrink-0 items-center gap-2">
+          {chapterProgress.done && (
+            <CheckCircle2 className="h-5 w-5 text-emerald-400/70" />
+          )}
+          <ChevronDown
+            className={`h-4 w-4 text-white/40 transition-transform ${
+              open ? 'rotate-180' : ''
+            }`}
+          />
+        </div>
+      </button>
 
-      {/* Lesson list */}
-      <ol className="divide-y divide-white/5">
-        {subTopic.lessons.map((lesson, idx) => {
-          const completed = isLessonCompleted(progress, lesson.id);
-          const stars = lessonStarsEarned(progress, lesson.id);
-          const isContinue = lesson.id === continueLessonId;
-          const isLocked = !unlocked;
-          const isLast = idx === subTopic.lessons.length - 1;
+      {open && (
+        <ol className="divide-y divide-white/5 border-t border-white/10">
+          {subTopic.lessons.map((lesson, idx) => {
+            const completed = isLessonCompleted(progress, lesson.id);
+            const stars = lessonStarsEarned(progress, lesson.id);
+            const isContinue = lesson.id === continueLessonId;
+            const isLocked = !unlocked;
+            const isLast = idx === subTopic.lessons.length - 1;
 
-          return (
-            <LessonRow
-              key={lesson.id}
-              lesson={lesson}
-              index={idx + 1}
-              completed={completed}
-              stars={stars}
-              isContinue={isContinue}
-              isLocked={isLocked}
-              isLast={isLast}
-              href={buildLessonHref(topic, subTopic, lesson)}
-            />
-          );
-        })}
-      </ol>
+            return (
+              <LessonRow
+                key={lesson.id}
+                lesson={lesson}
+                index={idx + 1}
+                completed={completed}
+                stars={stars}
+                isContinue={isContinue}
+                isLocked={isLocked}
+                isLast={isLast}
+                href={buildLessonHref(topic, subTopic, lesson)}
+              />
+            );
+          })}
+        </ol>
+      )}
     </div>
   );
 }

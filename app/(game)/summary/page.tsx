@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import { getGradeDisplayName } from '@/lib/game/gradeProgression';
+import AppHeader from '@/components/layout/AppHeader';
 import confetti from 'canvas-confetti';
 import { 
   Trophy, 
@@ -282,33 +283,28 @@ function SummaryContent() {
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
       </div>
 
+      <AppHeader
+        user={user}
+        variant="sub"
+        title="ผลการเล่น"
+        titleIcon={<Trophy className="h-4 w-4 text-yellow-400" />}
+        backHref="/play"
+        extras={
+          <motion.button
+            onClick={() => router.push('/ranking')}
+            className="p-1.5 glass rounded-full hover:bg-white/10 transition"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            title="ดูอันดับ"
+          >
+            <BarChart3 className="w-4 h-4 text-white/70" />
+          </motion.button>
+        }
+      />
+
       {/* Content */}
       <div className="relative z-10 p-4 pb-8">
         <div className="max-w-4xl mx-auto">
-          {/* Top Navigation */}
-          <div className="flex justify-between mb-6">
-            <motion.button
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              onClick={() => router.push('/play')}
-              className="p-2 glass rounded-full hover:bg-white/10 transition"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Home className="w-5 h-5 text-white/70" />
-            </motion.button>
-            
-            <motion.button
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              onClick={() => router.push('/ranking')}
-              className="p-2 glass rounded-full hover:bg-white/10 transition"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <BarChart3 className="w-5 h-5 text-white/70" />
-            </motion.button>
-          </div>
 
           {/* Header with Grade Change message */}
           <motion.div

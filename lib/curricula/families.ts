@@ -11,7 +11,7 @@ export const families: CurriculumFamily[] = [
   {
     key: 'british',
     name: 'British National Curriculum',
-    thaiName: 'หลักสูตรอังกฤษ',
+    thaiName: 'British National Curriculum',
     description:
       'หลักสูตรคณิตศาสตร์ของอังกฤษ ครอบคลุม Key Stage 1-2 — Year 1 ถึง Year 6',
     flag: '🇬🇧',
@@ -28,7 +28,7 @@ export const families: CurriculumFamily[] = [
   {
     key: 'thai',
     name: 'หลักสูตรแกนกลางการศึกษาขั้นพื้นฐาน (กระทรวงศึกษาธิการ)',
-    thaiName: 'หลักสูตรไทย (กระทรวงศึกษาฯ)',
+    thaiName: 'Thai National Curriculum',
     description: 'หลักสูตรกระทรวงศึกษาธิการของไทย — อนุบาล ประถม มัธยม',
     flag: '🇹🇭',
     comingSoon: true,
@@ -44,7 +44,7 @@ export const families: CurriculumFamily[] = [
   {
     key: 'american',
     name: 'American Common Core',
-    thaiName: 'หลักสูตรอเมริกัน (Common Core)',
+    thaiName: 'American Common Core',
     description: 'หลักสูตร Common Core State Standards ของสหรัฐอเมริกา — Grade K-5',
     flag: '🇺🇸',
     comingSoon: true,

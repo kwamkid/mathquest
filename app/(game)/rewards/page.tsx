@@ -35,6 +35,7 @@ import {
   DollarSign,
   CheckCircle2
 } from 'lucide-react';
+import AppHeader from '@/components/layout/AppHeader';
 
 // Category filters
 const categories = [
@@ -395,58 +396,29 @@ export default function RewardShopPage() {
 
       {/* Main Container - Scrollable */}
       <div className="relative z-10 min-h-screen">
-        {/* Fixed Header */}
-        <div className="sticky top-0 z-40 bg-metaverse-black/80 backdrop-blur-md border-b border-metaverse-purple/30" style={{ isolation: 'isolate' }}>
-          <div className="p-4 max-w-7xl mx-auto">
-            {/* Header Content */}
-            <div className="mb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => router.push('/learn')}
-                    className="p-1.5 glass rounded-full hover:bg-white/10 transition"
-                  >
-                    <ArrowLeft className="w-4 h-4 md:w-5 md:h-5 text-white" />
-                  </button>
-                  <div>
-                    <h1 className="text-lg md:text-2xl font-bold text-white flex items-center gap-2">
-                      <Gift className="w-5 h-5 md:w-7 md:h-7 text-metaverse-purple" />
-                      Reward Shop
-                    </h1>
-                    <p className="text-white/60 text-xs md:text-sm">แลกรางวัลด้วย EXP</p>
-                  </div>
-                </div>
-                
-                {/* User EXP & History Button */}
-                <div className="flex items-center gap-2">
-                  <motion.button
-                    onClick={() => router.push('/rewards/history')}
-                    className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-1 text-sm"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span className="hidden sm:inline">ประวัติ</span>
-                  </motion.button>
-                  
-                  <motion.div
-                    className="glass-dark rounded-xl px-3 py-1.5 border border-yellow-400/30"
-                    whileHover={{ scale: 1.05 }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-yellow-400" />
-                      <div>
-                        <p className="text-xs text-white/60">EXP</p>
-                        <p className="text-lg md:text-xl font-bold text-yellow-400">
-                          {user?.experience.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  </motion.div>
-                </div>
-              </div>
-            </div>
+        <AppHeader
+          user={user}
+          variant="sub"
+          title="Reward Shop"
+          subtitle="แลกรางวัลด้วย EXP"
+          titleIcon={<Gift className="h-4 w-4 text-metaverse-purple" />}
+          backHref="/learn"
+          extras={
+            <motion.button
+              onClick={() => router.push('/rewards/history')}
+              className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-1 text-sm"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">ประวัติ</span>
+            </motion.button>
+          }
+        />
 
+        {/* Filters bar (sticky under the AppHeader) */}
+        <div className="sticky top-12 z-30 bg-metaverse-black/80 backdrop-blur-md border-b border-metaverse-purple/20" style={{ isolation: 'isolate' }}>
+          <div className="p-4 max-w-7xl mx-auto">
             {/* Filters & Sort */}
             <div className="glass-dark rounded-xl p-2 border border-metaverse-purple/30">
               <div className="flex flex-col gap-2">

@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User } from '@/types';
 import { signOut } from '@/lib/firebase/auth';
 import { useRouter } from 'next/navigation';
-import { Settings, LogOut, X, Gift, Info, Crown, ShoppingBag, Zap,Sparkles } from 'lucide-react';
+import { Settings, LogOut, X, Gift, Info, Crown, ShoppingBag, Zap, Sparkles, Home } from 'lucide-react';
 import EnhancedSoundToggle from './EnhancedSoundToggle';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import Link from 'next/link';
@@ -195,7 +195,18 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                   </Link>
                   
                   <EnhancedSoundToggle />
-                  
+
+                  <motion.button
+                    onClick={() => router.push('/')}
+                    aria-label="กลับหน้าแรก"
+                    title="กลับหน้าแรก (เรียน / เล่นเกม)"
+                    className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Home className="w-4 h-4" />
+                  </motion.button>
+
                   <motion.button
                     onClick={() => router.push('/profile')}
                     className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
@@ -367,7 +378,18 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                     </Link>
                     
                     <EnhancedSoundToggle />
-                    
+
+                    <motion.button
+                      onClick={() => router.push('/')}
+                      aria-label="กลับหน้าแรก"
+                      title="กลับหน้าแรก (เรียน / เล่นเกม)"
+                      className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Home className="w-5 h-5" />
+                    </motion.button>
+
                     <motion.button
                       onClick={() => router.push('/profile')}
                       className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
@@ -376,7 +398,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                     >
                       <Settings className="w-5 h-5" />
                     </motion.button>
-                    
+
                     <motion.button
                       onClick={handleSignOut}
                       className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"

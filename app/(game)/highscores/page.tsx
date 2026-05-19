@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { LevelScore } from '@/types';
 import { ArrowLeft, Trophy, Star, TrendingUp, Calendar, Target, Zap, ChevronRight } from 'lucide-react';
 import { getQuestionCount, getLevelConfig, GRADE_CONFIGS } from '@/lib/game/config';
+import AppHeader from '@/components/layout/AppHeader';
 
 interface ScoreWithDescription extends LevelScore {
   description: string;
@@ -138,28 +139,15 @@ export default function HighScoresPage() {
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
       </div>
 
+      <AppHeader
+        user={user}
+        variant="sub"
+        title="คะแนนสูงสุดของฉัน"
+        titleIcon={<Trophy className="h-4 w-4 text-yellow-400" />}
+        backHref="/learn"
+      />
+
       <div className="relative z-10 p-4 max-w-6xl mx-auto w-full">
-        {/* Header - Compact */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between mb-4"
-        >
-          <button
-            onClick={() => router.push('/learn')}
-            className="flex items-center gap-2 text-white/60 hover:text-white transition"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="hidden sm:inline">กลับ</span>
-          </button>
-          
-          <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-            <Trophy className="w-6 h-6 md:w-8 md:h-8 text-yellow-400" />
-            คะแนนสูงสุดของฉัน
-          </h1>
-          
-          <div className="w-12 sm:w-20" />
-        </motion.div>
 
         {/* Current Grade & Level Highlight - Compact */}
         <motion.div

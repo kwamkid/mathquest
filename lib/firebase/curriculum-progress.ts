@@ -17,6 +17,13 @@ import type { LessonRunResult } from '@/components/lesson/LessonPlayer';
 // Cap how many mistake patterns we retain per curriculum to avoid unbounded growth.
 const MISTAKE_CAP = 200;
 
+// 1 star earned in Learn = 50 EXP + 10 score — comparable to Play mode rewards
+// (typical play session = ~150-300 EXP for full marks). totalScore is the
+// unified "lifetime points" counter that both Play and Learn now contribute to,
+// so it shows up in the shared AppHeader regardless of which mode you're in.
+const EXP_PER_STAR = 50;
+const SCORE_PER_STAR = 10;
+
 const emptyProgress = (curriculumId: string): CurriculumProgress => ({
   curriculumId,
   startedAt: new Date().toISOString(),
@@ -51,14 +58,39 @@ export interface SaveLessonRunArgs {
   topicId: string;
   subTopicId: string;
   result: LessonRunResult;
+  // All lesson ids in the sub-topic (in order) — used to detect sub-topic completion.
+  subTopicLessonIds?: string[];
+  // Sub-topic ids that should unlock when this sub-topic is finished.
+  unlocksSubTopicIds?: string[];
+}
+
+export interface SaveLessonRunOutcome {
+  expGained: number;
+  scoreGained: number;
+  subTopicCompleted: boolean;
+  newlyUnlockedSubTopicIds: string[];
 }
 
 // Persist the outcome of one lesson run.
 // Idempotent for replays — best score / max stars wins; attempts increment.
-export const saveLessonRunResult = async (args: SaveLessonRunArgs): Promise<void> => {
-  const { userId, curriculumId, topicId, subTopicId, result } = args;
+// Also awards EXP based on star delta, and marks the sub-topic as passed
+// (unlocking the next one) when every lesson in the sub-topic is complete.
+export const saveLessonRunResult = async (
+  args: SaveLessonRunArgs,
+): Promise<SaveLessonRunOutcome> => {
+  const {
+    userId,
+    curriculumId,
+    topicId,
+    subTopicId,
+    result,
+    subTopicLessonIds,
+    unlocksSubTopicIds,
+  } = args;
   const user = await getUser(userId);
-  if (!user) return;
+  if (!user) {
+    return { expGained: 0, scoreGained: 0, subTopicCompleted: false, newlyUnlockedSubTopicIds: [] };
+  }
 
   const existing = user.curriculumProgress?.[curriculumId] ?? emptyProgress(curriculumId);
   const nowIso = new Date().toISOString();
@@ -91,6 +123,43 @@ export const saveLessonRunResult = async (args: SaveLessonRunArgs): Promise<void
 
   const mergedMistakes = [...newMistakes, ...existing.mistakePatterns].slice(0, MISTAKE_CAP);
 
+  // EXP + score: pay only for newly-earned stars on this attempt — replays don't double-pay.
+  const starDelta = Math.max(0, result.starsAwarded - (priorScore?.starsAwarded ?? 0));
+  const expGained = starDelta * EXP_PER_STAR;
+  const scoreGained = starDelta * SCORE_PER_STAR;
+
+  // Detect sub-topic completion: every lesson id in the sub-topic must now be in
+  // completedLessonIds. We mark the sub-topic passed and unlock downstream ones.
+  let nextSubTopicScores = existing.subTopicScores;
+  let nextUnlockedSubTopicIds = existing.unlockedSubTopicIds;
+  let subTopicCompleted = false;
+  const newlyUnlockedSubTopicIds: string[] = [];
+
+  if (subTopicLessonIds && subTopicLessonIds.length > 0) {
+    const allDone = subTopicLessonIds.every((lid) => completedLessonIds.includes(lid));
+    const wasPassed = existing.subTopicScores[subTopicId]?.passed ?? false;
+
+    if (allDone && !wasPassed) {
+      subTopicCompleted = true;
+      const priorSubScore = existing.subTopicScores[subTopicId];
+      const subScore: SubTopicScore = {
+        subTopicId,
+        bestScore: Math.max(priorSubScore?.bestScore ?? 0, 1),
+        passed: true,
+        attempts: (priorSubScore?.attempts ?? 0) + 1,
+        completedAt: priorSubScore?.completedAt ?? nowIso,
+      };
+      nextSubTopicScores = { ...existing.subTopicScores, [subTopicId]: subScore };
+
+      const toUnlock = [subTopicId, ...(unlocksSubTopicIds ?? [])];
+      const before = new Set(existing.unlockedSubTopicIds);
+      for (const id of toUnlock) {
+        if (!before.has(id)) newlyUnlockedSubTopicIds.push(id);
+      }
+      nextUnlockedSubTopicIds = Array.from(new Set([...existing.unlockedSubTopicIds, ...toUnlock]));
+    }
+  }
+
   const next: CurriculumProgress = {
     ...existing,
     lastActiveAt: nowIso,
@@ -102,17 +171,28 @@ export const saveLessonRunResult = async (args: SaveLessonRunArgs): Promise<void
       ...existing.lessonScores,
       [result.lessonId]: updatedLessonScore,
     },
+    subTopicScores: nextSubTopicScores,
+    unlockedSubTopicIds: nextUnlockedSubTopicIds,
     mistakePatterns: mergedMistakes,
     totalMinutesSpent: existing.totalMinutesSpent + Math.round(result.durationSeconds / 60),
-    totalStarsEarned:
-      existing.totalStarsEarned +
-      Math.max(0, result.starsAwarded - (priorScore?.starsAwarded ?? 0)),
+    totalStarsEarned: existing.totalStarsEarned + starDelta,
   };
 
-  await updateDoc(doc(db, 'users', userId), {
-    [`curriculumProgress.${curriculumId}`]: next,
-    currentCurriculumId: user.currentCurriculumId ?? curriculumId,
-  });
+  if (starDelta > 0) {
+    await updateDoc(doc(db, 'users', userId), {
+      [`curriculumProgress.${curriculumId}`]: next,
+      currentCurriculumId: user.currentCurriculumId ?? curriculumId,
+      experience: (user.experience ?? 0) + expGained,
+      totalScore: (user.totalScore ?? 0) + scoreGained,
+    });
+  } else {
+    await updateDoc(doc(db, 'users', userId), {
+      [`curriculumProgress.${curriculumId}`]: next,
+      currentCurriculumId: user.currentCurriculumId ?? curriculumId,
+    });
+  }
+
+  return { expGained, scoreGained, subTopicCompleted, newlyUnlockedSubTopicIds };
 };
 
 export interface UpdatePositionArgs {

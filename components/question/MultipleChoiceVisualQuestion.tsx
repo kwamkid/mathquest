@@ -57,7 +57,7 @@ export default function MultipleChoiceVisualQuestionView({
 
   return (
     <div className="space-y-4">
-      <p className="text-lg font-medium text-white">{question.prompt}</p>
+      <p className="text-xl font-medium text-white sm:text-2xl">{question.prompt}</p>
       {question.promptText && (
         <p className="text-base text-white/70">{question.promptText}</p>
       )}

@@ -10,7 +10,7 @@ import { getActiveBoosts } from '@/lib/firebase/rewards';
 import { Question } from '@/types';
 import { ActiveBoost } from '@/types/avatar';
 import QuestionDisplay from '@/components/game/QuestionDisplay';
-import GameHeader from '@/components/game/GameHeader';
+import AppHeader from '@/components/layout/AppHeader';
 import GameProgress from '@/components/game/GameProgress';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import { calculateGradeProgression } from '@/lib/game/gradeProgression';
@@ -427,7 +427,7 @@ function PlayPageContent() {
         ))}
       </div>
 
-      {user && <GameHeader user={{ ...user, totalScore: tempTotalScore }} hideActions={gameState === 'playing'} />}
+      {user && <AppHeader user={{ ...user, totalScore: tempTotalScore }} hideActions={gameState === 'playing'} />}
       
       <div className="relative z-10 container mx-auto px-4 py-8 max-w-6xl">
         <AnimatePresence mode="wait">

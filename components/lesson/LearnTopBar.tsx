@@ -10,7 +10,7 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { LogOut, Settings, Star } from 'lucide-react';
+import { Home, LogOut, Settings, Star } from 'lucide-react';
 import { signOut } from '@/lib/firebase/auth';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import EnhancedSoundToggle from '@/components/game/EnhancedSoundToggle';
@@ -76,6 +76,17 @@ export default function LearnTopBar({ user }: Props) {
           )}
 
           <EnhancedSoundToggle />
+
+          <motion.button
+            onClick={() => router.push('/')}
+            aria-label="กลับหน้าแรก"
+            title="กลับหน้าแรก (เรียน / เล่นเกม)"
+            className="glass flex h-7 w-7 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Home className="h-4 w-4" />
+          </motion.button>
 
           <motion.button
             onClick={() => router.push('/profile')}

@@ -541,13 +541,14 @@ const lesson5: Lesson = lesson({
       title: 'ลองทำเอง',
       question: textInput({
         id: `${SUB}-l5-q1`,
-        prompt: '2/3 + 2/3 = ? (พิมพ์เป็น a/b)',
+        prompt: '2/3 + 2/3 = ? (ตอบเป็น improper fraction รูปแบบ a/b เช่น 4/3 — ยังไม่ต้องแปลงเป็น mixed number)',
         expectedAnswer: '4/3',
         answerType: 'fraction',
       }),
       hints: [
         'denominator คงเป็น 3',
         '2 + 2 = 4 → numerator มากกว่า denominator ใช่ไหม? ไม่เป็นไร เขียนเป็น 4/3 ได้เลย',
+        'ตอบในรูป a/b เท่านั้น (ไม่ต้องเขียน mixed number 1 1/3)',
       ],
       fullExplanation: '2 + 2 = 4 → 4/3 (improper fraction) อ่านได้ว่า 1 1/3',
     }),
@@ -570,17 +571,17 @@ const lesson5: Lesson = lesson({
     }),
     independentPractice({
       id: `${SUB}-l5-s6`,
-      title: 'ฝึก 5 ข้อ',
+      title: 'ฝึก 7 ข้อ',
       questions: [
         textInput({
           id: `${SUB}-l5-q3`,
-          prompt: '4/5 + 3/5 = ?',
+          prompt: '4/5 + 3/5 = ? (ตอบในรูป a/b เช่น 7/5)',
           expectedAnswer: '7/5',
           answerType: 'fraction',
         }),
         textInput({
           id: `${SUB}-l5-q4`,
-          prompt: '5/8 + 5/8 = ?',
+          prompt: '5/8 + 5/8 = ? (ตอบในรูป a/b เช่น 10/8)',
           expectedAnswer: '10/8',
           answerType: 'fraction',
         }),
@@ -608,9 +609,31 @@ const lesson5: Lesson = lesson({
         }),
         textInput({
           id: `${SUB}-l5-q7`,
-          prompt: '6/7 + 5/7 = ?',
+          prompt: '6/7 + 5/7 = ? (ตอบในรูป a/b เช่น 11/7)',
           expectedAnswer: '11/7',
           answerType: 'fraction',
+        }),
+        mcqText({
+          id: `${SUB}-l5-q8`,
+          prompt: '4/6 + 4/6 = 8/6 — เขียนเป็น mixed number ได้ว่าอะไร?',
+          choices: [
+            { id: 'a', text: '1 2/6' },
+            { id: 'b', text: '2 4/6' },
+            { id: 'c', text: '8 1/6' },
+            { id: 'd', text: '1 4/6' },
+          ],
+          correctChoiceId: 'a',
+        }),
+        mcqText({
+          id: `${SUB}-l5-q9`,
+          prompt: '7/4 เขียนเป็น mixed number ได้ว่าอะไร?',
+          choices: [
+            { id: 'a', text: '1 3/4' },
+            { id: 'b', text: '3 1/4' },
+            { id: 'c', text: '2 1/4' },
+            { id: 'd', text: '7 1/4' },
+          ],
+          correctChoiceId: 'a',
         }),
       ],
     }),

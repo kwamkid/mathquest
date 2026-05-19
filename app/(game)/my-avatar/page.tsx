@@ -22,6 +22,7 @@ import AvatarCustomizationTab from '@/components/avatar/tabs/AvatarCustomization
 import TitleBadgesTab from '@/components/avatar/tabs/TitleBadgesTab';
 import BadgesTab from '@/components/avatar/tabs/BadgesTab';
 import UserDisplayName from '@/components/user/UserDisplayName';
+import AppHeader from '@/components/layout/AppHeader';
 
 // Import item database
 import { 
@@ -504,63 +505,63 @@ export default function MyAvatarPage() {
       </div>
 
       <div className="relative z-10 flex flex-col h-screen">
-        {/* Mobile Header */}
-        <div className="md:hidden glass-dark border-b border-metaverse-purple/30">
-          <div className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => router.push('/learn')}
-                className="p-2 glass rounded-full hover:bg-white/10 transition"
+        <AppHeader
+          user={user}
+          variant="sub"
+          title="My Avatar"
+          subtitle="จัดการตัวละครและเครื่องประดับ"
+          titleIcon={<Sparkles className="h-4 w-4 text-metaverse-purple" />}
+          backHref="/learn"
+          extras={
+            <>
+              <motion.button
+                onClick={handleRefreshInventory}
+                className="p-2 glass rounded-lg hover:bg-white/10 transition"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="รีเฟรชข้อมูล"
               >
-                <ChevronLeft className="w-5 h-5 text-white" />
-              </button>
-              <div>
-                <h1 className="text-lg font-bold text-white">My Avatar</h1>
-                <p className="text-xs text-white/60">จัดการตัวละคร</p>
-              </div>
-            </div>
-            
-            {/* Mobile Action Buttons */}
-            {hasChanges && (
-              <div className="flex items-center gap-2">
-                <motion.button
-                  onClick={handleReset}
-                  className="p-2 glass rounded-lg hover:bg-white/10 transition"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <RefreshCw className="w-4 h-4 text-white/70" />
-                </motion.button>
-                <motion.button
-                  onClick={handleSave}
-                  disabled={saving}
-                  className="px-4 py-2 metaverse-button text-white font-bold rounded-lg shadow-lg flex items-center gap-2"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  {saving ? (
-                    <>
+                <RefreshCw className="w-4 h-4 text-white/70" />
+              </motion.button>
+              {hasChanges && (
+                <>
+                  <motion.button
+                    onClick={handleReset}
+                    className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-1 text-sm"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    <span className="hidden sm:inline">ยกเลิก</span>
+                  </motion.button>
+                  <motion.button
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="px-3 py-1.5 metaverse-button text-white font-bold rounded-lg shadow-lg disabled:opacity-50 flex items-center gap-1 text-sm"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {saving ? (
                       <motion.span
                         animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                       >
                         ⏳
                       </motion.span>
-                      <span className="text-sm">บันทึก</span>
-                    </>
-                  ) : (
-                    <>
+                    ) : (
                       <Save className="w-4 h-4" />
-                      <span className="text-sm">บันทึก</span>
-                    </>
-                  )}
-                </motion.button>
-              </div>
-            )}
-          </div>
-          
-          {/* Mobile Tabs */}
-          <div className="flex border-t border-metaverse-purple/30">
+                    )}
+                    <span>บันทึก</span>
+                  </motion.button>
+                </>
+              )}
+            </>
+          }
+        />
+
+        {/* Mobile Tabs (separate row beneath header) */}
+        <div className="md:hidden glass-dark border-b border-metaverse-purple/30">
+          <div className="flex">
             <button
               onClick={() => setActiveTab('avatar')}
               className={`flex-1 px-3 py-3 font-medium transition flex items-center justify-center gap-1 text-xs ${
@@ -597,90 +598,6 @@ export default function MyAvatarPage() {
           </div>
         </div>
 
-        {/* Desktop Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="hidden md:block mb-3 p-4"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => router.push('/learn')}
-                className="p-2 glass rounded-full hover:bg-white/10 transition"
-              >
-                <ArrowLeft className="w-5 h-5 text-white" />
-              </button>
-              <div>
-                <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
-                  <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-metaverse-purple" />
-                  My Avatar
-                </h1>
-                <p className="text-white/60 text-xs md:text-sm">จัดการตัวละครและเครื่องประดับ</p>
-              </div>
-            </div>
-            
-            {/* Desktop Save/Reset Buttons */}
-            <div className="h-10 flex items-center gap-2">
-              {/* Refresh Button */}
-              <motion.button
-                onClick={handleRefreshInventory}
-                className="p-2 glass rounded-lg hover:bg-white/10 transition"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                title="รีเฟรชข้อมูล"
-              >
-                <RefreshCw className="w-4 h-4 text-white/70" />
-              </motion.button>
-              
-              <AnimatePresence>
-                {hasChanges && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    className="flex gap-2"
-                  >
-                    <motion.button
-                      onClick={handleReset}
-                      className="px-4 py-2 glass rounded-xl text-white font-bold hover:bg-white/10 transition flex items-center gap-2"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <RefreshCw className="w-5 h-5" />
-                      <span>ยกเลิก</span>
-                    </motion.button>
-                    <motion.button
-                      onClick={handleSave}
-                      disabled={saving}
-                      className="px-6 py-2 metaverse-button text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center gap-2 text-base"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {saving ? (
-                        <>
-                          <motion.span
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                            className="text-lg"
-                          >
-                            ⏳
-                          </motion.span>
-                          <span>กำลังบันทึก...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-5 h-5" />
-                          <span>บันทึกการเปลี่ยนแปลง</span>
-                        </>
-                      )}
-                    </motion.button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-        </motion.div>
 
         {/* Desktop Tab Navigation */}
         <div className="hidden md:block glass-dark rounded-xl p-1 mb-3 mx-4 border border-metaverse-purple/30">
