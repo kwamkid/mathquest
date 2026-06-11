@@ -7,6 +7,7 @@ import type {
   ConceptBlock,
   MultipleChoiceTextQuestion,
   MultipleChoiceVisualQuestion,
+  SetClockQuestion,
   TextInputQuestion,
 } from '@/types/curriculum';
 
@@ -77,4 +78,22 @@ export const clickFraction = (params: {
   totalParts: params.totalParts,
   expectedFilled: params.expectedFilled,
   style: params.style ?? 'bar',
+});
+
+// Interactive analog-clock question — learner drags hands to a target time.
+// `tolerance` is in minutes; 1-2 is forgiving without giving away wrong answers.
+export const setClock = (params: {
+  id: string;
+  prompt: string;
+  expectedHours: number;   // 1-12
+  expectedMinutes: number; // 0-59
+  tolerance?: number;
+}): SetClockQuestion => ({
+  id: params.id,
+  format: 'interactive',
+  variant: 'set-clock',
+  prompt: params.prompt,
+  expectedHours: params.expectedHours,
+  expectedMinutes: params.expectedMinutes,
+  tolerance: params.tolerance ?? 2,
 });

@@ -10,6 +10,7 @@ import TextInputQuestion from './TextInputQuestion';
 import MultipleChoiceTextQuestion from './MultipleChoiceTextQuestion';
 import MultipleChoiceVisualQuestion from './MultipleChoiceVisualQuestion';
 import ClickFractionQuestion from './interactive/ClickFractionQuestion';
+import SetClockQuestion from './interactive/SetClockQuestion';
 
 export interface QuestionRendererProps {
   question: Question;
@@ -44,8 +45,11 @@ export default function QuestionRenderer(props: QuestionRendererProps) {
   if (question.format === 'interactive' && question.variant === 'click-fraction') {
     return <ClickFractionQuestion {...props} question={question} />;
   }
+  if (question.format === 'interactive' && question.variant === 'set-clock') {
+    return <SetClockQuestion {...props} question={question} />;
+  }
 
-  // Other interactive variants (drag-drop, set-clock, read-scale, draw-shape)
+  // Other interactive variants (drag-drop, read-scale, draw-shape)
   // ship in Phase 2-3.
   return (
     <div className="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">

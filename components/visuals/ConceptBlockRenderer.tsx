@@ -14,6 +14,7 @@ import FractionBar from './FractionBar';
 import FractionCircle from './FractionCircle';
 import FractionAddition from './FractionAddition';
 import NumberLine from './NumberLine';
+import AnalogClock from './AnalogClock';
 
 interface Props {
   block: ConceptBlock;
@@ -132,9 +133,11 @@ export default function ConceptBlockRenderer({ block }: Props) {
         </div>
       );
 
+    case 'analogClock':
+      return <AnalogClock hours={block.hours} minutes={block.minutes} />;
+
     case 'image':
     case 'shape':
-    case 'analogClock':
     case 'ruler':
     case 'barChart':
       return (

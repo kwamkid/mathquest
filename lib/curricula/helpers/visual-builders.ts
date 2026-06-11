@@ -70,3 +70,10 @@ export const mathExpression = (latex: string): ConceptBlock => ({
   kind: 'mathExpression',
   latex,
 });
+
+export const analogClock = (hours: number, minutes: number): ConceptBlock => ({
+  kind: 'analogClock',
+  hours,
+  minutes,
+  interactive: false,
+});
