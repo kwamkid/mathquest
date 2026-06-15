@@ -44,6 +44,7 @@ export default function TopicPage() {
   const { family, grade } = resolved;
   const progress = user?.curriculumProgress?.[curriculum.id];
   const sorted = [...topic.subTopics].sort((a, b) => a.order - b.order);
+  const hideGrade = !!family.skipGradePicker;
 
   return (
     <AuthGuard>
@@ -54,18 +55,22 @@ export default function TopicPage() {
             items={[
               {
                 label: family.thaiName ?? family.name,
-                href: `/learn/${family.key}`,
-              },
-              {
-                label: grade.label,
                 href: `/learn/${family.key}/${grade.key}`,
               },
+              ...(hideGrade
+                ? []
+                : [
+                    {
+                      label: grade.label,
+                      href: `/learn/${family.key}/${grade.key}`,
+                    },
+                  ]),
               { label: topic.thaiTitle ?? topic.title },
             ]}
           />
           <header className="space-y-1">
             <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
-              {grade.label}
+              {hideGrade ? (family.thaiName ?? family.name) : grade.label}
             </p>
             <h1 className="text-3xl font-bold text-white">
               <span className="mr-2" aria-hidden="true">{topic.icon ?? '📘'}</span>

@@ -4,7 +4,8 @@
 
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AuthGuard from '@/components/auth/AuthGuard';
 import AppHeader from '@/components/layout/AppHeader';
@@ -17,9 +18,21 @@ import { Lock, CheckCircle2 } from 'lucide-react';
 
 export default function GradePickerPage() {
   const params = useParams();
+  const router = useRouter();
   const { user } = useAuth();
   const familyKey = String(params.familyKey);
   const family = getFamily(familyKey);
+
+  // Families that don't have grade levels (e.g. Life Math) skip this picker
+  // and go straight to the topic list of their first playable grade.
+  const playableGrade = family?.grades.find((g) => !!g.curriculumId);
+  const shouldSkip = !!(family?.skipGradePicker && playableGrade);
+
+  useEffect(() => {
+    if (shouldSkip && playableGrade) {
+      router.replace(`/learn/${familyKey}/${playableGrade.key}`);
+    }
+  }, [shouldSkip, playableGrade, familyKey, router]);
 
   if (!family) {
     return (
@@ -29,6 +42,11 @@ export default function GradePickerPage() {
         </div>
       </AuthGuard>
     );
+  }
+
+  if (shouldSkip) {
+    // Render nothing while the redirect kicks in — saves a layout flash.
+    return null;
   }
 
   const summariseGrade = (curriculumId: string) => {

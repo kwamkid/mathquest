@@ -15,10 +15,13 @@ export const families: CurriculumFamily[] = [
     description:
       'คณิตศาสตร์ที่ใช้ในชีวิตจริง — เปอร์เซ็นต์ บัญญัติไตรยางศ์ ลดราคา ของคุ้มราคา',
     flag: '💡',
+    // Life Math isn't tied to school year — skip the grade picker so users
+    // land on the topic list straight away.
+    skipGradePicker: true,
     grades: [
       {
-        key: 'beginner',
-        label: 'ระดับเริ่มต้น',
+        key: 'all',
+        label: 'ทุกระดับ',
         ageRange: '8+ ปี',
         curriculumId: 'life-math-beginner',
       },

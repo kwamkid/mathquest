@@ -19,6 +19,11 @@ export interface CurriculumFamily {
   description: string;
   flag?: string;             // emoji shortcut: 🇬🇧 🇹🇭 🇺🇸
   comingSoon?: boolean;      // true if no curricula registered yet
+  // When true the family is treated as "no grade levels" — the UI skips the
+  // grade picker entirely and jumps straight to the topic list of the first
+  // grade. Use for families like Life Math whose content isn't tied to a
+  // school year. Implicit when the family has only one grade with content.
+  skipGradePicker?: boolean;
   // Ordered list of grades to offer (some may be marked comingSoon).
   grades: CurriculumFamilyGrade[];
 }

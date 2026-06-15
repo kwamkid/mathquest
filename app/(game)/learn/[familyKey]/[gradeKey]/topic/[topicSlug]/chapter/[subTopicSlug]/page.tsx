@@ -61,6 +61,7 @@ export default function SubTopicPage() {
   const progress = user?.curriculumProgress?.[curriculum.id];
   const sp = getSubTopicProgress(progress, subTopic, topic);
   const base = `/learn/${family.key}/${grade.key}/topic/${topic.slug}/chapter/${subTopic.slug}`;
+  const hideGrade = !!family.skipGradePicker;
 
   // Split lessons by kind. Within each bucket, order by `order`.
   const sortedLessons = [...subTopic.lessons].sort((a, b) => a.order - b.order);
@@ -118,12 +119,16 @@ export default function SubTopicPage() {
             items={[
               {
                 label: family.thaiName ?? family.name,
-                href: `/learn/${family.key}`,
-              },
-              {
-                label: grade.label,
                 href: `/learn/${family.key}/${grade.key}`,
               },
+              ...(hideGrade
+                ? []
+                : [
+                    {
+                      label: grade.label,
+                      href: `/learn/${family.key}/${grade.key}`,
+                    },
+                  ]),
               {
                 label: topic.thaiTitle ?? topic.title,
                 href: `/learn/${family.key}/${grade.key}/topic/${topic.slug}`,
@@ -134,7 +139,9 @@ export default function SubTopicPage() {
 
           <header className="space-y-2">
             <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
-              {grade.label} · {topic.thaiTitle ?? topic.title}
+              {hideGrade
+                ? topic.thaiTitle ?? topic.title
+                : `${grade.label} · ${topic.thaiTitle ?? topic.title}`}
             </p>
             <h1 className="text-3xl font-bold text-white">
               {subTopic.thaiTitle ?? subTopic.title}

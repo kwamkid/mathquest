@@ -40,28 +40,53 @@ export default function GradeTopicsPage() {
   const progress = user?.curriculumProgress?.[curriculum.id];
   const sortedTopics = [...curriculum.topics].sort((a, b) => a.order - b.order);
 
+  // Families without graded levels (e.g. Life Math) collapse the breadcrumb
+  // and header — there's nothing meaningful to show for "grade".
+  const hideGrade = !!family.skipGradePicker;
+
   return (
     <AuthGuard>
       <div className="learn-bg min-h-screen">
         {user && <AppHeader user={user} />}
         <div className="mx-auto max-w-4xl space-y-6 px-4 pb-6 pt-8 sm:px-6 sm:pb-8 sm:pt-12">
           <LearnBreadcrumb
-            items={[
-              {
-                label: family.thaiName ?? family.name,
-                href: `/learn/${family.key}`,
-              },
-              { label: grade.label },
-            ]}
+            items={
+              hideGrade
+                ? [{ label: family.thaiName ?? family.name }]
+                : [
+                    {
+                      label: family.thaiName ?? family.name,
+                      href: `/learn/${family.key}`,
+                    },
+                    { label: grade.label },
+                  ]
+            }
           />
 
           <header className="space-y-1">
-            <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
-              {family.thaiName ?? family.name}
-            </p>
-            <h1 className="text-3xl font-bold text-white">{grade.label}</h1>
-            <p className="text-base text-white/70">{curriculum.description}</p>
-            <p className="text-sm font-semibold text-white/50">เลือกหัวข้อ</p>
+            {hideGrade ? (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="text-4xl leading-none" aria-hidden="true">
+                    {family.flag ?? '📘'}
+                  </span>
+                  <h1 className="text-3xl font-bold text-white">
+                    {family.thaiName ?? family.name}
+                  </h1>
+                </div>
+                <p className="text-base text-white/70">{family.description}</p>
+                <p className="text-sm font-semibold text-white/50">เลือกหัวข้อที่อยากเรียน</p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
+                  {family.thaiName ?? family.name}
+                </p>
+                <h1 className="text-3xl font-bold text-white">{grade.label}</h1>
+                <p className="text-base text-white/70">{curriculum.description}</p>
+                <p className="text-sm font-semibold text-white/50">เลือกหัวข้อ</p>
+              </>
+            )}
           </header>
 
           <div className="space-y-3">
