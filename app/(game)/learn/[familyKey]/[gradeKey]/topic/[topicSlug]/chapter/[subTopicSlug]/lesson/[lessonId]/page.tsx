@@ -66,12 +66,19 @@ export default function LessonPlayerPage() {
         .filter((s) => s.prerequisites?.includes(subTopic.id))
         .map((s) => s.id);
 
+      // Mini quizzes are reinforcement, not assessment — they still mark the
+      // "lesson" complete (so it unlocks the next one), but award no stars /
+      // EXP / score. Star delta is clamped to 0 here so EXP_PER_STAR doesn't
+      // pay out for replaying a mini quiz.
+      const adjusted =
+        lesson.kind === 'mini' ? { ...result, starsAwarded: 0 } : result;
+
       await saveLessonRunResult({
         userId: user.id,
         curriculumId: curriculum.id,
         topicId: topic.id,
         subTopicId: subTopic.id,
-        result,
+        result: adjusted,
         subTopicLessonIds: subTopic.lessons.map((l) => l.id),
         unlocksSubTopicIds,
       });

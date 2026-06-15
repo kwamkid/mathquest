@@ -77,3 +77,9 @@ export const analogClock = (hours: number, minutes: number): ConceptBlock => ({
   minutes,
   interactive: false,
 });
+
+export const percentBar = (percent: number, label?: string): ConceptBlock => ({
+  kind: 'percentBar',
+  percent,
+  label,
+});

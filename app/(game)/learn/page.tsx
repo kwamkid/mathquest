@@ -29,6 +29,7 @@ import type {
   Topic,
 } from '@/types/curriculum';
 import {
+  BookOpen,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -36,6 +37,8 @@ import {
   Lock,
   PlayCircle,
   Star,
+  Target,
+  Trophy,
 } from 'lucide-react';
 
 export default function LearnHomePage() {
@@ -423,8 +426,20 @@ function LessonRow({
   isLast,
   href,
 }: LessonRowProps) {
+  const kind = lesson.kind ?? 'lesson';
+
   // Visual node on the left of each row — completed = green check,
-  // continue = pulsing play, locked = lock, otherwise = empty circle.
+  // continue = pulsing play, locked = lock, otherwise = a kind-specific icon
+  // (📚 lesson / 🎯 mini quiz / 🏆 final quiz) so the list reads at a glance.
+  const kindIcon =
+    kind === 'mini' ? (
+      <Target className="h-4 w-4 text-cyan-300" />
+    ) : kind === 'quiz' ? (
+      <Trophy className="h-4 w-4 text-amber-300" />
+    ) : (
+      <BookOpen className="h-4 w-4 text-white/50" />
+    );
+
   const node = isLocked ? (
     <Lock className="h-5 w-5 text-white/30" />
   ) : completed ? (
@@ -443,11 +458,28 @@ function LessonRow({
         ? 'text-white font-bold'
         : 'text-white';
 
+  // Final quiz: special tint so it stands out as the "trophy moment".
+  const rowBg = isContinue
+    ? 'bg-pink-500/[0.08]'
+    : kind === 'quiz'
+      ? 'bg-amber-500/[0.05]'
+      : '';
   const rowClass = `relative flex items-center gap-3 px-4 py-3 transition ${
     isLocked
       ? 'cursor-not-allowed'
       : 'hover:bg-white/[0.03] active:bg-white/[0.06]'
-  } ${isContinue ? 'bg-pink-500/[0.08]' : ''}`;
+  } ${rowBg}`;
+
+  const kindBadge =
+    kind === 'mini' ? (
+      <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold text-cyan-200">
+        ฝึก
+      </span>
+    ) : kind === 'quiz' ? (
+      <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-200">
+        QUIZ
+      </span>
+    ) : null;
 
   const content = (
     <>
@@ -462,12 +494,15 @@ function LessonRow({
         </span>
       </div>
 
+      <span className="shrink-0">{kindIcon}</span>
+
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-white/40">{index}.</span>
           <h5 className={`truncate text-sm sm:text-base ${titleClass}`}>
             {lesson.title}
           </h5>
+          {kindBadge}
         </div>
         <div className="mt-0.5 flex items-center gap-2 text-xs text-white/50">
           <span>{lesson.estimatedMinutes} นาที</span>

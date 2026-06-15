@@ -74,6 +74,13 @@ export interface SubTopic {
   lessons: Lesson[];
 }
 
+// What kind of "lesson card" this is. Drives how it groups in the chapter UI
+// and whether completing it gives stars/EXP:
+//   - 'lesson'  (default): teach a concept, mixes worked examples + practice
+//   - 'mini'    : short reinforcement after a lesson (~3-5 questions). NO reward.
+//   - 'quiz'    : end-of-chapter assessment, gives stars + EXP via mini-quiz step.
+export type LessonKind = 'lesson' | 'mini' | 'quiz';
+
 export interface Lesson {
   id: string;
   subTopicId: string;
@@ -86,6 +93,8 @@ export interface Lesson {
   // Whether this lesson acts as the chapter assessment.
   // If true, completing it counts toward unlocking the next sub-topic.
   isAssessment?: boolean;
+  // Optional grouping signal — defaults to 'lesson' if omitted (back-compat).
+  kind?: LessonKind;
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +184,7 @@ export type ConceptBlock =
   | { kind: 'numberLine'; from: number; to: number; step: number; highlight?: number[] }
   | { kind: 'shape'; shape: ShapeName; size: number; labels?: boolean }
   | { kind: 'analogClock'; hours: number; minutes: number; interactive?: false }
+  | { kind: 'percentBar'; percent: number; label?: string }
   | { kind: 'ruler'; lengthCm: number; markedAt?: number }
   | { kind: 'barChart'; data: ChartData; title?: string }
   | { kind: 'mathExpression'; latex: string };

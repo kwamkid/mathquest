@@ -6,9 +6,11 @@
 import { Curriculum } from '@/types/curriculum';
 import { Grade } from '@/types';
 import { bncY3 } from './bnc-y3';
+import { lifeMathBeginner } from './life-math-beginner';
 
 export const curricula: Record<string, Curriculum> = {
   'bnc-y3': bncY3,
+  'life-math-beginner': lifeMathBeginner,
   // future: 'cambridge-stage-3': cambridgeStage3,
   // future: 'thai-p3': thaiP3,
 };

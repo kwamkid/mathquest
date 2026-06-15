@@ -10,6 +10,7 @@ import type {
   GuidedPracticeStep,
   IndependentPracticeStep,
   Lesson,
+  LessonKind,
   LessonStep,
   MiniQuizStep,
   Question,
@@ -119,6 +120,7 @@ export const lesson = (params: {
   steps: LessonStep[];
   learningObjectives: string[];
   isAssessment?: boolean;
+  kind?: LessonKind;
 }): Lesson => ({
   id: params.id,
   subTopicId: params.subTopicId,
@@ -129,6 +131,7 @@ export const lesson = (params: {
   steps: params.steps,
   learningObjectives: params.learningObjectives,
   isAssessment: params.isAssessment,
+  kind: params.kind,
 });
 
 export const subTopic = (params: {

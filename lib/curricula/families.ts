@@ -9,6 +9,22 @@ import type { CurriculumFamily } from '@/types/curriculum';
 
 export const families: CurriculumFamily[] = [
   {
+    key: 'life-math',
+    name: 'Life Math',
+    thaiName: 'Life Math · ทักษะคำนวณในชีวิตประจำวัน',
+    description:
+      'คณิตศาสตร์ที่ใช้ในชีวิตจริง — เปอร์เซ็นต์ บัญญัติไตรยางศ์ ลดราคา ของคุ้มราคา',
+    flag: '💡',
+    grades: [
+      {
+        key: 'beginner',
+        label: 'ระดับเริ่มต้น',
+        ageRange: '8+ ปี',
+        curriculumId: 'life-math-beginner',
+      },
+    ],
+  },
+  {
     key: 'british',
     name: 'British National Curriculum',
     thaiName: 'British National Curriculum',

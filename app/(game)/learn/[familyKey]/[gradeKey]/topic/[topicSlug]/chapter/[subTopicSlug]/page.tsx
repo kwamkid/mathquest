@@ -24,8 +24,10 @@ import {
   CheckCircle2,
   Star,
   PlayCircle,
+  Target,
   Trophy,
 } from 'lucide-react';
+import type { Lesson } from '@/types/curriculum';
 
 export default function SubTopicPage() {
   const params = useParams();
@@ -139,11 +141,35 @@ export default function SubTopicPage() {
             </Link>
           )}
 
-          <div className="space-y-3">
-            <h2 className="text-base font-bold text-white">บทเรียนทั้งหมด</h2>
-            {sortedLessons.map((lesson) => {
+          {(() => {
+            // Bucket lessons by kind so each section shows up under its own
+            // heading. Defaults to 'lesson' to keep older content backwards-
+            // compatible (no `kind` field).
+            const buckets = {
+              lesson: [] as Lesson[],
+              mini: [] as Lesson[],
+              quiz: [] as Lesson[],
+            };
+            for (const l of sortedLessons) {
+              const k = l.kind ?? 'lesson';
+              buckets[k].push(l);
+            }
+            const renderRow = (lesson: Lesson) => {
               const done = isLessonCompleted(progress, lesson.id);
               const stars = lessonStarsEarned(progress, lesson.id);
+              const kind = lesson.kind ?? 'lesson';
+              const icon =
+                kind === 'quiz' || lesson.isAssessment ? (
+                  <Trophy className="mt-1 h-6 w-6 shrink-0 text-amber-300" />
+                ) : kind === 'mini' ? (
+                  <Target className="mt-1 h-6 w-6 shrink-0 text-cyan-300" />
+                ) : (
+                  <BookOpen
+                    className={`mt-1 h-6 w-6 shrink-0 ${
+                      done ? 'text-emerald-300' : 'text-pink-300'
+                    }`}
+                  />
+                );
               return (
                 <Link
                   key={lesson.id}
@@ -153,21 +179,25 @@ export default function SubTopicPage() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    {lesson.isAssessment ? (
-                      <Trophy className="mt-1 h-6 w-6 shrink-0 text-amber-300" />
-                    ) : (
-                      <BookOpen className={`mt-1 h-6 w-6 shrink-0 ${done ? 'text-emerald-300' : 'text-pink-300'}`} />
-                    )}
+                    {icon}
                     <div>
                       <span className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                        บทเรียน {lesson.order}
-                        {done && <span className="ml-2 text-emerald-300">· เรียนแล้ว</span>}
+                        {kind === 'quiz'
+                          ? 'Final Quiz'
+                          : kind === 'mini'
+                            ? 'ฝึก'
+                            : `บทเรียน ${lesson.order}`}
+                        {done && (
+                          <span className="ml-2 text-emerald-300">· เรียนแล้ว</span>
+                        )}
                       </span>
                       <h3 className="mt-0.5 text-base font-bold text-white">
                         {lesson.title}
                       </h3>
                       {lesson.description && (
-                        <p className="mt-0.5 text-sm text-white/70">{lesson.description}</p>
+                        <p className="mt-0.5 text-sm text-white/70">
+                          {lesson.description}
+                        </p>
                       )}
                       <div className="mt-1 flex items-center gap-2 text-xs text-white/60">
                         <span>⏱ {lesson.estimatedMinutes} นาที</span>
@@ -190,8 +220,40 @@ export default function SubTopicPage() {
                   )}
                 </Link>
               );
-            })}
-          </div>
+            };
+
+            return (
+              <div className="space-y-6">
+                {buckets.lesson.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="flex items-center gap-2 text-base font-bold text-white">
+                      <BookOpen className="h-5 w-5 text-pink-300" />
+                      บทเรียน
+                    </h2>
+                    {buckets.lesson.map(renderRow)}
+                  </section>
+                )}
+                {buckets.mini.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="flex items-center gap-2 text-base font-bold text-white">
+                      <Target className="h-5 w-5 text-cyan-300" />
+                      ฝึกหลังเรียน
+                    </h2>
+                    {buckets.mini.map(renderRow)}
+                  </section>
+                )}
+                {buckets.quiz.length > 0 && (
+                  <section className="space-y-3">
+                    <h2 className="flex items-center gap-2 text-base font-bold text-white">
+                      <Trophy className="h-5 w-5 text-amber-300" />
+                      ทดสอบรวม
+                    </h2>
+                    {buckets.quiz.map(renderRow)}
+                  </section>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </AuthGuard>
