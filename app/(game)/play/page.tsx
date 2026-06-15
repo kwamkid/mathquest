@@ -499,7 +499,7 @@ function PlayPageContent() {
                       </motion.div>
                       
                       <motion.div
-                        className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-metaverse-purple to-metaverse-pink text-white text-sm font-bold rounded-full px-4 py-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
+                        className="pointer-events-none absolute -bottom-8 left-1/2 max-w-[calc(100vw-2rem)] -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-metaverse-purple to-metaverse-pink px-4 py-1 text-sm font-bold text-white shadow-lg opacity-0 transition-opacity group-hover:opacity-100"
                       >
                         จัดการ Avatar
                       </motion.div>

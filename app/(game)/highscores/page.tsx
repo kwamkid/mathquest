@@ -334,7 +334,7 @@ export default function HighScoresPage() {
                                   }`}
                                 >
                                   {/* Level Number */}
-                                  <div className={`text-center min-w-[50px] ${isCurrentLevel ? 'text-metaverse-purple' : 'text-white/60'}`}>
+                                  <div className={`shrink-0 text-center min-w-[44px] sm:min-w-[50px] ${isCurrentLevel ? 'text-metaverse-purple' : 'text-white/60'}`}>
                                     <p className="text-lg font-bold">
                                       {score.level}
                                     </p>

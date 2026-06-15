@@ -24,6 +24,7 @@ import {
   ArrowLeft,
   Home,
   LogOut,
+  Pi,
   Settings,
   ShoppingBag,
 } from 'lucide-react';
@@ -76,11 +77,31 @@ export default function AppHeader({
   return (
     <header className="glass-dark sticky top-0 z-40 border-b border-metaverse-purple/30">
       <div className="mx-auto flex min-h-12 max-w-6xl items-center justify-between gap-2 px-3 py-1.5 sm:gap-3 sm:px-4">
+        {/* Logo — always present on the far left so users have a one-tap path
+          * back to the home screen no matter which page they're on. */}
+        <Link
+          href="/"
+          aria-label="กลับหน้าแรก"
+          title="MathQuest — หน้าแรก"
+          className="group flex shrink-0 items-center gap-1.5 rounded-lg px-1 py-1 transition hover:bg-white/5"
+        >
+          <Pi
+            className="h-6 w-6 text-metaverse-purple transition group-hover:text-metaverse-pink sm:h-7 sm:w-7"
+            style={{ filter: 'drop-shadow(0 0 8px rgba(147,51,234,0.45))' }}
+          />
+          <span className="hidden text-sm font-bold text-white md:block">
+            Math
+            <span className="bg-gradient-to-r from-metaverse-purple to-metaverse-red bg-clip-text text-transparent">
+              Quest
+            </span>
+          </span>
+        </Link>
+
         {/* Left side: avatar+name (main) or back+title (sub) */}
         {variant === 'main' ? (
           <Link
             href="/my-avatar"
-            className="flex min-w-0 items-center gap-2 sm:gap-3"
+            className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3"
           >
             <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full">
               <span
@@ -108,7 +129,7 @@ export default function AppHeader({
             </div>
           </Link>
         ) : (
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <button
               onClick={() => (backHref ? router.push(backHref) : router.back())}
               aria-label="ย้อนกลับ"

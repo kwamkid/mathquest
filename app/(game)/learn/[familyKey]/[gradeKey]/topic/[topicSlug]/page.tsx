@@ -127,7 +127,7 @@ export default function TopicPage() {
                         )}
                       </div>
                       {sp.pct > 0 && !isDone && (
-                        <div className="learn-progress-track mt-2 h-1.5 w-40 overflow-hidden rounded-full">
+                        <div className="learn-progress-track mt-2 h-1.5 w-full max-w-[10rem] overflow-hidden rounded-full">
                           <div
                             className="learn-progress-fill h-full rounded-full"
                             style={{ width: `${Math.round(sp.pct * 100)}%` }}

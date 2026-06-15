@@ -6,12 +6,13 @@
 import type { Lesson } from '@/types/curriculum';
 import {
   guidedPractice,
+  independentPractice,
   lesson,
   reflection,
   workedExample,
 } from '@/lib/curricula/helpers/lesson-builders';
 import { C_realWorldPercent } from '../content/concepts';
-import { H1, H2, H4, H5, H9, H10, M9, M10 } from '../content/questions';
+import { H1, H2, H3, H4, H5, H9, H10, M9, M10 } from '../content/questions';
 
 const SUB = 'life-math-percentages';
 
@@ -137,6 +138,13 @@ export const lesson4: Lesson = lesson({
       fullExplanation: '60% ของ 250 = 150 คน',
     }),
 
+    independentPractice({
+      id: `${SUB}-l4-mini`,
+      title: '🎯 ฝึกท้ายบท — 5 ข้อ',
+      questions: [H1.question, H2.question, H3.question, H4.question, H9.question],
+      passingScore: 0.6,
+    }),
+
     reflection({
       id: `${SUB}-l4-s12`,
       title: 'สรุปบทนี้',
@@ -145,7 +153,7 @@ export const lesson4: Lesson = lesson({
         '**VAT**: บวกเพิ่ม — ราคา + (% × ราคา ÷ 100)',
         '**คะแนน → %**: (ที่ถูก × 100) ÷ เต็ม',
       ],
-      nextUp: 'ทดสอบรวม — Final Quiz 20 ข้อ ได้ดาว+EXP',
+      nextUp: 'ทดสอบรวม — Final Quiz 5 level ได้ดาว+EXP',
     }),
   ],
 });

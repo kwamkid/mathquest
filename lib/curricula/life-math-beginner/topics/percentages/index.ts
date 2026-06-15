@@ -2,8 +2,7 @@
 
 import { subTopic, topic } from '@/lib/curricula/helpers/lesson-builders';
 import { lesson1, lesson2, lesson3, lesson4 } from './lessons';
-import { mini1, mini2, mini3, mini4 } from './mini-quizzes';
-import { finalQuiz } from './quiz/final-quiz';
+import { quiz1, quiz2, quiz3, quiz4, quiz5 } from './quiz';
 
 const SUB_ID = 'life-math-percentages';
 
@@ -20,15 +19,21 @@ const percentagesSubTopic = subTopic({
     'ใช้สูตร X% × N ÷ 100 และทางลัด 10% ได้',
     'แก้โจทย์ลดราคา / VAT / คะแนนสอบได้',
   ],
-  estimatedTotalMinutes: 95,
+  estimatedTotalMinutes: 110,
   order: 1,
-  // Lessons render in this order; the chapter UI re-groups them by kind.
+  // Lesson timeline: 4 teaching lessons (each ends with a 🎯 mini practice
+  // step embedded inside) followed by 5 final-quiz levels in ramping
+  // difficulty. The chapter UI keeps this order in a single timeline.
   lessons: [
-    lesson1, mini1,
-    lesson2, mini2,
-    lesson3, mini3,
-    lesson4, mini4,
-    finalQuiz,
+    lesson1,
+    lesson2,
+    lesson3,
+    lesson4,
+    quiz1,
+    quiz2,
+    quiz3,
+    quiz4,
+    quiz5,
   ],
 });
 

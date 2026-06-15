@@ -1,15 +1,26 @@
 // app/(game)/learn/[familyKey]/[gradeKey]/topic/[topicSlug]/chapter/[subTopicSlug]/page.tsx
 //
-// Sub-topic detail — lesson list with strong "completed" affordances.
-// Completed cards: green-tinted glass + big checkmark on the right.
+// Sub-topic detail — lesson timeline.
+// Layout:
+//   1. Continue / Next CTA (the one thing the learner should do right now)
+//   2. Numbered lesson list (📚, dimmed when complete)
+//   3. Final quiz levels (🏆, cascade-unlocked: L1 needs lessons done,
+//      L2 needs L1 done, …)
+//
+// Mini quizzes are no longer separate items — they're folded into each
+// lesson as its final independent-practice step.
 
 'use client';
 
 import { useParams } from 'next/navigation';
-import Link from 'next/link';
 import AuthGuard from '@/components/auth/AuthGuard';
 import AppHeader from '@/components/layout/AppHeader';
 import LearnBreadcrumb from '@/components/lesson/LearnBreadcrumb';
+import {
+  ContinueCard,
+  LessonListItem,
+  QuizLevelItem,
+} from '@/components/lesson/ChapterTimeline';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { getFamilyGrade } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
@@ -18,15 +29,7 @@ import {
   isLessonCompleted,
   lessonStarsEarned,
 } from '@/lib/curricula/progress-helpers';
-import {
-  ChevronRight,
-  BookOpen,
-  CheckCircle2,
-  Star,
-  PlayCircle,
-  Target,
-  Trophy,
-} from 'lucide-react';
+import { BookOpen, Trophy } from 'lucide-react';
 import type { Lesson } from '@/types/curriculum';
 
 export default function SubTopicPage() {
@@ -57,9 +60,54 @@ export default function SubTopicPage() {
   const { family, grade } = resolved;
   const progress = user?.curriculumProgress?.[curriculum.id];
   const sp = getSubTopicProgress(progress, subTopic, topic);
-  const sortedLessons = [...subTopic.lessons].sort((a, b) => a.order - b.order);
-  const continueLesson = sp.nextLesson ?? sortedLessons[0];
   const base = `/learn/${family.key}/${grade.key}/topic/${topic.slug}/chapter/${subTopic.slug}`;
+
+  // Split lessons by kind. Within each bucket, order by `order`.
+  const sortedLessons = [...subTopic.lessons].sort((a, b) => a.order - b.order);
+  const teaching: Lesson[] = sortedLessons.filter(
+    (l) => (l.kind ?? 'lesson') === 'lesson',
+  );
+  const quizzes: Lesson[] = sortedLessons.filter((l) => l.kind === 'quiz');
+
+  const allTeachingDone =
+    teaching.length > 0 &&
+    teaching.every((l) => isLessonCompleted(progress, l.id));
+
+  // Continue target: first unfinished teaching lesson, else first unlocked
+  // unfinished quiz.
+  const firstUnfinishedLesson = teaching.find(
+    (l) => !isLessonCompleted(progress, l.id),
+  );
+  let continueLesson: Lesson | null = firstUnfinishedLesson ?? null;
+  if (!continueLesson && allTeachingDone) {
+    // Walk quizzes; the first one not yet done is the next target.
+    for (const q of quizzes) {
+      if (!isLessonCompleted(progress, q.id)) {
+        continueLesson = q;
+        break;
+      }
+    }
+  }
+
+  // Cascade unlock: quiz N is unlocked iff (all teaching done) AND (quiz N-1 done).
+  // Returns the index (0-based) of the first unlocked, undone quiz so we can
+  // tag it "พร้อมเล่น" in the UI.
+  const nextQuizIdx = (() => {
+    if (!allTeachingDone) return -1;
+    for (let i = 0; i < quizzes.length; i++) {
+      const prevDone =
+        i === 0 ? true : isLessonCompleted(progress, quizzes[i - 1].id);
+      if (prevDone && !isLessonCompleted(progress, quizzes[i].id)) return i;
+    }
+    return -1;
+  })();
+
+  const continueLabel =
+    sp.completed === 0
+      ? 'เริ่มเรียน'
+      : continueLesson?.kind === 'quiz'
+        ? 'ลุย Final Quiz'
+        : 'เรียนต่อ';
 
   return (
     <AuthGuard>
@@ -123,137 +171,76 @@ export default function SubTopicPage() {
             )}
           </header>
 
-          {!sp.done && continueLesson && (
-            <Link
+          {continueLesson && (
+            <ContinueCard
               href={`${base}/lesson/${continueLesson.id}`}
-              className="learn-accent-pill flex w-full items-center justify-between gap-3 rounded-2xl p-4 shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-[0.99]"
-            >
-              <div className="flex items-start gap-3">
-                <PlayCircle className="mt-1 h-6 w-6 shrink-0" />
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-white/80">
-                    {sp.completed === 0 ? 'เริ่มเรียน' : 'เรียนต่อ'}
-                  </p>
-                  <p className="mt-0.5 text-base font-bold">{continueLesson.title}</p>
-                </div>
-              </div>
-              <ChevronRight className="h-6 w-6 shrink-0" />
-            </Link>
+              title={continueLesson.title}
+              label={continueLabel}
+            />
           )}
 
-          {(() => {
-            // Bucket lessons by kind so each section shows up under its own
-            // heading. Defaults to 'lesson' to keep older content backwards-
-            // compatible (no `kind` field).
-            const buckets = {
-              lesson: [] as Lesson[],
-              mini: [] as Lesson[],
-              quiz: [] as Lesson[],
-            };
-            for (const l of sortedLessons) {
-              const k = l.kind ?? 'lesson';
-              buckets[k].push(l);
-            }
-            const renderRow = (lesson: Lesson) => {
-              const done = isLessonCompleted(progress, lesson.id);
-              const stars = lessonStarsEarned(progress, lesson.id);
-              const kind = lesson.kind ?? 'lesson';
-              const icon =
-                kind === 'quiz' || lesson.isAssessment ? (
-                  <Trophy className="mt-1 h-6 w-6 shrink-0 text-amber-300" />
-                ) : kind === 'mini' ? (
-                  <Target className="mt-1 h-6 w-6 shrink-0 text-cyan-300" />
-                ) : (
-                  <BookOpen
-                    className={`mt-1 h-6 w-6 shrink-0 ${
-                      done ? 'text-emerald-300' : 'text-pink-300'
-                    }`}
-                  />
-                );
-              return (
-                <Link
-                  key={lesson.id}
-                  href={`${base}/lesson/${lesson.id}`}
-                  className={`flex items-center justify-between gap-3 rounded-2xl p-4 ${
-                    done ? 'learn-card-done' : 'learn-card'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
-                    {icon}
-                    <div>
-                      <span className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                        {kind === 'quiz'
-                          ? 'Final Quiz'
-                          : kind === 'mini'
-                            ? 'ฝึก'
-                            : `บทเรียน ${lesson.order}`}
-                        {done && (
-                          <span className="ml-2 text-emerald-300">· เรียนแล้ว</span>
-                        )}
-                      </span>
-                      <h3 className="mt-0.5 text-base font-bold text-white">
-                        {lesson.title}
-                      </h3>
-                      {lesson.description && (
-                        <p className="mt-0.5 text-sm text-white/70">
-                          {lesson.description}
-                        </p>
-                      )}
-                      <div className="mt-1 flex items-center gap-2 text-xs text-white/60">
-                        <span>⏱ {lesson.estimatedMinutes} นาที</span>
-                        {stars > 0 && (
-                          <span className="inline-flex items-center gap-0.5 text-amber-300">
-                            <Star className="h-3 w-3 fill-current" />
-                            {stars}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {done ? (
-                    <CheckCircle2
-                      className="h-12 w-12 shrink-0 text-emerald-400 drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]"
-                      aria-label="เรียนแล้ว"
+          {/* Teaching lessons (numbered timeline) */}
+          {teaching.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="flex items-center gap-2 text-base font-bold text-white">
+                <BookOpen className="h-5 w-5 text-pink-300" />
+                บทเรียน
+              </h2>
+              <div className="space-y-3">
+                {teaching.map((l, idx) => {
+                  const completed = isLessonCompleted(progress, l.id);
+                  return (
+                    <LessonListItem
+                      key={l.id}
+                      lesson={l}
+                      number={idx + 1}
+                      href={`${base}/lesson/${l.id}`}
+                      completed={completed}
+                      stars={lessonStarsEarned(progress, l.id)}
+                      isContinue={l.id === continueLesson?.id}
                     />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 shrink-0 text-white/60" />
-                  )}
-                </Link>
-              );
-            };
-
-            return (
-              <div className="space-y-6">
-                {buckets.lesson.length > 0 && (
-                  <section className="space-y-3">
-                    <h2 className="flex items-center gap-2 text-base font-bold text-white">
-                      <BookOpen className="h-5 w-5 text-pink-300" />
-                      บทเรียน
-                    </h2>
-                    {buckets.lesson.map(renderRow)}
-                  </section>
-                )}
-                {buckets.mini.length > 0 && (
-                  <section className="space-y-3">
-                    <h2 className="flex items-center gap-2 text-base font-bold text-white">
-                      <Target className="h-5 w-5 text-cyan-300" />
-                      ฝึกหลังเรียน
-                    </h2>
-                    {buckets.mini.map(renderRow)}
-                  </section>
-                )}
-                {buckets.quiz.length > 0 && (
-                  <section className="space-y-3">
-                    <h2 className="flex items-center gap-2 text-base font-bold text-white">
-                      <Trophy className="h-5 w-5 text-amber-300" />
-                      ทดสอบรวม
-                    </h2>
-                    {buckets.quiz.map(renderRow)}
-                  </section>
-                )}
+                  );
+                })}
               </div>
-            );
-          })()}
+            </section>
+          )}
+
+          {/* Final quiz levels (cascade-unlock) */}
+          {quizzes.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="flex items-center gap-2 text-base font-bold text-white">
+                <Trophy className="h-5 w-5 text-amber-300" />
+                Final Quiz · {quizzes.length} Level
+                {!allTeachingDone && (
+                  <span className="ml-2 text-xs font-normal text-white/50">
+                    (ต้องเรียนจบทุกบทก่อน)
+                  </span>
+                )}
+              </h2>
+              <div className="space-y-3">
+                {quizzes.map((q, idx) => {
+                  const completed = isLessonCompleted(progress, q.id);
+                  const prevDone =
+                    idx === 0
+                      ? allTeachingDone
+                      : isLessonCompleted(progress, quizzes[idx - 1].id) &&
+                        allTeachingDone;
+                  return (
+                    <QuizLevelItem
+                      key={q.id}
+                      lesson={q}
+                      level={idx + 1}
+                      href={`${base}/lesson/${q.id}`}
+                      completed={completed}
+                      stars={lessonStarsEarned(progress, q.id)}
+                      unlocked={prevDone}
+                      isNext={idx === nextQuizIdx}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </AuthGuard>

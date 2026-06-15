@@ -6,6 +6,7 @@
 import type { Lesson } from '@/types/curriculum';
 import {
   guidedPractice,
+  independentPractice,
   lesson,
   reflection,
   workedExample,
@@ -16,7 +17,7 @@ import {
   text,
 } from '@/lib/curricula/helpers/visual-builders';
 import { C_whatIsPercent } from '../content/concepts';
-import { E1, E2, E3 } from '../content/questions';
+import { E1, E2, E3, E4, E5, E6, E7, E8 } from '../content/questions';
 
 const SUB = 'life-math-percentages';
 
@@ -82,6 +83,14 @@ export const lesson1: Lesson = lesson({
       question: E3.question,
       hints: ['10% = 10/100', '10 จาก 100 — มันคือเลขอะไร?'],
       fullExplanation: '10% ของ 100 = 10/100 ของ 100 = **10**',
+    }),
+
+    // Mini quiz — merged into the lesson flow (no separate card).
+    independentPractice({
+      id: `${SUB}-l1-mini`,
+      title: '🎯 ฝึกท้ายบท — 5 ข้อ',
+      questions: [E4.question, E5.question, E6.question, E7.question, E8.question],
+      passingScore: 0.6,
     }),
 
     reflection({

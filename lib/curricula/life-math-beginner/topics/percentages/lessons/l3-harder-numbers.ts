@@ -6,6 +6,7 @@
 import type { Lesson } from '@/types/curriculum';
 import {
   guidedPractice,
+  independentPractice,
   lesson,
   reflection,
   workedExample,
@@ -128,6 +129,13 @@ export const lesson3: Lesson = lesson({
       question: H7.question,
       hints: ['10% = 25, 1% = 2.5', '12% = 10% + 2%'],
       fullExplanation: '10% = 25 + 2% (5) = **30**',
+    }),
+
+    independentPractice({
+      id: `${SUB}-l3-mini`,
+      title: '🎯 ฝึกท้ายบท — 4 ข้อ',
+      questions: [M7.question, M8.question, H6.question, H7.question],
+      passingScore: 0.6,
     }),
 
     reflection({

@@ -6,13 +6,14 @@
 import type { Lesson } from '@/types/curriculum';
 import {
   guidedPractice,
+  independentPractice,
   lesson,
   reflection,
   workedExample,
 } from '@/lib/curricula/helpers/lesson-builders';
 import { callout } from '@/lib/curricula/helpers/visual-builders';
 import { C_tenPercentTrick, C_unitaryMethod } from '../content/concepts';
-import { E4, E5, M1, M2 } from '../content/questions';
+import { E4, E5, E10, M1, M2, M3, M5, M6 } from '../content/questions';
 
 const SUB = 'life-math-percentages';
 
@@ -111,6 +112,13 @@ export const lesson2: Lesson = lesson({
       ],
       fullExplanation:
         '10% ของ 80 = 8 → 5% = 4 → 15% = 8 + 4 = **12**',
+    }),
+
+    independentPractice({
+      id: `${SUB}-l2-mini`,
+      title: '🎯 ฝึกท้ายบท — 4 ข้อ',
+      questions: [E10.question, M3.question, M5.question, M6.question],
+      passingScore: 0.6,
     }),
 
     reflection({

@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Swords, Target, Trophy, Gift, Pi, UserPlus, BookOpen, Gamepad2 } from 'lucide-react';
+import { Swords, Target, Trophy, Gift, Pi, UserPlus, BookOpen, Gamepad2, Lightbulb } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 
 // Math symbols for floating animation
@@ -141,41 +141,63 @@ export default function HomePage() {
                 </p>
               </div>
 
-              {/* Two-choice grid: Play vs Learn */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <Link href="/learn" className="group block">
+              {/* Three-choice grid: Play Quiz / Life Math / Learn */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+                <Link href="/play" className="group block">
                   <motion.div
                     whileHover={{ y: -6, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="relative glass-dark rounded-3xl p-8 shadow-xl border border-metaverse-purple/30 h-full overflow-hidden"
+                    className="relative glass-dark rounded-3xl p-6 shadow-xl border border-metaverse-red/30 h-full overflow-hidden"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-br from-metaverse-purple/30 to-metaverse-pink/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-metaverse-red/30 to-metaverse-darkRed/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative z-10 flex flex-col items-center text-center">
-                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-metaverse-purple to-metaverse-pink flex items-center justify-center mb-4 shadow-lg shadow-metaverse-purple/40">
-                        <BookOpen className="w-10 h-10 text-white" />
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-metaverse-red to-metaverse-darkRed flex items-center justify-center mb-4 shadow-lg shadow-metaverse-red/40">
+                        <Gamepad2 className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                       </div>
-                      <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">เรียน</h3>
-                      <p className="text-white/70 text-sm md:text-base">
-                        บทเรียนคณิตศาสตร์ พร้อมแบบฝึก
+                      <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Play Quiz</h3>
+                      <p className="text-white/70 text-xs sm:text-sm">
+                        ผจญภัย 100 ด่าน เก็บคะแนน
                       </p>
                     </div>
                   </motion.div>
                 </Link>
 
-                <Link href="/play" className="group block">
+                <Link
+                  href="/learn/life-math/beginner/topic/percentages/chapter/percentages"
+                  className="group block"
+                >
                   <motion.div
                     whileHover={{ y: -6, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="relative glass-dark rounded-3xl p-8 shadow-xl border border-metaverse-red/30 h-full overflow-hidden"
+                    className="relative glass-dark rounded-3xl p-6 shadow-xl border border-amber-400/40 h-full overflow-hidden"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-br from-metaverse-red/30 to-metaverse-darkRed/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-amber-400/30 to-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="relative z-10 flex flex-col items-center text-center">
-                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-metaverse-red to-metaverse-darkRed flex items-center justify-center mb-4 shadow-lg shadow-metaverse-red/40">
-                        <Gamepad2 className="w-10 h-10 text-white" />
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-4 shadow-lg shadow-amber-500/40">
+                        <Lightbulb className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
                       </div>
-                      <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">เล่นเกม</h3>
-                      <p className="text-white/70 text-sm md:text-base">
-                        ผจญภัย 100 ด่าน เก็บคะแนน
+                      <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Life Math</h3>
+                      <p className="text-white/70 text-xs sm:text-sm">
+                        ทักษะคำนวณในชีวิตประจำวัน
+                      </p>
+                    </div>
+                  </motion.div>
+                </Link>
+
+                <Link href="/learn" className="group block">
+                  <motion.div
+                    whileHover={{ y: -6, scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative glass-dark rounded-3xl p-6 shadow-xl border border-metaverse-purple/30 h-full overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-metaverse-purple/30 to-metaverse-pink/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-metaverse-purple to-metaverse-pink flex items-center justify-center mb-4 shadow-lg shadow-metaverse-purple/40">
+                        <BookOpen className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                      </div>
+                      <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Learn</h3>
+                      <p className="text-white/70 text-xs sm:text-sm">
+                        บทเรียนคณิตศาสตร์ พร้อมแบบฝึก
                       </p>
                     </div>
                   </motion.div>
@@ -228,19 +250,19 @@ export default function HomePage() {
           {[
             {
               icon: <Target className="w-12 h-12" />,
-              title: '100 ระดับท้าทาย',
+              title: '100 Levels',
               description: 'ฝึกฝนทักษะคณิตศาสตร์ ตั้งแต่ง่ายจนถึงยาก',
               color: 'from-metaverse-purple to-metaverse-pink'
             },
             {
               icon: <Trophy className="w-12 h-12" />,
-              title: 'ระบบแรงกิ้ง',
+              title: 'Ranking',
               description: 'แข่งขันกับเพื่อนๆ ในระดับชั้นเดียวกัน',
               color: 'from-metaverse-pink to-metaverse-red'
             },
             {
               icon: <Gift className="w-12 h-12" />,
-              title: 'รางวัลทุกวัน',
+              title: 'Daily Rewards',
               description: 'เข้าเล่นต่อเนื่อง รับโบนัสพิเศษ',
               color: 'from-metaverse-red to-metaverse-darkRed'
             }

@@ -237,7 +237,7 @@ export default function ProfilePage() {
               </div>
 
               {/* Stats */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <motion.div 
                   className="glass rounded-xl p-3 text-center border border-metaverse-purple/20"
                   whileHover={{ scale: 1.05 }}
