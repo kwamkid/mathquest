@@ -1,7 +1,7 @@
 // topics/percentages/index.ts — wire the Percentages topic together.
 
 import { subTopic, topic } from '@/lib/curricula/helpers/lesson-builders';
-import { lesson1, lesson2, lesson3, lesson4 } from './lessons';
+import { lesson1, lesson2, lesson3, lesson4, lesson5 } from './lessons';
 import { quiz1, quiz2, quiz3, quiz4, quiz5 } from './quiz';
 
 const SUB_ID = 'life-math-percentages';
@@ -29,6 +29,7 @@ const percentagesSubTopic = subTopic({
     lesson2,
     lesson3,
     lesson4,
+    lesson5,
     quiz1,
     quiz2,
     quiz3,

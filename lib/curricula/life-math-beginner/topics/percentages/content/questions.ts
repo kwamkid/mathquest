@@ -374,6 +374,126 @@ export const H10: BankedQuestion = {
 };
 
 // ---------------------------------------------------------------------------
+// MENTAL TRICKS — fast computation drills (10% shortcut, doubling, etc.)
+// Sit at easy-to-medium difficulty so they layer on top of L2's foundations.
+// ---------------------------------------------------------------------------
+
+export const T1: BankedQuestion = {
+  difficulty: 'easy',
+  skill: 'compute',
+  question: textInput({
+    id: `${P}-t1`,
+    prompt: '10% ของ 80 = ? (เลื่อนจุดทศนิยม)',
+    expectedAnswer: 8,
+  }),
+};
+
+export const T2: BankedQuestion = {
+  difficulty: 'easy',
+  skill: 'compute',
+  question: textInput({
+    id: `${P}-t2`,
+    prompt: '5% ของ 80 = ? (ครึ่งของ 10%)',
+    expectedAnswer: 4,
+  }),
+};
+
+export const T3: BankedQuestion = {
+  difficulty: 'easy',
+  skill: 'compute',
+  question: textInput({
+    id: `${P}-t3`,
+    prompt: '20% ของ 70 = ? (10% × 2)',
+    expectedAnswer: 14,
+  }),
+};
+
+export const T4: BankedQuestion = {
+  difficulty: 'medium',
+  skill: 'compute',
+  question: textInput({
+    id: `${P}-t4`,
+    prompt: '50% ของ 240 = ? (÷ 2)',
+    expectedAnswer: 120,
+  }),
+};
+
+export const T5: BankedQuestion = {
+  difficulty: 'medium',
+  skill: 'compute',
+  question: textInput({
+    id: `${P}-t5`,
+    prompt: '25% ของ 60 = ? (÷ 4)',
+    expectedAnswer: 15,
+  }),
+};
+
+// "สลับเลข" trick: X% of Y = Y% of X.
+export const T6: BankedQuestion = {
+  difficulty: 'medium',
+  skill: 'compute',
+  question: mcqText({
+    id: `${P}-t6`,
+    prompt:
+      '4% ของ 50 — คิดยังไงได้เร็วสุด?',
+    choices: [
+      { id: 'a', text: 'สลับเป็น 50% ของ 4 = 2' },
+      { id: 'b', text: 'หาร 50 ด้วย 4 = 12.5' },
+      { id: 'c', text: 'ลบ 50 − 4 = 46' },
+      { id: 'd', text: 'ไม่มีทางลัด ใช้สูตร' },
+    ],
+    correctChoiceId: 'a',
+  }),
+};
+
+export const T7: BankedQuestion = {
+  difficulty: 'medium',
+  skill: 'compute',
+  question: textInput({
+    id: `${P}-t7`,
+    prompt: '8% ของ 25 = ? (สลับเป็น 25% ของ 8)',
+    expectedAnswer: 2,
+  }),
+};
+
+export const T8: BankedQuestion = {
+  difficulty: 'medium',
+  skill: 'compute',
+  question: textInput({
+    id: `${P}-t8`,
+    prompt: '15% ของ 60 = ? (10% + 5%)',
+    expectedAnswer: 9,
+  }),
+};
+
+export const T9: BankedQuestion = {
+  difficulty: 'medium',
+  skill: 'compute',
+  question: textInput({
+    id: `${P}-t9`,
+    prompt: '30% ของ 90 = ? (10% × 3)',
+    expectedAnswer: 27,
+  }),
+};
+
+// "ลดราคาแบบสลับ" trick: 30% off means pay 70%.
+export const T10: BankedQuestion = {
+  difficulty: 'medium',
+  skill: 'word-problem',
+  question: mcqText({
+    id: `${P}-t10`,
+    prompt: 'ของลด 30% หมายความว่าจ่ายกี่ % ของราคาเดิม?',
+    choices: [
+      { id: 'a', text: '70%' },
+      { id: 'b', text: '30%' },
+      { id: 'c', text: '130%' },
+      { id: 'd', text: '60%' },
+    ],
+    correctChoiceId: 'a',
+  }),
+};
+
+// ---------------------------------------------------------------------------
 // Catalogue — bulk export for consumers
 // ---------------------------------------------------------------------------
 
@@ -382,6 +502,8 @@ export const allQuestions: BankedQuestion[] = [
   E1, E2, E3, E4, E5, E6, E7, E8, E9, E10,
   // medium
   M1, M2, M3, M4, M5, M6, M7, M8, M9, M10,
+  // mental tricks
+  T1, T2, T3, T4, T5, T6, T7, T8, T9, T10,
   // hard
   H1, H2, H3, H4, H5, H6, H7, H8, H9, H10,
 ];

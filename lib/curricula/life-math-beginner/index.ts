@@ -6,8 +6,9 @@
 import type { Curriculum, Topic } from '@/types/curriculum';
 import { lifeMathBeginnerMeta } from './meta';
 import { percentagesTopic } from './topics/percentages';
+import { unitaryMethodTopic } from './topics/unitary-method';
 
-const topics: Topic[] = [percentagesTopic];
+const topics: Topic[] = [percentagesTopic, unitaryMethodTopic];
 
 export const lifeMathBeginner: Curriculum = {
   ...lifeMathBeginnerMeta,
