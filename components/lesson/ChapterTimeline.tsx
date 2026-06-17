@@ -92,65 +92,77 @@ export function LessonListItem({
   isContinue,
 }: LessonListItemProps) {
   const dim = completed ? 'opacity-55' : '';
-  const titleClass = completed
-    ? 'text-white/60 line-through'
-    : isContinue
-      ? 'text-white font-bold'
-      : 'text-white';
 
-  const ring = isContinue
-    ? 'ring-2 ring-pink-400/60 shadow-lg shadow-pink-500/20'
-    : '';
+  // Active row uses the full gradient pill (matches ContinueCard) so it
+  // reads as the next thing to do. Completed and idle rows stay subtle.
+  const rowClass = isContinue
+    ? 'learn-accent-pill rounded-2xl p-4 shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-[0.99]'
+    : `learn-card flex items-center gap-3 rounded-2xl p-4 transition ${dim}`;
+
+  const titleClass = isContinue
+    ? 'text-base font-bold text-white'
+    : completed
+      ? 'truncate text-base text-white/60 line-through'
+      : 'truncate text-base text-white';
+
+  const numberBox = isContinue
+    ? 'bg-white/25 text-white'
+    : completed
+      ? 'bg-emerald-400/10 text-emerald-300/70'
+      : 'bg-white/5 text-white/80';
+
+  const metaTextClass = isContinue ? 'text-white/80' : 'text-white/55';
 
   return (
-    <Link
-      href={href}
-      className={`learn-card flex items-center gap-3 rounded-2xl p-4 transition ${dim} ${ring}`}
-    >
-      {/* Big number — the focal point per user request */}
-      <div
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl font-extrabold ${
-          completed
-            ? 'bg-emerald-400/10 text-emerald-300/70'
-            : isContinue
-              ? 'bg-gradient-to-br from-metaverse-purple to-metaverse-pink text-white shadow'
-              : 'bg-white/5 text-white/80'
-        }`}
-      >
-        {number}
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <h3 className={`truncate text-base ${titleClass}`}>{lesson.title}</h3>
-        {lesson.description && !completed && (
-          <p className="mt-0.5 truncate text-sm text-white/60">
-            {lesson.description}
-          </p>
-        )}
-        <div className="mt-1 flex items-center gap-2 text-xs text-white/55">
-          <span>⏱ {lesson.estimatedMinutes} นาที</span>
-          {stars > 0 && (
-            <span className="inline-flex items-center gap-0.5 text-amber-300/80">
-              <Star className="h-3 w-3 fill-current" />
-              {stars}
-            </span>
-          )}
-          {isContinue && (
-            <span className="rounded-full bg-pink-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-pink-200">
-              เรียนต่อ
-            </span>
-          )}
+    <Link href={href} className={rowClass}>
+      <div className="flex items-center gap-3">
+        {/* Big number — the focal point per user request */}
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl font-extrabold ${numberBox}`}
+        >
+          {number}
         </div>
-      </div>
 
-      {completed ? (
-        <CheckCircle2
-          className="h-7 w-7 shrink-0 text-emerald-400/80"
-          aria-label="เรียนแล้ว"
-        />
-      ) : (
-        <ChevronRight className="h-5 w-5 shrink-0 text-white/50" />
-      )}
+        <div className="min-w-0 flex-1">
+          <h3 className={titleClass}>{lesson.title}</h3>
+          {lesson.description && !completed && (
+            <p
+              className={`mt-0.5 truncate text-sm ${
+                isContinue ? 'text-white/85' : 'text-white/60'
+              }`}
+            >
+              {lesson.description}
+            </p>
+          )}
+          <div className={`mt-1 flex items-center gap-2 text-xs ${metaTextClass}`}>
+            <span>⏱ {lesson.estimatedMinutes} นาที</span>
+            {stars > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-amber-200">
+                <Star className="h-3 w-3 fill-current" />
+                {stars}
+              </span>
+            )}
+            {isContinue && (
+              <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                เรียนต่อ
+              </span>
+            )}
+          </div>
+        </div>
+
+        {completed ? (
+          <CheckCircle2
+            className="h-7 w-7 shrink-0 text-emerald-400/80"
+            aria-label="เรียนแล้ว"
+          />
+        ) : (
+          <ChevronRight
+            className={`h-5 w-5 shrink-0 ${
+              isContinue ? 'text-white' : 'text-white/50'
+            }`}
+          />
+        )}
+      </div>
     </Link>
   );
 }

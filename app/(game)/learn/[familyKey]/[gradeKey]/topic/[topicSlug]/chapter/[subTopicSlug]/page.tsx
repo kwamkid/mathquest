@@ -120,11 +120,160 @@ export default function SubTopicPage() {
     ? topic.thaiTitle ?? topic.title
     : subTopic.thaiTitle ?? subTopic.title;
 
+  // Compact progress strip + Continue CTA share one row on >=md.
+  // Building blocks pulled out so the two-column layout below stays readable.
+  const progressStrip = sp.pct > 0 && (
+    <div className="learn-accent-soft rounded-2xl px-4 py-3">
+      <div className="flex items-center justify-between text-sm font-semibold text-pink-100">
+        <span>
+          {sp.completed} / {sp.total} บทเรียน
+        </span>
+        <span>{Math.round(sp.pct * 100)}%</span>
+      </div>
+      <div className="learn-progress-track mt-1.5 h-2 w-full overflow-hidden rounded-full">
+        <div
+          className="learn-progress-fill h-full rounded-full transition-all"
+          style={{ width: `${Math.round(sp.pct * 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+
+  const continueCard = continueLesson && (
+    <ContinueCard
+      href={`${base}/lesson/${continueLesson.id}`}
+      title={continueLesson.title}
+      label={continueLabel}
+      // Surface reward only when "what's next" is a quiz — teaching
+      // lessons already imply the standard 3-star payout and the
+      // chip would feel like noise on every card.
+      reward={
+        continueLesson.kind === 'quiz'
+          ? (() => {
+              const r = getLessonRewardPreview(continueLesson);
+              return { stars: r.stars, exp: r.exp };
+            })()
+          : undefined
+      }
+    />
+  );
+
+  // The hero block: title, description, goals card. Lives in the left
+  // column on desktop, stacked above the lesson list on mobile.
+  const hero = (
+    <div className="space-y-4">
+      {!collapseTopic && !hideGrade && (
+        <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
+          {`${grade.label} · ${topic.thaiTitle ?? topic.title}`}
+        </p>
+      )}
+      <h1 className="text-3xl font-bold text-white lg:text-4xl">
+        {topic.icon && (
+          <span className="mr-2" aria-hidden="true">
+            {topic.icon}
+          </span>
+        )}
+        {displayTitle}
+      </h1>
+      <p className="text-base text-white/70">{subTopic.description}</p>
+      {subTopic.learningObjectives.length > 0 && (
+        <div className="learn-card rounded-2xl p-4">
+          <p className="text-sm font-bold text-white">เป้าหมายของบทนี้</p>
+          <ul className="mt-2 space-y-1 text-sm text-white/80">
+            {subTopic.learningObjectives.map((obj, i) => (
+              <li key={i} className="flex gap-2">
+                <span className="text-pink-300">•</span>
+                <span>{obj}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+
+  // Right column (mobile: below hero): teaching lessons + final-quiz ladder.
+  const lessonsColumn = (
+    <div className="space-y-6">
+      {/* Progress + Continue share one row on >=md. Mobile stacks them so
+        * neither feels squished on narrow viewports. */}
+      {(progressStrip || continueCard) && (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:items-stretch">
+          {progressStrip}
+          {continueCard}
+        </div>
+      )}
+
+      {/* Teaching lessons (numbered timeline) */}
+      {teaching.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="flex items-center gap-2 text-xl font-bold text-white sm:text-2xl">
+            <BookOpen className="h-6 w-6 text-pink-300 sm:h-7 sm:w-7" />
+            บทเรียน
+          </h2>
+          <div className="space-y-3">
+            {teaching.map((l, idx) => {
+              const completed = isLessonCompleted(progress, l.id);
+              return (
+                <LessonListItem
+                  key={l.id}
+                  lesson={l}
+                  number={idx + 1}
+                  href={`${base}/lesson/${l.id}`}
+                  completed={completed}
+                  stars={lessonStarsEarned(progress, l.id)}
+                  isContinue={l.id === continueLesson?.id}
+                />
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Final quiz levels (cascade-unlock) */}
+      {quizzes.length > 0 && (
+        <section className="space-y-3">
+          <h2 className="flex flex-wrap items-center gap-2 text-xl font-bold text-white sm:text-2xl">
+            <Trophy className="h-6 w-6 text-amber-300 sm:h-7 sm:w-7" />
+            Final Quiz · {quizzes.length} Level
+            {!allTeachingDone && (
+              <span className="ml-2 text-xs font-normal text-white/50">
+                (ต้องเรียนจบทุกบทก่อน)
+              </span>
+            )}
+          </h2>
+          <div className="space-y-3">
+            {quizzes.map((q, idx) => {
+              const completed = isLessonCompleted(progress, q.id);
+              const prevDone =
+                idx === 0
+                  ? allTeachingDone
+                  : isLessonCompleted(progress, quizzes[idx - 1].id) &&
+                    allTeachingDone;
+              return (
+                <QuizLevelItem
+                  key={q.id}
+                  lesson={q}
+                  level={idx + 1}
+                  href={`${base}/lesson/${q.id}`}
+                  completed={completed}
+                  stars={lessonStarsEarned(progress, q.id)}
+                  unlocked={prevDone}
+                  isNext={idx === nextQuizIdx}
+                />
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+
   return (
     <AuthGuard>
       <div className="learn-bg min-h-screen">
         {user && <AppHeader user={user} />}
-        <div className="mx-auto max-w-3xl space-y-6 px-4 pb-6 pt-8 sm:px-6 sm:pb-8 sm:pt-12">
+        <div className="mx-auto max-w-7xl space-y-6 px-4 pb-6 pt-8 sm:px-6 sm:pb-8 sm:pt-12">
           <LearnBreadcrumb
             items={[
               {
@@ -151,136 +300,14 @@ export default function SubTopicPage() {
             ]}
           />
 
-          <header className="space-y-2">
-            {/* Eyebrow only when there's something the breadcrumb + title
-              * don't already say. For collapsed-topic pages (one chapter
-              * only) the title is the topic itself — no eyebrow needed. */}
-            {!collapseTopic && !hideGrade && (
-              <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
-                {`${grade.label} · ${topic.thaiTitle ?? topic.title}`}
-              </p>
-            )}
-            <h1 className="text-3xl font-bold text-white">
-              {topic.icon && (
-                <span className="mr-2" aria-hidden="true">
-                  {topic.icon}
-                </span>
-              )}
-              {displayTitle}
-            </h1>
-            <p className="text-base text-white/70">{subTopic.description}</p>
-            {subTopic.learningObjectives.length > 0 && (
-              <div className="learn-card rounded-2xl p-4">
-                <p className="text-sm font-bold text-white">เป้าหมายของบทนี้</p>
-                <ul className="mt-2 space-y-1 text-sm text-white/80">
-                  {subTopic.learningObjectives.map((obj, i) => (
-                    <li key={i} className="flex gap-2">
-                      <span className="text-pink-300">•</span>
-                      <span>{obj}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {sp.pct > 0 && (
-              <div className="learn-accent-soft rounded-2xl px-4 py-3">
-                <div className="flex items-center justify-between text-sm font-semibold text-pink-100">
-                  <span>
-                    เรียนแล้ว {sp.completed} จาก {sp.total} บทเรียน
-                  </span>
-                  <span>{Math.round(sp.pct * 100)}%</span>
-                </div>
-                <div className="learn-progress-track mt-1 h-2 w-full overflow-hidden rounded-full">
-                  <div
-                    className="learn-progress-fill h-full rounded-full transition-all"
-                    style={{ width: `${Math.round(sp.pct * 100)}%` }}
-                  />
-                </div>
-              </div>
-            )}
-          </header>
-
-          {continueLesson && (
-            <ContinueCard
-              href={`${base}/lesson/${continueLesson.id}`}
-              title={continueLesson.title}
-              label={continueLabel}
-              // Surface reward only when "what's next" is a quiz — teaching
-              // lessons already imply the standard 3-star payout and the
-              // chip would feel like noise on every card.
-              reward={
-                continueLesson.kind === 'quiz'
-                  ? (() => {
-                      const r = getLessonRewardPreview(continueLesson);
-                      return { stars: r.stars, exp: r.exp };
-                    })()
-                  : undefined
-              }
-            />
-          )}
-
-          {/* Teaching lessons (numbered timeline) */}
-          {teaching.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="flex items-center gap-2 text-base font-bold text-white">
-                <BookOpen className="h-5 w-5 text-pink-300" />
-                บทเรียน
-              </h2>
-              <div className="space-y-3">
-                {teaching.map((l, idx) => {
-                  const completed = isLessonCompleted(progress, l.id);
-                  return (
-                    <LessonListItem
-                      key={l.id}
-                      lesson={l}
-                      number={idx + 1}
-                      href={`${base}/lesson/${l.id}`}
-                      completed={completed}
-                      stars={lessonStarsEarned(progress, l.id)}
-                      isContinue={l.id === continueLesson?.id}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {/* Final quiz levels (cascade-unlock) */}
-          {quizzes.length > 0 && (
-            <section className="space-y-3">
-              <h2 className="flex items-center gap-2 text-base font-bold text-white">
-                <Trophy className="h-5 w-5 text-amber-300" />
-                Final Quiz · {quizzes.length} Level
-                {!allTeachingDone && (
-                  <span className="ml-2 text-xs font-normal text-white/50">
-                    (ต้องเรียนจบทุกบทก่อน)
-                  </span>
-                )}
-              </h2>
-              <div className="space-y-3">
-                {quizzes.map((q, idx) => {
-                  const completed = isLessonCompleted(progress, q.id);
-                  const prevDone =
-                    idx === 0
-                      ? allTeachingDone
-                      : isLessonCompleted(progress, quizzes[idx - 1].id) &&
-                        allTeachingDone;
-                  return (
-                    <QuizLevelItem
-                      key={q.id}
-                      lesson={q}
-                      level={idx + 1}
-                      href={`${base}/lesson/${q.id}`}
-                      completed={completed}
-                      stars={lessonStarsEarned(progress, q.id)}
-                      unlocked={prevDone}
-                      isNext={idx === nextQuizIdx}
-                    />
-                  );
-                })}
-              </div>
-            </section>
-          )}
+          {/* On lg+ split into a 2-column layout: details on the left
+            * (sticky so the lesson list can be skimmed independently) and
+            * the lesson timeline on the right. Mobile collapses back to a
+            * single column. */}
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:gap-10">
+            <aside className="lg:sticky lg:top-20 lg:self-start">{hero}</aside>
+            {lessonsColumn}
+          </div>
         </div>
       </div>
     </AuthGuard>
