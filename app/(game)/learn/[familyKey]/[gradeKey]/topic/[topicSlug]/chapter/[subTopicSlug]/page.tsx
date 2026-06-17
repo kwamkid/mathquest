@@ -25,6 +25,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { getFamilyGrade } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
 import {
+  getLessonRewardPreview,
   getSubTopicProgress,
   isLessonCompleted,
   lessonStarsEarned,
@@ -204,6 +205,17 @@ export default function SubTopicPage() {
               href={`${base}/lesson/${continueLesson.id}`}
               title={continueLesson.title}
               label={continueLabel}
+              // Surface reward only when "what's next" is a quiz — teaching
+              // lessons already imply the standard 3-star payout and the
+              // chip would feel like noise on every card.
+              reward={
+                continueLesson.kind === 'quiz'
+                  ? (() => {
+                      const r = getLessonRewardPreview(continueLesson);
+                      return { stars: r.stars, exp: r.exp };
+                    })()
+                  : undefined
+              }
             />
           )}
 

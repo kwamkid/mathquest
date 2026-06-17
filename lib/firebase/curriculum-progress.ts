@@ -21,8 +21,11 @@ const MISTAKE_CAP = 200;
 // (typical play session = ~150-300 EXP for full marks). totalScore is the
 // unified "lifetime points" counter that both Play and Learn now contribute to,
 // so it shows up in the shared AppHeader regardless of which mode you're in.
-const EXP_PER_STAR = 50;
-const SCORE_PER_STAR = 10;
+//
+// Exported so UI surfaces (chapter rows, lesson previews) can show a preview
+// of the reward before the learner plays — same numbers as the actual payout.
+export const EXP_PER_STAR = 50;
+export const SCORE_PER_STAR = 10;
 
 const emptyProgress = (curriculumId: string): CurriculumProgress => ({
   curriculumId,

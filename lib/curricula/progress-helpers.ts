@@ -11,6 +11,10 @@ import type {
   SubTopic,
   Topic,
 } from '@/types/curriculum';
+import {
+  EXP_PER_STAR,
+  SCORE_PER_STAR,
+} from '@/lib/firebase/curriculum-progress';
 
 export interface SubTopicProgress {
   total: number;
@@ -42,6 +46,29 @@ export const lessonStarsEarned = (
   lessonId: string,
 ): number => {
   return progress?.lessonScores[lessonId]?.starsAwarded ?? 0;
+};
+
+// Maximum reward you can earn from a lesson — used by the UI to preview
+// "do this and you'll get X stars / Y EXP" before the learner plays. Reads
+// from a mini-quiz step if there is one (final quiz / assessment lessons);
+// teaching lessons fall back to 3 stars max (the default in LessonPlayer).
+export interface LessonReward {
+  stars: number;   // max stars the learner can earn
+  exp: number;     // max EXP from those stars
+  score: number;   // max totalScore contribution from those stars
+}
+
+export const getLessonRewardPreview = (lesson: Lesson): LessonReward => {
+  const mini = lesson.steps.find((s) => s.type === 'mini-quiz');
+  const stars =
+    mini && mini.type === 'mini-quiz'
+      ? mini.starsOnPerfect
+      : 3; // teaching lessons cap at 3 stars (LessonPlayer baseline)
+  return {
+    stars,
+    exp: stars * EXP_PER_STAR,
+    score: stars * SCORE_PER_STAR,
+  };
 };
 
 // A sub-topic is unlocked when every prerequisite sub-topic is fully completed.

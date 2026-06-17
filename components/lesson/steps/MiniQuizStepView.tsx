@@ -165,9 +165,15 @@ export default function MiniQuizStepView({
 
   if (!current) return null;
 
+  // EXP preview matches the curriculum-progress payout (50 EXP per star).
+  // Kept local rather than importing so this view stays decoupled from the
+  // firebase layer — keeping the magic number here is fine because it also
+  // lives next to `starsOnPerfect` which sets the same ceiling.
+  const maxExp = step.starsOnPerfect * 50;
+
   return (
     <article className="space-y-5">
-      <header className="flex items-center justify-between">
+      <header className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold text-white">{step.title}</h2>
         <span
           className="text-sm font-semibold text-white/60"
@@ -176,6 +182,22 @@ export default function MiniQuizStepView({
           {index + 1}/{total}
         </span>
       </header>
+
+      {/* Reward preview banner — only on question #1 so kids see what they're
+        * playing for, but it doesn't keep nagging while they're working. */}
+      {index === 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-500/[0.08] px-4 py-3">
+          <span className="text-sm text-white/85">
+            ทำให้ได้ {Math.ceil(step.passingScore * total)}/{total} ขึ้นไปได้
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/20 px-2 py-0.5 text-xs font-bold text-amber-200">
+            ⭐ ผ่าน {step.starsOnPass} ดาว · เพอร์เฟกต์ {step.starsOnPerfect} ดาว
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-500/20 px-2 py-0.5 text-xs font-bold text-fuchsia-200">
+            ⚡ สูงสุด +{maxExp} EXP
+          </span>
+        </div>
+      )}
 
       <QuestionRenderer
         question={current}

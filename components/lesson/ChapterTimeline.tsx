@@ -18,8 +18,10 @@ import {
   PlayCircle,
   Star,
   Trophy,
+  Zap,
 } from 'lucide-react';
 import type { Lesson } from '@/types/curriculum';
+import { getLessonRewardPreview } from '@/lib/curricula/progress-helpers';
 
 // ---------------------------------------------------------------------------
 // Continue card — "Resume the next thing you should do"
@@ -30,9 +32,13 @@ interface ContinueCardProps {
   title: string;
   // "เริ่มเรียน" first time, "เรียนต่อ" otherwise.
   label: string;
+  // Optional reward preview — shown as a small chip on the right side of
+  // the card. Pass when the next-up lesson is a quiz so the learner sees
+  // "do this and earn N stars / +M EXP" before tapping in.
+  reward?: { stars: number; exp: number };
 }
 
-export function ContinueCard({ href, title, label }: ContinueCardProps) {
+export function ContinueCard({ href, title, label, reward }: ContinueCardProps) {
   return (
     <Link
       href={href}
@@ -45,6 +51,17 @@ export function ContinueCard({ href, title, label }: ContinueCardProps) {
             {label}
           </p>
           <p className="mt-0.5 truncate text-base font-bold">{title}</p>
+          {reward && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-bold text-white">
+                <Star className="h-3 w-3 fill-current" />
+                สูงสุด {reward.stars}
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-bold text-white">
+                <Zap className="h-3 w-3 fill-current" />+{reward.exp} EXP
+              </span>
+            </div>
+          )}
         </div>
       </div>
       <ChevronRight className="h-6 w-6 shrink-0" />
@@ -175,6 +192,11 @@ export function QuizLevelItem({
   // since the level chip already says "Quiz X". Keep the descriptor.
   const cleanTitle = lesson.title.replace(/^🏆\s*Final Quiz\s*·?\s*Level\s*\d+\s*[—–-]\s*/i, '');
 
+  // Preview the reward so kids know what they're playing for before they
+  // tap in. Once completed, switch to the actual stars they earned so the
+  // row doubles as a trophy display.
+  const reward = getLessonRewardPreview(lesson);
+
   const content = (
     <div
       className={`flex items-center gap-3 rounded-2xl border border-amber-400/20 bg-amber-500/[0.06] p-4 transition ${dim} ${ring}`}
@@ -203,14 +225,23 @@ export function QuizLevelItem({
           {!unlocked && <Lock className="h-4 w-4 shrink-0 text-white/40" />}
         </div>
         <p className="mt-0.5 truncate text-sm text-white/65">{cleanTitle}</p>
-        <div className="mt-1 flex items-center gap-2 text-xs text-white/55">
-          <span>⏱ {lesson.estimatedMinutes} นาที</span>
-          {stars > 0 && (
-            <span className="inline-flex items-center gap-0.5 text-amber-300/80">
-              <Star className="h-3 w-3 fill-current" />
-              {stars}
-            </span>
-          )}
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-white/55">⏱ {lesson.estimatedMinutes} นาที</span>
+          {/* Reward preview — stars + EXP. Always shown so the learner sees
+            * what they're earning even before unlocking. */}
+          <span
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold ${
+              completed
+                ? 'bg-emerald-400/15 text-emerald-200/90'
+                : 'bg-amber-400/15 text-amber-200'
+            }`}
+          >
+            <Star className="h-3 w-3 fill-current" />
+            {completed && stars > 0 ? `${stars}/${reward.stars}` : `สูงสุด ${reward.stars}`}
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-500/15 px-2 py-0.5 font-bold text-fuchsia-200">
+            <Zap className="h-3 w-3 fill-current" />+{reward.exp} EXP
+          </span>
           {isNext && (
             <span className="rounded-full bg-amber-500/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200">
               พร้อมเล่น
