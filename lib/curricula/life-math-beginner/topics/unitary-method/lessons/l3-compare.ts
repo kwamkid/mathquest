@@ -19,7 +19,7 @@ export const lesson3: Lesson = lesson({
   id: `${SUB}-l3`,
   subTopicId: SUB,
   order: 3,
-  title: '⚖️ เปรียบเทียบราคา — เลือกที่คุ้มกว่า',
+  title: 'เปรียบเทียบราคา (Compare & Find Best Value)',
   description: '2 ร้านราคาต่างกัน — แบบไหนคุ้ม?',
   estimatedMinutes: 20,
   kind: 'lesson',
@@ -104,7 +104,7 @@ export const lesson3: Lesson = lesson({
 
     independentPractice({
       id: `${SUB}-l3-mini`,
-      title: '🎯 ฝึกท้ายบท — 3 ข้อ',
+      title: 'ฝึกท้ายบท — 3 ข้อ',
       questions: [M6.question, H3.question, H6.question],
       passingScore: 0.66,
     }),

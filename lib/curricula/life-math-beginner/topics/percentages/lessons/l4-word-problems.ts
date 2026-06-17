@@ -20,7 +20,7 @@ export const lesson4: Lesson = lesson({
   id: `${SUB}-l4`,
   subTopicId: SUB,
   order: 4,
-  title: 'โจทย์ปัญหาในชีวิตจริง 🛍',
+  title: 'โจทย์ปัญหาในชีวิตจริง (Word Problems)',
   description: 'ลดราคา ภาษี และคะแนนสอบ — ใช้ % ในชีวิตประจำวัน',
   estimatedMinutes: 25,
   kind: 'lesson',
@@ -140,7 +140,7 @@ export const lesson4: Lesson = lesson({
 
     independentPractice({
       id: `${SUB}-l4-mini`,
-      title: '🎯 ฝึกท้ายบท — 5 ข้อ',
+      title: 'ฝึกท้ายบท — 5 ข้อ',
       questions: [H1.question, H2.question, H3.question, H4.question, H9.question],
       passingScore: 0.6,
     }),

@@ -60,7 +60,16 @@ export interface Topic {
   title: string;            // English title, e.g. "Fractions"
   thaiTitle?: string;       // e.g. "เศษส่วน"
   description: string;
-  icon?: string;            // emoji shortcut for cards
+  icon?: string;            // emoji shortcut for cards (legacy)
+  // When set, the UI prefers this Lucide icon name over the emoji. Keeps
+  // typography crisp on small mobile labels where emoji rendering varies.
+  iconName?:
+    | 'percent'
+    | 'shopping-cart'
+    | 'clock'
+    | 'pie-chart'
+    | 'book-open'
+    | 'calculator';
   order: number;            // sort order within curriculum
   subTopics: SubTopic[];
 }

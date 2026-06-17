@@ -14,6 +14,7 @@ export const timeTopic = topic({
   thaiTitle: 'เวลา',
   description: 'อ่านนาฬิกาเข็ม — รู้จักเข็มสั้น/ยาว, past, to, quarter',
   icon: '⏰',
+  iconName: 'clock',
   order: 5,
   subTopics: [readingTheClock],
 });

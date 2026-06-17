@@ -25,7 +25,7 @@ export const lesson1: Lesson = lesson({
   id: `${SUB}-l1`,
   subTopicId: SUB,
   order: 1,
-  title: '% คืออะไร 🎯',
+  title: '% คืออะไร (What is a Percent?)',
   description: 'รู้จักความหมายของเปอร์เซ็นต์ — "ต่อหนึ่งร้อย"',
   estimatedMinutes: 15,
   kind: 'lesson',
@@ -88,7 +88,7 @@ export const lesson1: Lesson = lesson({
     // Mini quiz — merged into the lesson flow (no separate card).
     independentPractice({
       id: `${SUB}-l1-mini`,
-      title: '🎯 ฝึกท้ายบท — 5 ข้อ',
+      title: 'ฝึกท้ายบท — 5 ข้อ',
       questions: [E4.question, E5.question, E6.question, E7.question, E8.question],
       passingScore: 0.6,
     }),

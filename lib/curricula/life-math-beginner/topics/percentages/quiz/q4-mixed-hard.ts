@@ -14,7 +14,7 @@ export const quiz4: Lesson = lesson({
   id: `${SUB}-quiz-4`,
   subTopicId: SUB,
   order: 103,
-  title: '🏆 Final Quiz · Level 4 — ยาก',
+  title: 'Final Quiz · Level 4 (ยาก)',
   description: '8 ข้อ — โจทย์ลดราคา VAT และสถานการณ์จริง',
   estimatedMinutes: 15,
   kind: 'quiz',

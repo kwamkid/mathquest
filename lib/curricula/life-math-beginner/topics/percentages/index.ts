@@ -11,7 +11,7 @@ const percentagesSubTopic = subTopic({
   topicId: 'life-math-percentages-topic',
   slug: 'percentages',
   title: 'Percentages',
-  thaiTitle: 'เปอร์เซ็นต์',
+  thaiTitle: 'เปอร์เซ็นต์ (Percentages)',
   description:
     'รู้จัก % คืออะไร เรียนสูตรหา % พร้อมเทคนิคคิดเลขเร็ว และโจทย์จริงในชีวิตประจำวัน',
   learningObjectives: [
@@ -43,10 +43,11 @@ export const percentagesTopic = topic({
   curriculumId: 'life-math-beginner',
   slug: 'percentages',
   title: 'Percentages',
-  thaiTitle: 'เปอร์เซ็นต์',
+  thaiTitle: 'เปอร์เซ็นต์ (Percentages)',
   description:
     'เรียนเปอร์เซ็นต์จากต้น — สิ่งที่ใช้ได้จริงเวลาซื้อของและคิดส่วนลด',
   icon: '🧮',
-  order: 1,
+  iconName: 'percent',
+  order: 2,
   subTopics: [percentagesSubTopic],
 });

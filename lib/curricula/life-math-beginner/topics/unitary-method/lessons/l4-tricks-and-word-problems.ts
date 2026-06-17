@@ -21,7 +21,7 @@ export const lesson4: Lesson = lesson({
   id: `${SUB}-l4`,
   subTopicId: SUB,
   order: 4,
-  title: '🚀 เทคนิคคิดเร็ว + โจทย์ผสม',
+  title: 'เทคนิคคิดเร็ว + โจทย์ผสม (Tricks & Word Problems)',
   description: 'ใช้กับเวลา ระยะทาง คนทำงาน — ไม่ใช่แค่ราคา',
   estimatedMinutes: 25,
   kind: 'lesson',
@@ -120,7 +120,7 @@ export const lesson4: Lesson = lesson({
 
     independentPractice({
       id: `${SUB}-l4-mini`,
-      title: '🎯 ฝึกท้ายบท — 4 ข้อ',
+      title: 'ฝึกท้ายบท — 4 ข้อ',
       questions: [M4.question, H2.question, H4.question, H5.question],
       passingScore: 0.6,
     }),

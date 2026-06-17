@@ -21,7 +21,7 @@ export const lesson5: Lesson = lesson({
   id: `${SUB}-l5`,
   subTopicId: SUB,
   order: 5,
-  title: '🚀 เทคนิคคิดเลข % เร็วในใจ',
+  title: 'เทคนิคคิดเลข % เร็วในใจ (Mental Math Tricks)',
   description: '4 ทางลัดที่ใช้ได้จริง — เลื่อนจุด, ครึ่ง/สองเท่า, สลับเลข, ลด=จ่าย',
   estimatedMinutes: 20,
   kind: 'lesson',
@@ -146,7 +146,7 @@ export const lesson5: Lesson = lesson({
 
     independentPractice({
       id: `${SUB}-l5-mini`,
-      title: '🎯 ฝึกท้ายบท — 5 ข้อ',
+      title: 'ฝึกท้ายบท — 5 ข้อ',
       questions: [T8.question, T9.question, T2.question, T7.question, T10.question],
       passingScore: 0.6,
     }),

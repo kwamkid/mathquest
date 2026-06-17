@@ -21,7 +21,7 @@ export const lesson1: Lesson = lesson({
   id: `${SUB}-l1`,
   subTopicId: SUB,
   order: 1,
-  title: '🛒 ราคาต่อ 1 หน่วย',
+  title: 'ราคาต่อ 1 หน่วย (Price per Unit)',
   description: 'ซื้อแก้ว 250 บาท ได้ 50 ใบ ใบละกี่บาท — สูตรพื้นฐาน',
   estimatedMinutes: 18,
   kind: 'lesson',
@@ -79,7 +79,7 @@ export const lesson1: Lesson = lesson({
 
     independentPractice({
       id: `${SUB}-l1-mini`,
-      title: '🎯 ฝึกท้ายบท — 3 ข้อ',
+      title: 'ฝึกท้ายบท — 3 ข้อ',
       questions: [E7.question, E8.question, E2.question],
       passingScore: 0.66,
     }),

@@ -8,7 +8,7 @@ export const quiz1: Lesson = lesson({
   id: `${SUB}-quiz-1`,
   subTopicId: SUB,
   order: 100,
-  title: '🏆 Final Quiz · Level 1 — ง่ายมาก',
+  title: 'Final Quiz · Level 1 (ง่ายมาก)',
   description: '6 ข้อ — ราคาต่อ 1 หน่วย และคูณกลับเลขกลม',
   estimatedMinutes: 8,
   kind: 'quiz',

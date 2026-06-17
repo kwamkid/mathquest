@@ -8,7 +8,7 @@ export const quiz3: Lesson = lesson({
   id: `${SUB}-quiz-3`,
   subTopicId: SUB,
   order: 102,
-  title: '🏆 Final Quiz · Level 3 — ปานกลาง',
+  title: 'Final Quiz · Level 3 (ปานกลาง)',
   description: '6 ข้อ — โจทย์ 2 ขั้น และเปรียบเทียบราคา',
   estimatedMinutes: 12,
   kind: 'quiz',

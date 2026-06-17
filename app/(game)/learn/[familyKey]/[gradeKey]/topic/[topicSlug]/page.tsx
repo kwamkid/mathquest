@@ -10,6 +10,7 @@ import Link from 'next/link';
 import AuthGuard from '@/components/auth/AuthGuard';
 import AppHeader from '@/components/layout/AppHeader';
 import LearnBreadcrumb from '@/components/lesson/LearnBreadcrumb';
+import TopicIcon from '@/components/lesson/TopicIcon';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { getFamilyGrade } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
@@ -94,9 +95,13 @@ export default function TopicPage() {
             <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
               {hideGrade ? (family.thaiName ?? family.name) : grade.label}
             </p>
-            <h1 className="text-3xl font-bold text-white">
-              <span className="mr-2" aria-hidden="true">{topic.icon ?? '📘'}</span>
-              {topic.thaiTitle ?? topic.title}
+            <h1 className="flex items-center gap-3 text-3xl font-bold text-white">
+              <TopicIcon
+                topic={topic}
+                className="h-9 w-9 text-pink-300"
+                emojiClassName="text-3xl leading-none"
+              />
+              <span>{topic.thaiTitle ?? topic.title}</span>
             </h1>
             <p className="text-base text-white/70">{topic.description}</p>
           </header>

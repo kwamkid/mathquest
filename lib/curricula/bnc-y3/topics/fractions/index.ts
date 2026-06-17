@@ -15,6 +15,7 @@ export const fractionsTopic = topic({
   thaiTitle: 'เศษส่วน',
   description: 'เรียนรู้เศษส่วน — รู้จัก, บวก, ลบ, เปรียบเทียบ',
   icon: '🍕',
+  iconName: 'pie-chart',
   order: 4,
   subTopics: [addingFractions, subtractingFractions],
 });

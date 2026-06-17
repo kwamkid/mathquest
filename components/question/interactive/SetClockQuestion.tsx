@@ -74,36 +74,63 @@ export default function SetClockQuestionView({
     onDraftValidityChange?.(draggedAny);
   }, [draggedAny, onDraftValidityChange]);
 
-  const updateFromPointer = useCallback((clientX: number, clientY: number) => {
+  // Convert a screen point to the SVG viewBox coords + its polar angle.
+  const pointToAngle = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg) return null;
     const rect = svg.getBoundingClientRect();
     // Map screen pixels back to the SVG's 0..SIZE viewBox.
     const x = ((clientX - rect.left) / rect.width) * SIZE;
     const y = ((clientY - rect.top) / rect.height) * SIZE;
-    const deg = angleFromPoint(x, y);
-    const hand = draggingRef.current;
-
-    if (hand === 'minute') {
-      // 6° per minute; snap to whole minutes.
-      const m = Math.round(deg / 6) % 60;
-      setMinutes(m);
-    } else if (hand === 'hour') {
-      // 30° per hour; advance through 12 → 1 → … → 11.
-      const raw = Math.floor(deg / 30) || 12;
-      const h = raw === 0 ? 12 : raw;
-      setHours(h);
-    }
+    return angleFromPoint(x, y);
   }, []);
 
-  const onPointerDownHand = (hand: 'hour' | 'minute') => (e: React.PointerEvent) => {
+  const updateFromPointer = useCallback(
+    (clientX: number, clientY: number) => {
+      const deg = pointToAngle(clientX, clientY);
+      if (deg === null) return;
+      const hand = draggingRef.current;
+
+      if (hand === 'minute') {
+        // 6° per minute; snap to whole minutes.
+        const m = Math.round(deg / 6) % 60;
+        setMinutes(m);
+      } else if (hand === 'hour') {
+        // 30° per hour; advance through 12 → 1 → … → 11.
+        const raw = Math.floor(deg / 30) || 12;
+        const h = raw === 0 ? 12 : raw;
+        setHours(h);
+      }
+    },
+    [pointToAngle]
+  );
+
+  // Pointer-down anywhere on the face starts a drag — the thin hands are too
+  // small to hit on a phone, so we pick whichever hand is angularly closest to
+  // the touch and move that one. Capture goes on the SVG, not the hand.
+  const onPointerDownFace = (e: React.PointerEvent) => {
     if (disabled) return;
     if (pointerIdRef.current !== null) return;
+    const deg = pointToAngle(e.clientX, e.clientY);
+    if (deg === null) return;
+
+    // Angular distance (0..180) from the touch to each hand's current angle.
+    const angDist = (a: number, b: number) => {
+      const d = Math.abs(a - b) % 360;
+      return d > 180 ? 360 - d : d;
+    };
+    const { hours: h, minutes: m } = stateRef.current;
+    const curHourDeg = ((h % 12) * 30 + m * 0.5) % 360;
+    const curMinuteDeg = (m * 6) % 360;
+    const hand: 'hour' | 'minute' =
+      angDist(deg, curHourDeg) <= angDist(deg, curMinuteDeg) ? 'hour' : 'minute';
+
     pointerIdRef.current = e.pointerId;
     draggingRef.current = hand;
     setDraggedAny(true);
-    (e.target as Element).setPointerCapture(e.pointerId);
+    svgRef.current?.setPointerCapture(e.pointerId);
     e.preventDefault();
+    updateFromPointer(e.clientX, e.clientY);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
@@ -164,10 +191,11 @@ export default function SetClockQuestionView({
           width={SIZE}
           height={SIZE}
           viewBox={`0 0 ${SIZE} ${SIZE}`}
+          onPointerDown={onPointerDownFace}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
-          style={{ touchAction: 'none' }}
+          style={{ touchAction: 'none', cursor: disabled ? 'not-allowed' : 'grab' }}
           className="select-none"
           role="img"
           aria-label={`นาฬิกาแบบโต้ตอบ ปัจจุบัน ${formatTime(hours, minutes)}`}
@@ -211,8 +239,7 @@ export default function SetClockQuestionView({
             stroke="#2b2150"
             strokeWidth={8}
             strokeLinecap="round"
-            onPointerDown={onPointerDownHand('hour')}
-            style={{ cursor: disabled ? 'not-allowed' : 'grab' }}
+            style={{ pointerEvents: 'none' }}
           />
 
           {/* minute hand */}
@@ -224,8 +251,7 @@ export default function SetClockQuestionView({
             stroke="#7c3aed"
             strokeWidth={5}
             strokeLinecap="round"
-            onPointerDown={onPointerDownHand('minute')}
-            style={{ cursor: disabled ? 'not-allowed' : 'grab' }}
+            style={{ pointerEvents: 'none' }}
           />
 
           {/* center pin */}

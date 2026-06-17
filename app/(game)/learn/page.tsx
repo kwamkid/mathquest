@@ -13,6 +13,7 @@ import AuthGuard from '@/components/auth/AuthGuard';
 import AppHeader from '@/components/layout/AppHeader';
 import { families } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
+import TopicIcon from '@/components/lesson/TopicIcon';
 import {
   findContinueLesson,
   getSubTopicProgress,
@@ -273,7 +274,11 @@ function TopicTimeline({
   return (
     <section className="space-y-3">
       <h3 className="flex items-center gap-2 text-lg font-bold text-white">
-        {topic.icon && <span className="text-2xl">{topic.icon}</span>}
+        <TopicIcon
+          topic={topic}
+          className="h-6 w-6 text-pink-300"
+          emojiClassName="text-2xl"
+        />
         <span>{topic.thaiTitle ?? topic.title}</span>
       </h3>
 

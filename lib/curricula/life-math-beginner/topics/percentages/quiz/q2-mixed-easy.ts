@@ -14,7 +14,7 @@ export const quiz2: Lesson = lesson({
   id: `${SUB}-quiz-2`,
   subTopicId: SUB,
   order: 101,
-  title: '🏆 Final Quiz · Level 2 — ง่าย',
+  title: 'Final Quiz · Level 2 (ง่าย)',
   description: '7 ข้อ — เริ่มมีตัวเลขใหญ่ขึ้น',
   estimatedMinutes: 10,
   kind: 'quiz',

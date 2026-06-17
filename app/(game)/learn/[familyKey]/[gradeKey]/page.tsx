@@ -14,6 +14,7 @@ import { getFamilyGrade } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
 import { getTopicProgress } from '@/lib/curricula/progress-helpers';
 import { ChevronRight, CheckCircle2 } from 'lucide-react';
+import TopicIcon from '@/components/lesson/TopicIcon';
 
 export default function GradeTopicsPage() {
   const params = useParams();
@@ -108,9 +109,11 @@ export default function GradeTopicsPage() {
                   }`}
                 >
                   <div className="flex items-start gap-3">
-                    <span className="text-3xl leading-none" aria-hidden="true">
-                      {t.icon ?? '📘'}
-                    </span>
+                    <TopicIcon
+                      topic={t}
+                      className="h-8 w-8 text-pink-300"
+                      emojiClassName="text-3xl leading-none"
+                    />
                     <div>
                       <h2 className="text-lg font-bold text-white">
                         {t.thaiTitle ?? t.title}

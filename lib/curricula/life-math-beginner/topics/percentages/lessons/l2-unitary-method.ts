@@ -5,24 +5,38 @@
 
 import type { Lesson } from '@/types/curriculum';
 import {
+  concept,
   guidedPractice,
   independentPractice,
   lesson,
   reflection,
   workedExample,
 } from '@/lib/curricula/helpers/lesson-builders';
-import { callout } from '@/lib/curricula/helpers/visual-builders';
+import { callout, text } from '@/lib/curricula/helpers/visual-builders';
 import { C_tenPercentTrick, C_unitaryMethod } from '../content/concepts';
 import { E4, E5, E10, M1, M2, M3, M5, M6 } from '../content/questions';
 
 const SUB = 'life-math-percentages';
 
+// Soft prerequisite hint — % is fundamentally an application of the unitary
+// method. Surfaced as a friendly note rather than a hard gate so learners
+// who already know the technique can blow past it.
+const C_unitaryHint = concept(`${SUB}-l2-hint`, 'เกริ่นนำก่อนเรียน', [
+  text(
+    'บทนี้ใช้ **บัญญัติไตรยางศ์ (Unitary Method)** เป็นพื้นฐาน — ถ้ายังไม่คุ้น แนะนำให้ลองเรียนหัวข้อ **บัญญัติไตรยางศ์** ก่อน จะเข้าใจ % ง่ายขึ้นมาก',
+  ),
+  callout(
+    'tip',
+    'เคยเรียนบัญญัติไตรยางศ์มาแล้ว? ข้ามมาทำเลย — แค่ใช้สูตรเดิมในรูปแบบ %',
+  ),
+]);
+
 export const lesson2: Lesson = lesson({
   id: `${SUB}-l2`,
   subTopicId: SUB,
   order: 2,
-  title: 'บัญญัติไตรยางศ์ — สูตรหา % 📐',
-  description: 'เรียนสูตร X% ของ N พร้อมทางลัด',
+  title: 'สูตรคำนวณ % (Percentage Formula)',
+  description: 'เรียนสูตร X% ของ N พร้อมทางลัด — ต่อยอดจากบัญญัติไตรยางศ์',
   estimatedMinutes: 20,
   kind: 'lesson',
   learningObjectives: [
@@ -30,6 +44,7 @@ export const lesson2: Lesson = lesson({
     'ใช้ทางลัด 10% (÷10), 50% (÷2), 25% (÷4)',
   ],
   steps: [
+    C_unitaryHint,
     C_unitaryMethod,
 
     workedExample({
@@ -116,7 +131,7 @@ export const lesson2: Lesson = lesson({
 
     independentPractice({
       id: `${SUB}-l2-mini`,
-      title: '🎯 ฝึกท้ายบท — 4 ข้อ',
+      title: 'ฝึกท้ายบท — 4 ข้อ',
       questions: [E10.question, M3.question, M5.question, M6.question],
       passingScore: 0.6,
     }),

@@ -16,6 +16,7 @@ import { useParams } from 'next/navigation';
 import AuthGuard from '@/components/auth/AuthGuard';
 import AppHeader from '@/components/layout/AppHeader';
 import LearnBreadcrumb from '@/components/lesson/LearnBreadcrumb';
+import TopicIcon from '@/components/lesson/TopicIcon';
 import {
   ContinueCard,
   LessonListItem,
@@ -167,13 +168,13 @@ export default function SubTopicPage() {
           {`${grade.label} · ${topic.thaiTitle ?? topic.title}`}
         </p>
       )}
-      <h1 className="text-3xl font-bold text-white lg:text-4xl">
-        {topic.icon && (
-          <span className="mr-2" aria-hidden="true">
-            {topic.icon}
-          </span>
-        )}
-        {displayTitle}
+      <h1 className="flex items-center gap-3 text-3xl font-bold text-white lg:text-4xl">
+        <TopicIcon
+          topic={topic}
+          className="h-9 w-9 shrink-0 text-pink-300 lg:h-10 lg:w-10"
+          emojiClassName="text-3xl leading-none"
+        />
+        <span>{displayTitle}</span>
       </h1>
       <p className="text-base text-white/70">{subTopic.description}</p>
       {subTopic.learningObjectives.length > 0 && (

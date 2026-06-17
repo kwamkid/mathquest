@@ -20,6 +20,8 @@ import type {
   WorkedExampleStep,
 } from '@/types/curriculum';
 
+type TopicIconName = NonNullable<Topic['iconName']>;
+
 export const concept = (
   id: string,
   title: string,
@@ -168,6 +170,7 @@ export const topic = (params: {
   thaiTitle?: string;
   description: string;
   icon?: string;
+  iconName?: TopicIconName;
   order: number;
   subTopics: SubTopic[];
 }): Topic => ({
@@ -178,6 +181,7 @@ export const topic = (params: {
   thaiTitle: params.thaiTitle,
   description: params.description,
   icon: params.icon,
+  iconName: params.iconName,
   order: params.order,
   subTopics: params.subTopics,
 });

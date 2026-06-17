@@ -8,7 +8,7 @@ export const quiz4: Lesson = lesson({
   id: `${SUB}-quiz-4`,
   subTopicId: SUB,
   order: 103,
-  title: '🏆 Final Quiz · Level 4 — ยาก',
+  title: 'Final Quiz · Level 4 (ยาก)',
   description: '7 ข้อ — โจทย์ผสม รถยนต์ คนงาน เปรียบเทียบราคา',
   estimatedMinutes: 15,
   kind: 'quiz',

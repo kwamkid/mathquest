@@ -14,7 +14,7 @@ export const quiz5: Lesson = lesson({
   id: `${SUB}-quiz-5`,
   subTopicId: SUB,
   order: 104,
-  title: '🏆 Final Quiz · Level 5 — ยากสุด',
+  title: 'Final Quiz · Level 5 (ยากสุด)',
   description: '7 ข้อ — โจทย์รวม VAT + ส่วนลด + คำนวณซ้อน',
   estimatedMinutes: 15,
   kind: 'quiz',

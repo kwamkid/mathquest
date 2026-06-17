@@ -20,7 +20,7 @@ export const lesson2: Lesson = lesson({
   id: `${SUB}-l2`,
   subTopicId: SUB,
   order: 2,
-  title: '✖️ คูณกลับ — หาราคารวม',
+  title: 'คูณกลับ — หาราคารวม (Multiply Back)',
   description: 'รู้ราคา/ชิ้นแล้ว ซื้อหลายชิ้นเท่าไร?',
   estimatedMinutes: 18,
   kind: 'lesson',
@@ -105,7 +105,7 @@ export const lesson2: Lesson = lesson({
 
     independentPractice({
       id: `${SUB}-l2-mini`,
-      title: '🎯 ฝึกท้ายบท — 3 ข้อ',
+      title: 'ฝึกท้ายบท — 3 ข้อ',
       questions: [E6.question, M8.question, M3.question],
       passingScore: 0.66,
     }),

@@ -11,7 +11,7 @@ const unitarySubTopic = subTopic({
   topicId: 'life-math-unitary-topic',
   slug: 'unitary-method',
   title: 'Unitary Method',
-  thaiTitle: 'บัญญัติไตรยางศ์',
+  thaiTitle: 'บัญญัติไตรยางศ์ (Unitary Method)',
   description:
     'คิดจากของ 1 หน่วย — หาราคาต่อหน่วย คูณกลับ เปรียบเทียบราคา และโจทย์ปัญหาในชีวิตจริง',
   learningObjectives: [
@@ -40,10 +40,11 @@ export const unitaryMethodTopic = topic({
   curriculumId: 'life-math-beginner',
   slug: 'unitary-method',
   title: 'Unitary Method',
-  thaiTitle: 'บัญญัติไตรยางศ์',
+  thaiTitle: 'บัญญัติไตรยางศ์ (Unitary Method)',
   description:
     'คณิตในชีวิตจริง — ซื้อของ หารราคา เปรียบเทียบของคุ้ม รถยนต์ คนงาน',
   icon: '🛒',
-  order: 2,
+  iconName: 'shopping-cart',
+  order: 1,
   subTopics: [unitarySubTopic],
 });
