@@ -195,10 +195,12 @@ export default function SubTopicPage() {
   // Right column (mobile: below hero): teaching lessons + final-quiz ladder.
   const lessonsColumn = (
     <div className="space-y-6">
-      {/* Progress + Continue share one row on >=md. Mobile stacks them so
-        * neither feels squished on narrow viewports. */}
+      {/* Progress + Continue share one row on >=md. Progress takes ~80% of
+        * the width since it carries the meaningful info; the Continue
+        * button is now a slim "▶ เรียนต่อ" pill that just needs to be
+        * obvious, not large. Mobile stacks them so neither gets squished. */}
       {(progressStrip || continueCard) && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:items-stretch">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-[4fr_1fr] md:items-stretch">
           {progressStrip}
           {continueCard}
         </div>

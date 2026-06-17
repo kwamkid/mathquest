@@ -32,39 +32,23 @@ interface ContinueCardProps {
   title: string;
   // "เริ่มเรียน" first time, "เรียนต่อ" otherwise.
   label: string;
-  // Optional reward preview — shown as a small chip on the right side of
-  // the card. Pass when the next-up lesson is a quiz so the learner sees
-  // "do this and earn N stars / +M EXP" before tapping in.
+  // Kept for API compatibility but no longer rendered — the lesson row in
+  // the list itself now carries the full "next up" visual, so this
+  // top-of-page button only needs the bare action.
   reward?: { stars: number; exp: number };
 }
 
-export function ContinueCard({ href, title, label, reward }: ContinueCardProps) {
+// Compact "▶ เรียนต่อ" button. The lesson title and reward chips live on
+// the active row in the lesson list below; repeating them here just made
+// the page top-heavy. The whole strip is a single tap target.
+export function ContinueCard({ href, label }: ContinueCardProps) {
   return (
     <Link
       href={href}
-      className="learn-accent-pill flex w-full items-center justify-between gap-3 rounded-2xl p-4 shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-[0.99]"
+      className="learn-accent-pill flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-base font-bold text-white shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-[0.99]"
     >
-      <div className="flex items-start gap-3 min-w-0">
-        <PlayCircle className="mt-1 h-6 w-6 shrink-0" />
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-white/80">
-            {label}
-          </p>
-          <p className="mt-0.5 truncate text-base font-bold">{title}</p>
-          {reward && (
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-bold text-white">
-                <Star className="h-3 w-3 fill-current" />
-                สูงสุด {reward.stars}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 font-bold text-white">
-                <Zap className="h-3 w-3 fill-current" />+{reward.exp} EXP
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-      <ChevronRight className="h-6 w-6 shrink-0" />
+      <PlayCircle className="h-5 w-5 shrink-0" />
+      <span>{label}</span>
     </Link>
   );
 }
@@ -93,14 +77,16 @@ export function LessonListItem({
 }: LessonListItemProps) {
   const dim = completed ? 'opacity-55' : '';
 
-  // Active row uses the full gradient pill (matches ContinueCard) so it
-  // reads as the next thing to do. Completed and idle rows stay subtle.
+  // Active row uses the full gradient pill (matches the old ContinueCard
+  // style) so it reads as the next thing to do. Completed and idle rows
+  // stay subtle. The top-of-page Continue button now shows only an icon
+  // + label, keeping the lesson title from being repeated twice.
   const rowClass = isContinue
-    ? 'learn-accent-pill rounded-2xl p-4 shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-[0.99]'
+    ? 'learn-accent-pill block rounded-2xl p-4 shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-[0.99]'
     : `learn-card flex items-center gap-3 rounded-2xl p-4 transition ${dim}`;
 
   const titleClass = isContinue
-    ? 'text-base font-bold text-white'
+    ? 'truncate text-base font-bold text-white'
     : completed
       ? 'truncate text-base text-white/60 line-through'
       : 'truncate text-base text-white';
@@ -111,11 +97,9 @@ export function LessonListItem({
       ? 'bg-emerald-400/10 text-emerald-300/70'
       : 'bg-white/5 text-white/80';
 
-  const metaTextClass = isContinue ? 'text-white/80' : 'text-white/55';
-
   return (
     <Link href={href} className={rowClass}>
-      <div className="flex items-center gap-3">
+      <div className="flex w-full items-center gap-3">
         {/* Big number — the focal point per user request */}
         <div
           className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl font-extrabold ${numberBox}`}
@@ -134,10 +118,18 @@ export function LessonListItem({
               {lesson.description}
             </p>
           )}
-          <div className={`mt-1 flex items-center gap-2 text-xs ${metaTextClass}`}>
+          <div
+            className={`mt-1 flex items-center gap-2 text-xs ${
+              isContinue ? 'text-white/80' : 'text-white/55'
+            }`}
+          >
             <span>⏱ {lesson.estimatedMinutes} นาที</span>
             {stars > 0 && (
-              <span className="inline-flex items-center gap-0.5 text-amber-200">
+              <span
+                className={`inline-flex items-center gap-0.5 ${
+                  isContinue ? 'text-amber-200' : 'text-amber-300/80'
+                }`}
+              >
                 <Star className="h-3 w-3 fill-current" />
                 {stars}
               </span>
