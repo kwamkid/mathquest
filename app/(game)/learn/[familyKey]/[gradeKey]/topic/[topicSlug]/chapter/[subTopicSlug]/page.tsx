@@ -110,6 +110,15 @@ export default function SubTopicPage() {
         ? 'ลุย Final Quiz'
         : 'เรียนต่อ';
 
+  // When the topic only has one chapter, the topic picker is skipped — so
+  // showing "topic > chapter" in the breadcrumb would read like the same
+  // page twice (e.g. "เปอร์เซ็นต์ > เปอร์เซ็นต์"). Collapse to the chapter
+  // title alone in that case and use the chapter as the page heading.
+  const collapseTopic = topic.subTopics.length === 1;
+  const displayTitle = collapseTopic
+    ? topic.thaiTitle ?? topic.title
+    : subTopic.thaiTitle ?? subTopic.title;
+
   return (
     <AuthGuard>
       <div className="learn-bg min-h-screen">
@@ -129,22 +138,34 @@ export default function SubTopicPage() {
                       href: `/learn/${family.key}/${grade.key}`,
                     },
                   ]),
-              {
-                label: topic.thaiTitle ?? topic.title,
-                href: `/learn/${family.key}/${grade.key}/topic/${topic.slug}`,
-              },
-              { label: subTopic.thaiTitle ?? subTopic.title },
+              ...(collapseTopic
+                ? []
+                : [
+                    {
+                      label: topic.thaiTitle ?? topic.title,
+                      href: `/learn/${family.key}/${grade.key}/topic/${topic.slug}`,
+                    },
+                  ]),
+              { label: displayTitle },
             ]}
           />
 
           <header className="space-y-2">
-            <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
-              {hideGrade
-                ? topic.thaiTitle ?? topic.title
-                : `${grade.label} · ${topic.thaiTitle ?? topic.title}`}
-            </p>
+            {/* Eyebrow only when there's something the breadcrumb + title
+              * don't already say. For collapsed-topic pages (one chapter
+              * only) the title is the topic itself — no eyebrow needed. */}
+            {!collapseTopic && !hideGrade && (
+              <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
+                {`${grade.label} · ${topic.thaiTitle ?? topic.title}`}
+              </p>
+            )}
             <h1 className="text-3xl font-bold text-white">
-              {subTopic.thaiTitle ?? subTopic.title}
+              {topic.icon && (
+                <span className="mr-2" aria-hidden="true">
+                  {topic.icon}
+                </span>
+              )}
+              {displayTitle}
             </h1>
             <p className="text-base text-white/70">{subTopic.description}</p>
             {subTopic.learningObjectives.length > 0 && (
