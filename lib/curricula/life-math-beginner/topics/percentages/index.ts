@@ -11,9 +11,9 @@ const percentagesSubTopic = subTopic({
   topicId: 'life-math-percentages-topic',
   slug: 'percentages',
   title: 'Percentages',
-  thaiTitle: 'เปอร์เซ็นต์ — บัญญัติไตรยางศ์',
+  thaiTitle: 'เปอร์เซ็นต์',
   description:
-    'รู้จัก % คืออะไร เรียนสูตรบัญญัติไตรยางศ์ และฝึกใช้กับโจทย์จริงในชีวิตประจำวัน',
+    'รู้จัก % คืออะไร เรียนสูตรหา % พร้อมเทคนิคคิดเลขเร็ว และโจทย์จริงในชีวิตประจำวัน',
   learningObjectives: [
     'อธิบายความหมายของ % ได้',
     'ใช้สูตร X% × N ÷ 100 และทางลัด 10% ได้',

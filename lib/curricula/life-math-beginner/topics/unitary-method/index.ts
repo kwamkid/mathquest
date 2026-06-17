@@ -11,9 +11,9 @@ const unitarySubTopic = subTopic({
   topicId: 'life-math-unitary-topic',
   slug: 'unitary-method',
   title: 'Unitary Method',
-  thaiTitle: 'บัญญัติไตรยางศ์ — คิดจากของ 1 หน่วย',
+  thaiTitle: 'บัญญัติไตรยางศ์',
   description:
-    'รู้จักวิธีคิดที่ใช้บ่อยในชีวิตประจำวัน — หาราคาต่อ 1 หน่วย คูณกลับ เปรียบเทียบราคา และโจทย์ปัญหา',
+    'คิดจากของ 1 หน่วย — หาราคาต่อหน่วย คูณกลับ เปรียบเทียบราคา และโจทย์ปัญหาในชีวิตจริง',
   learningObjectives: [
     'หาราคาต่อ 1 หน่วยได้',
     'ใช้สูตร "คูณกลับ" หาราคารวมได้',

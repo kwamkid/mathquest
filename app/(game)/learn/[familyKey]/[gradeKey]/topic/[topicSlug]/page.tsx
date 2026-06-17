@@ -4,7 +4,8 @@
 
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AuthGuard from '@/components/auth/AuthGuard';
 import AppHeader from '@/components/layout/AppHeader';
@@ -20,6 +21,7 @@ import { ChevronRight, CheckCircle2, Lock } from 'lucide-react';
 
 export default function TopicPage() {
   const params = useParams();
+  const router = useRouter();
   const { user } = useAuth();
   const familyKey = String(params.familyKey);
   const gradeKey = String(params.gradeKey);
@@ -31,6 +33,21 @@ export default function TopicPage() {
     : null;
   const topic = curriculum?.topics.find((t) => t.slug === topicSlug);
 
+  // Skip the chapter picker entirely when a topic has only one chapter —
+  // there's nothing to pick, so we'd just be making the learner take an
+  // extra tap through an empty list.
+  const onlyChapter =
+    topic && topic.subTopics.length === 1 ? topic.subTopics[0] : null;
+  const shouldSkip = !!(resolved && curriculum && topic && onlyChapter);
+
+  useEffect(() => {
+    if (shouldSkip && onlyChapter && resolved && topic) {
+      router.replace(
+        `/learn/${familyKey}/${gradeKey}/topic/${topic.slug}/chapter/${onlyChapter.slug}`,
+      );
+    }
+  }, [shouldSkip, onlyChapter, resolved, topic, familyKey, gradeKey, router]);
+
   if (!resolved || !curriculum || !topic) {
     return (
       <AuthGuard>
@@ -39,6 +56,11 @@ export default function TopicPage() {
         </div>
       </AuthGuard>
     );
+  }
+
+  if (shouldSkip) {
+    // Render nothing while the redirect kicks in — avoids a layout flash.
+    return null;
   }
 
   const { family, grade } = resolved;
