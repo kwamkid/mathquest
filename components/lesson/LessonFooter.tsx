@@ -1,7 +1,8 @@
 // components/lesson/LessonFooter.tsx
 'use client';
 
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import type { StepFeedback } from './LessonPlayer';
 
 interface Props {
   onPrev?: () => void;
@@ -10,6 +11,8 @@ interface Props {
   nextDisabled?: boolean;
   nextLabel?: string;
   showPrev?: boolean;
+  // When set, shows a correct/wrong message in the bottom bar above the buttons.
+  feedback?: StepFeedback | null;
 }
 
 export default function LessonFooter({
@@ -19,6 +22,7 @@ export default function LessonFooter({
   nextDisabled,
   nextLabel = 'ถัดไป',
   showPrev = true,
+  feedback,
 }: Props) {
   return (
     <footer className="sticky bottom-0 border-t border-white/10 bg-[#0a0a0a]/80 px-4 py-3 backdrop-blur-md sm:px-6">
@@ -35,6 +39,26 @@ export default function LessonFooter({
         ) : (
           <div />
         )}
+
+        {/* Compact correct/wrong indicator — green check or red X. */}
+        {feedback && (
+          <span
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+              feedback.correct
+                ? 'bg-green-500/20 text-green-400'
+                : 'bg-rose-500/20 text-rose-400'
+            }`}
+            role="status"
+            aria-label={feedback.correct ? 'ถูกต้อง' : 'ยังไม่ใช่'}
+          >
+            {feedback.correct ? (
+              <Check className="h-6 w-6" strokeWidth={3} />
+            ) : (
+              <X className="h-6 w-6" strokeWidth={3} />
+            )}
+          </span>
+        )}
+
         <button
           onClick={onNext}
           disabled={nextDisabled}

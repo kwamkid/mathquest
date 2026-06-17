@@ -12,7 +12,7 @@ import type { GuidedPracticeStep } from '@/types/curriculum';
 import ConceptBlockRenderer from '@/components/visuals/ConceptBlockRenderer';
 import QuestionRenderer from '@/components/question/QuestionRenderer';
 import { useSound } from '@/lib/game/soundManager';
-import type { FooterAction } from '../LessonPlayer';
+import type { FooterAction, StepFeedback } from '../LessonPlayer';
 
 const noop = () => undefined;
 
@@ -21,6 +21,7 @@ interface Props {
   onCorrect?: () => void;
   onWrongAttempt?: (attempt: number) => void;
   onFooterAction?: (action: FooterAction | null) => void;
+  onFeedback?: (feedback: StepFeedback | null) => void;
 }
 
 export default function GuidedPracticeStepView({
@@ -28,6 +29,7 @@ export default function GuidedPracticeStepView({
   onCorrect,
   onWrongAttempt,
   onFooterAction,
+  onFeedback,
 }: Props) {
   const { playSound } = useSound();
   const [wrongCount, setWrongCount] = useState(0);
@@ -94,10 +96,18 @@ export default function GuidedPracticeStepView({
     }
   }, [onFooterAction, solved, step.question.format, draftValid]);
 
-  // Clear the footer override when this step view unmounts.
+  // Surface the "correct" feedback in the footer (bottom bar). Wrong attempts
+  // show hints inline instead, so they don't post a footer message.
+  useEffect(() => {
+    if (!onFeedback) return;
+    onFeedback(solved ? { correct: true, message: 'ถูกต้อง! 🎉' } : null);
+  }, [onFeedback, solved]);
+
+  // Clear the footer override + feedback when this step view unmounts.
   useEffect(() => {
     return () => {
       onFooterAction?.(null);
+      onFeedback?.(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -114,13 +124,6 @@ export default function GuidedPracticeStepView({
         onDraftValidityChange={setDraftValid}
         submitSignal={submitSignal}
       />
-
-      {solved && (
-        <div className="learn-feedback-correct">
-          <p className="text-lg font-bold">ถูกต้อง! 🎉</p>
-          <p className="text-sm">กด “ถัดไป” เพื่อไปต่อ</p>
-        </div>
-      )}
 
       {!solved && hintsToShow > 0 && (
         <div className="space-y-2">

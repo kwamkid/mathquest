@@ -8,25 +8,10 @@
 import type { CurriculumFamily } from '@/types/curriculum';
 
 export const families: CurriculumFamily[] = [
-  {
-    key: 'life-math',
-    name: 'Life Math',
-    thaiName: 'Life Math · ทักษะคำนวณในชีวิตประจำวัน',
-    description:
-      'คณิตศาสตร์ที่ใช้ในชีวิตจริง — เปอร์เซ็นต์ บัญญัติไตรยางศ์ ลดราคา ของคุ้มราคา',
-    flag: '💡',
-    // Life Math isn't tied to school year — skip the grade picker so users
-    // land on the topic list straight away.
-    skipGradePicker: true,
-    grades: [
-      {
-        key: 'all',
-        label: 'ทุกระดับ',
-        ageRange: '8+ ปี',
-        curriculumId: 'life-math-beginner',
-      },
-    ],
-  },
+  // NOTE: Life Math used to live in this list as a family. It now ships as
+  // its own top-level /life-math route (not nested under /learn) so the home
+  // page can advertise it on equal footing with Learn. The family entry has
+  // been removed; old /learn/life-math URLs intentionally 404.
   {
     key: 'british',
     name: 'British National Curriculum',

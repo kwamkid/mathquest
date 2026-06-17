@@ -163,7 +163,7 @@ export default function HomePage() {
                 </Link>
 
                 <Link
-                  href="/learn/life-math"
+                  href="/life-math"
                   className="group block"
                 >
                   <motion.div

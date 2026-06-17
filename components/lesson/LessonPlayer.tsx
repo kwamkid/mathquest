@@ -47,6 +47,13 @@ export interface FooterAction {
   onClick: () => void;
 }
 
+// Per-question feedback surfaced in the footer (bottom bar) instead of inline,
+// so the "ถูกต้อง!" / "ยังไม่ใช่" message sits next to the Next button.
+export interface StepFeedback {
+  correct: boolean;
+  message: string;
+}
+
 interface Props {
   lesson: Lesson;
   topic: string;                          // lesson topic tag (for mistake patterns)
@@ -102,6 +109,8 @@ export default function LessonPlayer({
   const [closeIntent, setCloseIntent] = useState<null | 'chapter'>(null);
   // Step-supplied footer override; null means "use default goNext".
   const [footerAction, setFooterActionRaw] = useState<FooterAction | null>(null);
+  // Step-supplied feedback shown in the footer; null means no feedback yet.
+  const [feedback, setFeedback] = useState<StepFeedback | null>(null);
   // Wrap setState so step views can call us on every render without producing
   // an infinite loop — we only flip state when the *visible* footer shape
   // changes (label / enabled). The onClick handler is held in a ref so the
@@ -146,6 +155,7 @@ export default function LessonPlayer({
       if (!s) return;
       setRevealed(0);
       setFooterAction(null);
+      setFeedback(null);
       switch (s.type) {
         case 'concept':
         case 'reflection':
@@ -333,6 +343,7 @@ export default function LessonPlayer({
           step={step}
           onCorrect={() => setCanAdvance(true)}
           onFooterAction={setFooterAction}
+          onFeedback={setFeedback}
         />
       );
       break;
@@ -346,6 +357,7 @@ export default function LessonPlayer({
           }}
           onMistake={recordMistake}
           onFooterAction={setFooterAction}
+          onFeedback={setFeedback}
         />
       );
       break;
@@ -361,6 +373,7 @@ export default function LessonPlayer({
           }}
           onMistake={recordMistake}
           onFooterAction={setFooterAction}
+          onFeedback={setFeedback}
         />
       );
       break;
@@ -397,6 +410,7 @@ export default function LessonPlayer({
         prevDisabled={stepIndex === 0}
         nextDisabled={!footer.enabled}
         nextLabel={footer.label}
+        feedback={feedback}
       />
       <Dialog
         isOpen={closeIntent !== null}

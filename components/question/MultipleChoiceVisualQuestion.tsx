@@ -64,14 +64,21 @@ export default function MultipleChoiceVisualQuestionView({
       <div className="grid gap-3 sm:grid-cols-2">
         {choices.map((c) => {
           const isSelected = selected === c.id;
+          const answered = selected !== null;
+          const isCorrectChoice = c.id === question.correctChoiceId;
+          let stateClass = '';
+          if (answered) {
+            if (isCorrectChoice) stateClass = 'learn-choice-correct';
+            else if (isSelected) stateClass = 'learn-choice-wrong';
+          } else if (isSelected) {
+            stateClass = 'learn-choice-selected';
+          }
           return (
             <button
               key={c.id}
               onClick={() => handlePick(c.id)}
               disabled={disabled}
-              className={`learn-choice learn-choice-visual ${
-                isSelected ? 'learn-choice-selected' : ''
-              }`}
+              className={`learn-choice learn-choice-visual ${stateClass}`}
               aria-pressed={isSelected}
             >
               <ConceptBlockRenderer block={c.visual} />

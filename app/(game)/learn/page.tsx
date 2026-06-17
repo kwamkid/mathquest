@@ -51,7 +51,20 @@ export default function LearnHomePage() {
     if (!user?.curriculumProgress) return null;
     const ids = Object.keys(user.curriculumProgress);
     if (ids.length === 0) return null;
-    const preferredId = user.currentCurriculumId ?? ids[0];
+
+    // Only resume curricula that still belong to a school-curriculum family
+    // here — life-math lives on its own /life-math route and shouldn't hijack
+    // the /learn landing page just because the user touched it.
+    const schoolCurriculumIds = new Set(
+      families.flatMap((f) => f.grades.map((g) => g.curriculumId).filter(Boolean) as string[]),
+    );
+
+    const preferredId =
+      user.currentCurriculumId && schoolCurriculumIds.has(user.currentCurriculumId)
+        ? user.currentCurriculumId
+        : ids.find((id) => schoolCurriculumIds.has(id));
+    if (!preferredId) return null;
+
     const curriculum = getCurriculum(preferredId);
     if (!curriculum) return null;
 

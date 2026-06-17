@@ -59,6 +59,9 @@ export default function SetClockQuestionView({
   const draggingRef = useRef<'hour' | 'minute' | null>(null);
   const pointerIdRef = useRef<number | null>(null);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  // submitSignal starts at 0, so its effect fires once on mount; skip that run
+  // so an untouched clock never auto-answers (which read as a wrong answer).
+  const submitMounted = useRef(false);
   const stateRef = useRef({ hours, minutes });
   stateRef.current = { hours, minutes };
 
@@ -146,6 +149,9 @@ export default function SetClockQuestionView({
 
   const submit = useCallback(() => {
     if (disabled) return;
+    // Don't grade an untouched clock — the footer is gated on draggedAny too,
+    // so this only matters as a guard against stray submit signals.
+    if (!draggedAny) return;
     const { hours: h, minutes: m } = stateRef.current;
     // Tolerance applies to minutes-of-day distance, wrapping at 12*60 = 720.
     const target = (question.expectedHours % 12) * 60 + question.expectedMinutes;
@@ -154,10 +160,15 @@ export default function SetClockQuestionView({
     if (diff > 360) diff = 720 - diff; // shortest distance around the dial
     const correct = diff <= question.tolerance;
     onAnswered({ correct, value: formatTime(h, m) });
-  }, [disabled, onAnswered, question]);
+  }, [disabled, draggedAny, onAnswered, question]);
 
   useEffect(() => {
     if (submitSignal === undefined) return;
+    // Ignore the initial mount fire — only submit on an actual signal bump.
+    if (!submitMounted.current) {
+      submitMounted.current = true;
+      return;
+    }
     submit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [submitSignal]);

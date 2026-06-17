@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { MiniQuizStep, Question } from '@/types/curriculum';
 import QuestionRenderer from '@/components/question/QuestionRenderer';
 import { useSound } from '@/lib/game/soundManager';
-import type { FooterAction } from '../LessonPlayer';
+import type { FooterAction, StepFeedback } from '../LessonPlayer';
 
 const noop = () => undefined;
 
@@ -27,6 +27,7 @@ interface Props {
   onComplete?: (result: MiniQuizResult) => void;
   onMistake?: (question: Question, userAnswer: string) => void;
   onFooterAction?: (action: FooterAction | null) => void;
+  onFeedback?: (feedback: StepFeedback | null) => void;
 }
 
 export default function MiniQuizStepView({
@@ -34,6 +35,7 @@ export default function MiniQuizStepView({
   onComplete,
   onMistake,
   onFooterAction,
+  onFeedback,
 }: Props) {
   const { playSound } = useSound();
   const [index, setIndex] = useState(0);
@@ -93,6 +95,19 @@ export default function MiniQuizStepView({
     }
   }, [index, total, correctCount, step, onComplete]);
 
+  // Surface feedback in the footer (bottom bar) rather than inline.
+  useEffect(() => {
+    if (!onFeedback) return;
+    if (done || !feedback) {
+      onFeedback(null);
+      return;
+    }
+    onFeedback({
+      correct: feedback.correct,
+      message: feedback.correct ? 'ถูกต้อง! 🎉' : 'ยังไม่ใช่',
+    });
+  }, [onFeedback, feedback, done]);
+
   useEffect(() => {
     if (!onFooterAction) return;
     if (done) {
@@ -138,6 +153,7 @@ export default function MiniQuizStepView({
   useEffect(() => {
     return () => {
       onFooterAction?.(null);
+      onFeedback?.(null);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -207,14 +223,6 @@ export default function MiniQuizStepView({
         onDraftValidityChange={setDraftValid}
         submitSignal={submitSignal}
       />
-
-      {feedback && (
-        <div className={feedback.correct ? 'learn-feedback-correct' : 'learn-feedback-wrong'}>
-          <p className="text-lg font-bold">
-            {feedback.correct ? 'ถูกต้อง! 🎉' : 'ยังไม่ใช่'}
-          </p>
-        </div>
-      )}
     </article>
   );
 }

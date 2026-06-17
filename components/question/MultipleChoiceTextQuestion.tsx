@@ -64,15 +64,26 @@ export default function MultipleChoiceTextQuestionView({
           <ConceptBlockRenderer block={question.promptVisual} />
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         {choices.map((c) => {
           const isSelected = selected === c.id;
+          const answered = selected !== null;
+          const isCorrectChoice = c.id === question.correctChoiceId;
+          // After answering: the picked choice goes green (right) or red (wrong),
+          // and the correct choice is revealed in green when the learner missed it.
+          let stateClass = '';
+          if (answered) {
+            if (isCorrectChoice) stateClass = 'learn-choice-correct';
+            else if (isSelected) stateClass = 'learn-choice-wrong';
+          } else if (isSelected) {
+            stateClass = 'learn-choice-selected';
+          }
           return (
             <button
               key={c.id}
               onClick={() => handlePick(c.id)}
               disabled={disabled}
-              className={`learn-choice ${isSelected ? 'learn-choice-selected' : ''}`}
+              className={`learn-choice ${stateClass}`}
             >
               {c.text}
             </button>
