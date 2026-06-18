@@ -25,7 +25,7 @@ export default function LessonFooter({
   feedback,
 }: Props) {
   return (
-    <footer className="sticky bottom-0 border-t border-white/10 bg-[#0a0a0a]/80 px-4 py-3 backdrop-blur-md sm:px-6">
+    <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0a0a0a]/85 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-6">
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
         {showPrev ? (
           <button

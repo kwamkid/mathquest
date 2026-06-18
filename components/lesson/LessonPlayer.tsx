@@ -391,7 +391,9 @@ export default function LessonPlayer({
         totalSteps={totalSteps}
         onClose={requestClose}
       />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-6 pt-10 sm:px-6 sm:pt-12">
+      {/* pb-32 leaves headroom for the fixed footer so the last line of
+        * content doesn't sit underneath the button bar. */}
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-32 pt-10 sm:px-6 sm:pt-12">
         <AnimatePresence mode="wait">
           <motion.div
             key={step.id}
