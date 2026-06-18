@@ -181,7 +181,7 @@ export default function ProfilePage() {
           variant="sub"
           title="ข้อมูลส่วนตัว"
           titleIcon={<UserIcon className="h-4 w-4 text-metaverse-purple" />}
-          backHref="/learn"
+          backHref="/"
         />
 
         {/* Main Content - Scrollable */}
@@ -501,7 +501,7 @@ export default function ProfilePage() {
                         
                         <button
                           type="button"
-                          onClick={() => router.push('/learn')}
+                          onClick={() => router.push('/')}
                           className="px-8 py-3 glass border border-metaverse-purple/50 text-white font-bold rounded-xl shadow-lg hover:bg-white/10 transition"
                         >
                           ยกเลิก

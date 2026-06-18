@@ -118,7 +118,12 @@ export default function MyAvatarPage() {
           currentAvatar: {
             type: freshUserData.avatarData.currentAvatar?.type || 'basic',
             id: freshUserData.avatarData.currentAvatar?.id || freshUserData?.avatar || 'knight',
-            accessories: cleanedAccessories
+            accessories: cleanedAccessories,
+            // Carry saved per-accessory position nudges + layer order through;
+            // dropping these made positions/stacking reset after refresh.
+            accessoryOffsets: freshUserData.avatarData.currentAvatar?.accessoryOffsets || {},
+            accessoryLayerOrder:
+              freshUserData.avatarData.currentAvatar?.accessoryLayerOrder || [],
           },
           unlockedPremiumAvatars: freshUserData.avatarData.unlockedPremiumAvatars || [],
           unlockedAccessories: freshUserData.avatarData.unlockedAccessories || []
@@ -316,7 +321,9 @@ export default function MyAvatarPage() {
           currentAvatar: {
             type: avatarData.currentAvatar.type,
             id: avatarData.currentAvatar.id,
-            accessories: avatarData.currentAvatar.accessories || {}
+            accessories: avatarData.currentAvatar.accessories || {},
+            accessoryOffsets: avatarData.currentAvatar.accessoryOffsets || {},
+            accessoryLayerOrder: avatarData.currentAvatar.accessoryLayerOrder || [],
           },
           unlockedPremiumAvatars: avatarData.unlockedPremiumAvatars || [],
           unlockedAccessories: avatarData.unlockedAccessories || []
@@ -408,6 +415,34 @@ export default function MyAvatarPage() {
     };
     
     setTempAvatarData(newData);
+    setHasChanges(true);
+  };
+
+  // Per-accessory position offset (drag / arrow nudge in the preview).
+  const handleOffsetsChange = (
+    offsets: NonNullable<UserAvatarData['currentAvatar']['accessoryOffsets']>,
+  ) => {
+    if (!tempAvatarData) return;
+    setTempAvatarData({
+      ...tempAvatarData,
+      currentAvatar: {
+        ...tempAvatarData.currentAvatar,
+        accessoryOffsets: offsets,
+      },
+    });
+    setHasChanges(true);
+  };
+
+  // Per-user accessory stacking order (reorder in the editor).
+  const handleLayerOrderChange = (order: string[]) => {
+    if (!tempAvatarData) return;
+    setTempAvatarData({
+      ...tempAvatarData,
+      currentAvatar: {
+        ...tempAvatarData.currentAvatar,
+        accessoryLayerOrder: order,
+      },
+    });
     setHasChanges(true);
   };
 
@@ -511,51 +546,17 @@ export default function MyAvatarPage() {
           title="My Avatar"
           subtitle="จัดการตัวละครและเครื่องประดับ"
           titleIcon={<Sparkles className="h-4 w-4 text-metaverse-purple" />}
-          backHref="/learn"
+          backHref="/"
           extras={
-            <>
-              <motion.button
-                onClick={handleRefreshInventory}
-                className="p-2 glass rounded-lg hover:bg-white/10 transition"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                title="รีเฟรชข้อมูล"
-              >
-                <RefreshCw className="w-4 h-4 text-white/70" />
-              </motion.button>
-              {hasChanges && (
-                <>
-                  <motion.button
-                    onClick={handleReset}
-                    className="px-3 py-1.5 glass rounded-lg text-white font-medium hover:bg-white/10 transition flex items-center gap-1 text-sm"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    <span className="hidden sm:inline">ยกเลิก</span>
-                  </motion.button>
-                  <motion.button
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="px-3 py-1.5 metaverse-button text-white font-bold rounded-lg shadow-lg disabled:opacity-50 flex items-center gap-1 text-sm"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {saving ? (
-                      <motion.span
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                      >
-                        ⏳
-                      </motion.span>
-                    ) : (
-                      <Save className="w-4 h-4" />
-                    )}
-                    <span>บันทึก</span>
-                  </motion.button>
-                </>
-              )}
-            </>
+            <motion.button
+              onClick={handleRefreshInventory}
+              className="p-2 glass rounded-lg hover:bg-white/10 transition"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              title="รีเฟรชข้อมูล"
+            >
+              <RefreshCw className="w-4 h-4 text-white/70" />
+            </motion.button>
           }
         />
 
@@ -649,6 +650,8 @@ export default function MyAvatarPage() {
                 userExp={user?.experience || 0}
                 onAvatarChange={handleAvatarChange}
                 onAccessoryChange={handleAccessoryChange}
+                onOffsetsChange={handleOffsetsChange}
+                onLayerOrderChange={handleLayerOrderChange}
               />
             )}
             
@@ -667,52 +670,44 @@ export default function MyAvatarPage() {
         </div>
       </div>
       
-      {/* Mobile Floating Save Button - Always visible when has changes */}
+      {/* Save/Cancel — floating at the bottom-right corner of the screen. */}
       {hasChanges && (
         <motion.div
-          initial={{ y: 100, opacity: 0 }}
+          initial={{ y: 16, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: 100, opacity: 0 }}
-          className="md:hidden fixed bottom-4 left-4 right-4 z-50"
+          exit={{ y: 16, opacity: 0 }}
+          className="fixed bottom-4 right-3 z-50 flex items-center gap-2 pb-[env(safe-area-inset-bottom)] sm:bottom-6 sm:right-5"
         >
-          <div className="glass-dark rounded-2xl p-3 border border-metaverse-purple/30 shadow-2xl">
-            <div className="flex gap-3">
-              <motion.button
-                onClick={handleReset}
-                className="flex-1 py-3 glass rounded-xl text-white font-medium hover:bg-white/10 transition flex items-center justify-center gap-2"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+          <motion.button
+            onClick={handleReset}
+            className="glass flex h-10 w-10 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            title="ยกเลิก"
+            aria-label="ยกเลิก"
+          >
+            <RefreshCw className="w-4 h-4" />
+          </motion.button>
+          <motion.button
+            onClick={handleSave}
+            disabled={saving}
+            className="metaverse-button flex items-center gap-2 rounded-full px-5 py-2.5 font-bold text-white shadow-lg transition hover:shadow-xl disabled:opacity-50"
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            {saving ? (
+              <motion.span
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                className="text-lg"
               >
-                <RefreshCw className="w-5 h-5" />
-                ยกเลิก
-              </motion.button>
-              <motion.button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex-1 py-3 metaverse-button text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition disabled:opacity-50 flex items-center justify-center gap-2"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {saving ? (
-                  <>
-                    <motion.span
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="text-lg"
-                    >
-                      ⏳
-                    </motion.span>
-                    <span>กำลังบันทึก...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-5 h-5" />
-                    <span className="text-base">บันทึกการเปลี่ยนแปลง</span>
-                  </>
-                )}
-              </motion.button>
-            </div>
-          </div>
+                ⏳
+              </motion.span>
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
+            <span>บันทึก</span>
+          </motion.button>
         </motion.div>
       )}
       

@@ -452,6 +452,25 @@ select:-webkit-autofill:active {
   box-shadow: none;
 }
 
+/* Arrow-pad button for the avatar accessory position editor */
+.arrow-pad-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  width: 2.25rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.85);
+  transition: background 150ms ease, transform 80ms ease;
+}
+.arrow-pad-btn:hover {
+  background: rgba(147, 51, 234, 0.3);
+}
+.arrow-pad-btn:active {
+  transform: scale(0.92);
+}
+
 /* MCQ choice tile */
 .learn-choice {
   display: flex;

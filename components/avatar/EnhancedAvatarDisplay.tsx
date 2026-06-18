@@ -299,7 +299,13 @@ export default function EnhancedAvatarDisplay({
             <div className="relative">
               {isBasicAvatar ? (
                 // ✅ Fallback: Basic Emoji Avatar
-                <div className="text-[120px] select-none">
+                // Emoji glyphs sit high in their em-box, so flex-centering alone
+                // leaves them floating up. Size the box to the glyph, kill the
+                // line-height, and nudge down ~6% to optically centre.
+                <div
+                  className="flex h-[120px] w-[120px] select-none items-center justify-center text-[120px] leading-none"
+                  style={{ transform: 'translateY(6%)' }}
+                >
                   {getAvatarEmoji(avatarId)}
                 </div>
               ) : (
@@ -344,8 +350,20 @@ export default function EnhancedAvatarDisplay({
                 const config = getAccessoryConfig(accessoryType);
                 
                 if (!url || !position) return null;
-                
-                const zIndexValue = accessoryType === AccessoryType.BACKGROUND ? -1 : 10;
+
+                // z-index: background always behind. Otherwise honour the
+                // user's custom layer order (first entry = top); fall back to a
+                // flat 10 for any type not in the list.
+                const layerOrder = currentAvatar?.accessoryLayerOrder;
+                let zIndexValue: number;
+                if (accessoryType === AccessoryType.BACKGROUND) {
+                  zIndexValue = -1;
+                } else if (layerOrder && layerOrder.includes(type)) {
+                  // Earlier in the array = higher on screen.
+                  zIndexValue = 100 - layerOrder.indexOf(type);
+                } else {
+                  zIndexValue = 10;
+                }
                 
                 let left = '50%';
                 let top = '50%';
@@ -364,10 +382,19 @@ export default function EnhancedAvatarDisplay({
                   }
                 }
                 
+                // Per-user offset (drag/nudge in My Avatar), added on top of
+                // the default position.
+                const userOffset =
+                  currentAvatar?.accessoryOffsets?.[
+                    type as keyof NonNullable<typeof currentAvatar.accessoryOffsets>
+                  ];
+                const offX = (position.x || 0) + (userOffset?.x || 0);
+                const offY = (position.y || 0) + (userOffset?.y || 0);
+
                 const transform = `
                   translate(-50%, -50%)
-                  translateX(${position.x || 0}px)
-                  translateY(${position.y || 0}px)
+                  translateX(${offX}px)
+                  translateY(${offY}px)
                   scale(${position.scale || 1})
                   rotate(${position.rotation || 0}deg)
                 `;
@@ -377,15 +404,15 @@ export default function EnhancedAvatarDisplay({
                   return (
                     <div key={type}>
                       {/* Left earring */}
-                      <div 
+                      <div
                         className={`absolute pointer-events-none ${debug ? 'border border-yellow-500' : ''}`}
                         style={{
                           left: left,
                           top: top,
                           transform: `
                             translate(-50%, -50%)
-                            translateX(${-Math.abs(position.x || 35)}px)
-                            translateY(${position.y || 0}px)
+                            translateX(${-Math.abs(position.x || 35) + (userOffset?.x || 0)}px)
+                            translateY(${offY}px)
                             scale(${position.scale || 1})
                             rotate(${position.rotation || 0}deg)
                           `,
@@ -394,24 +421,24 @@ export default function EnhancedAvatarDisplay({
                           zIndex: zIndexValue
                         }}
                       >
-                        <img 
-                          src={url} 
+                        <img
+                          src={url}
                           alt={`${type} accessory`}
                           className="w-full h-full object-contain"
                           onError={() => handleAccessoryError(type, url)}
                         />
                       </div>
-                      
+
                       {/* Right earring */}
-                      <div 
+                      <div
                         className={`absolute pointer-events-none ${debug ? 'border border-yellow-500' : ''}`}
                         style={{
                           left: left,
                           top: top,
                           transform: `
                             translate(-50%, -50%)
-                            translateX(${Math.abs(position.x || 35)}px)
-                            translateY(${position.y || 0}px)
+                            translateX(${Math.abs(position.x || 35) + (userOffset?.x || 0)}px)
+                            translateY(${offY}px)
                             scale(${position.scale || 1})
                             rotate(${position.rotation || 0}deg)
                           `,
@@ -450,10 +477,12 @@ export default function EnhancedAvatarDisplay({
                   );
                 }
                 
-                // Regular accessories
+                // Regular accessories. The absolute div is returned directly
+                // (no static wrapper) so each accessory shares the same
+                // positioned ancestor and zIndex actually decides stacking.
                 return (
                   <div key={type}>
-                    <div 
+                    <div
                       className={`absolute pointer-events-none ${debug ? 'border border-yellow-500' : ''}`}
                       style={{
                         left: left,

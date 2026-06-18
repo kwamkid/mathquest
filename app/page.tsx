@@ -3,8 +3,11 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Swords, Target, Trophy, Gift, Pi, UserPlus, BookOpen, Gamepad2, Lightbulb } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Swords, Target, Trophy, Gift, Pi, UserPlus, BookOpen, Gamepad2, Lightbulb, LogOut, Grid3x3 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { signOut } from '@/lib/firebase/auth';
+import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 
 // Math symbols for floating animation
 const mathSymbols = ['+', '-', '×', '÷', '=', '>', '<', '√', 'π', '∞', '∑', '∫'];
@@ -12,6 +15,12 @@ const mathSymbols = ['+', '-', '×', '÷', '=', '>', '<', '√', 'π', '∞', '�
 export default function HomePage() {
   const [mounted, setMounted] = useState(false);
   const { user } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -99,27 +108,55 @@ export default function HomePage() {
           </p>
         </motion.div>
 
-        {/* Character Preview */}
+        {/* Character Preview — the user's own avatar when logged in (big, like
+          * the Play page); the emoji line-up stays as marketing for visitors. */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, duration: 0.6 }}
-          className="mb-12"
+          className="mb-10"
         >
-          <div className="glass-dark rounded-full px-8 py-4 flex items-center gap-4 shadow-xl border border-metaverse-purple/30">
-            {['🦸‍♂️', '🦸‍♀️', '🧙‍♂️', '🧙‍♀️', '🦹‍♂️', '🦹‍♀️', '🐉', '🦊'].map((emoji, index) => (
-              <motion.span
-                key={index}
-                className="text-4xl"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 + index * 0.1 }}
-                whileHover={{ scale: 1.3, rotate: [0, -10, 10, 0] }}
-              >
-                {emoji}
-              </motion.span>
-            ))}
-          </div>
+          {user ? (
+            <div className="flex flex-col items-center">
+              <Link href="/my-avatar" className="group relative">
+                <div className="absolute inset-0 scale-110 rounded-full bg-gradient-to-r from-metaverse-purple/20 to-metaverse-pink/20 blur-xl opacity-0 transition-opacity group-hover:opacity-100" />
+                <EnhancedAvatarDisplay
+                  userId={user.id}
+                  avatarData={user.avatarData}
+                  basicAvatar={user.avatar}
+                  size="xlarge"
+                  showEffects={true}
+                  showTitle={true}
+                  titleBadge={user.currentTitleBadge}
+                />
+              </Link>
+              <p className="mt-4 text-lg text-white/80 md:text-xl">
+                สวัสดี{' '}
+                <span className="font-bold text-white">
+                  {user.displayName || user.username}
+                </span>{' '}
+                👋
+              </p>
+              <p className="mt-1 text-base text-white/60 md:text-lg">
+                วันนี้อยากทำอะไรดี?
+              </p>
+            </div>
+          ) : (
+            <div className="glass-dark rounded-full px-8 py-4 flex items-center gap-4 shadow-xl border border-metaverse-purple/30">
+              {['🦸‍♂️', '🦸‍♀️', '🧙‍♂️', '🧙‍♀️', '🦹‍♂️', '🦹‍♀️', '🐉', '🦊'].map((emoji, index) => (
+                <motion.span
+                  key={index}
+                  className="text-4xl"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 + index * 0.1 }}
+                  whileHover={{ scale: 1.3, rotate: [0, -10, 10, 0] }}
+                >
+                  {emoji}
+                </motion.span>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* Action Buttons */}
@@ -131,18 +168,8 @@ export default function HomePage() {
         >
           {user ? (
             <>
-              {/* Welcome message */}
-              <div className="text-center mb-6">
-                <p className="text-white/80 text-lg md:text-xl">
-                  สวัสดี <span className="font-bold text-white">{user.displayName || user.username}</span> 👋
-                </p>
-                <p className="text-white/60 text-base md:text-lg mt-1">
-                  วันนี้อยากทำอะไรดี?
-                </p>
-              </div>
-
-              {/* Three-choice grid: Play Quiz / Life Math / Learn */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+              {/* Four-choice grid: Play Quiz / Life Math / Learn / Timetable */}
+              <div className="grid grid-cols-2 gap-4 sm:gap-5">
                 <Link href="/play" className="group block">
                   <motion.div
                     whileHover={{ y: -6, scale: 1.02 }}
@@ -202,6 +229,36 @@ export default function HomePage() {
                     </div>
                   </motion.div>
                 </Link>
+
+                <Link href="/timetable" className="group block">
+                  <motion.div
+                    whileHover={{ y: -6, scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="relative glass-dark rounded-3xl p-6 shadow-xl border border-emerald-400/40 h-full overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/30 to-teal-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="relative z-10 flex flex-col items-center text-center">
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center mb-4 shadow-lg shadow-emerald-500/40">
+                        <Grid3x3 className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
+                      </div>
+                      <h3 className="text-xl md:text-2xl font-bold text-white mb-2">Timetable</h3>
+                      <p className="text-white/70 text-xs sm:text-sm">
+                        ฝึกสูตรคูณ ท่องจนจำได้
+                      </p>
+                    </div>
+                  </motion.div>
+                </Link>
+              </div>
+
+              {/* Logout sits below the cards. */}
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={handleSignOut}
+                  className="glass inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-medium text-white/70 transition hover:bg-rose-500/20 hover:text-rose-200"
+                >
+                  <LogOut className="h-4 w-4" />
+                  ออกจากระบบ
+                </button>
               </div>
             </>
           ) : (

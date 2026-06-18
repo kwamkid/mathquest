@@ -121,6 +121,16 @@ export interface UserAvatarData {
       necklace?: string;
       background?: string;
     };
+    // Per-user fine-tuning of where each accessory sits, in px, added ON TOP of
+    // the default position (lib/avatar/positioning.ts). Lets kids drag/nudge a
+    // hat or glasses to fit their chosen avatar. Keyed by accessory type.
+    accessoryOffsets?: Partial<
+      Record<'hat' | 'glasses' | 'mask' | 'earring' | 'necklace' | 'background', { x: number; y: number }>
+    >;
+    // Per-user stacking order for accessories — first entry renders ON TOP
+    // (highest z-index), covering the ones below. Types not listed fall back to
+    // the default ACCESSORY_LAYERS order.
+    accessoryLayerOrder?: string[];
   };
   unlockedPremiumAvatars: string[];  // premium avatar IDs ที่ปลดล็อคแล้ว
   unlockedAccessories: string[];      // accessory IDs ที่มี

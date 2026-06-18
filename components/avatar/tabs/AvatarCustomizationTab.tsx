@@ -1,12 +1,26 @@
 // components/avatar/tabs/AvatarCustomizationTab.tsx
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
+import { useRef, useState } from 'react';
 import { UserAvatarData, AvatarAccessory, PremiumAvatar } from '@/types/avatar';
 import EnhancedAvatarDisplay from '../EnhancedAvatarDisplay';
 import { basicAvatars } from '@/lib/data/avatars';
-import { User, Sparkles, CheckCircle, Lock, Star, X } from 'lucide-react';
+import {
+  CheckCircle,
+  GripVertical,
+  Layers,
+  Lock,
+  Sparkles,
+  Star,
+  User,
+  X,
+} from 'lucide-react';
+
+type AccessoryOffsets = NonNullable<
+  UserAvatarData['currentAvatar']['accessoryOffsets']
+>;
+type OffsetKey = keyof AccessoryOffsets;
 
 interface AvatarCustomizationTabProps {
   avatarData: UserAvatarData;
@@ -15,6 +29,10 @@ interface AvatarCustomizationTabProps {
   userExp: number;
   onAvatarChange: (avatarId: string, type: 'basic' | 'premium') => void;
   onAccessoryChange: (type: string, accessoryId: string | null) => void;
+  // Persist per-accessory position nudges (drag / arrows).
+  onOffsetsChange?: (offsets: AccessoryOffsets) => void;
+  // Persist accessory stacking order (first = top layer).
+  onLayerOrderChange?: (order: string[]) => void;
 }
 
 export default function AvatarCustomizationTab({
@@ -23,9 +41,72 @@ export default function AvatarCustomizationTab({
   accessories,
   userExp,
   onAvatarChange,
-  onAccessoryChange
+  onAccessoryChange,
+  onOffsetsChange,
+  onLayerOrderChange,
 }: AvatarCustomizationTabProps) {
   const [activeSubTab, setActiveSubTab] = useState<'avatars' | 'accessories'>('avatars');
+
+  // ----- Accessory position state -----
+  const offsets = avatarData.currentAvatar.accessoryOffsets ?? {};
+  const equippedTypes = Object.entries(avatarData.currentAvatar.accessories)
+    .filter(([, id]) => !!id)
+    .map(([type]) => type as OffsetKey);
+  // Selected via clicking a Layer row. No auto-select — explicit pick only.
+  const [selectedType, setSelectedType] = useState<OffsetKey | null>(null);
+  const activeType: OffsetKey | null =
+    selectedType && equippedTypes.includes(selectedType) ? selectedType : null;
+
+  const dragRef = useRef<{ startX: number; startY: number; baseX: number; baseY: number } | null>(
+    null,
+  );
+
+  // ----- Layer (stacking) order -----
+  // Equipped, non-background accessories. Display order = saved order first,
+  // then any equipped-but-unsaved types appended. First = top layer.
+  const stackableTypes: string[] = equippedTypes.filter((t) => t !== 'background');
+  const savedOrder = (avatarData.currentAvatar.accessoryLayerOrder ?? []).filter((t) =>
+    stackableTypes.includes(t),
+  );
+  const layerList: string[] = [
+    ...savedOrder,
+    ...stackableTypes.filter((t) => !savedOrder.includes(t)),
+  ];
+
+  // Reorder via framer-motion's Reorder (item lifts + others reflow live).
+  const handleReorder = (next: string[]) => {
+    onLayerOrderChange?.(next);
+  };
+
+  const setOffset = (x: number, y: number) => {
+    if (!activeType || !onOffsetsChange) return;
+    onOffsetsChange({ ...offsets, [activeType]: { x, y } });
+  };
+
+  // Offsets are authored in EnhancedAvatarDisplay's 300px design space, which
+  // the "large" preview renders scaled by 0.83. So 1px of finger movement on
+  // screen = (1 / 0.83) px in design space. Using the right factor keeps the
+  // saved position matching what was dragged (any size renders identically
+  // because the offset lives inside that scaled 300px space).
+  const DRAG_TO_DESIGN = 1 / 0.83;
+
+  const onPreviewPointerDown = (e: React.PointerEvent) => {
+    if (!activeType || !onOffsetsChange) return;
+    const cur = offsets[activeType] ?? { x: 0, y: 0 };
+    dragRef.current = { startX: e.clientX, startY: e.clientY, baseX: cur.x, baseY: cur.y };
+    (e.target as Element).setPointerCapture(e.pointerId);
+  };
+  const onPreviewPointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    if (!d) return;
+    setOffset(
+      Math.round(d.baseX + (e.clientX - d.startX) * DRAG_TO_DESIGN),
+      Math.round(d.baseY + (e.clientY - d.startY) * DRAG_TO_DESIGN),
+    );
+  };
+  const onPreviewPointerUp = () => {
+    dragRef.current = null;
+  };
 
   const isOwned = (itemId: string, type: 'avatar' | 'accessory') => {
     if (type === 'avatar') {
@@ -59,18 +140,40 @@ export default function AvatarCustomizationTab({
       <div className="glass-dark rounded-2xl p-4 md:p-6 border border-metaverse-purple/30">
         <h3 className="text-center text-lg md:text-xl font-bold text-white mb-4">ตัวอย่าง Avatar</h3>
         
-        {/* Avatar Display Container - Fixed Size */}
-        <div className="relative mx-auto w-64 h-64 md:w-80 md:h-80 flex items-center justify-center">
+        {/* Preview + layer list sit side-by-side on desktop. */}
+        <div className="md:grid md:grid-cols-[1fr_auto] md:items-center md:gap-6">
+        {/* Avatar Display Container - Fixed Size. Doubles as the drag surface
+          * for repositioning the selected accessory. */}
+        <div
+          className={`relative mx-auto flex h-64 w-64 items-center justify-center md:h-80 md:w-80 ${
+            activeType ? 'cursor-move touch-none' : ''
+          }`}
+          onPointerDown={activeType ? onPreviewPointerDown : undefined}
+          onPointerMove={activeType ? onPreviewPointerMove : undefined}
+          onPointerUp={activeType ? onPreviewPointerUp : undefined}
+          onPointerCancel={activeType ? onPreviewPointerUp : undefined}
+        >
           {/* Background Glow */}
           <div className="absolute inset-0 bg-metaverse-purple/20 rounded-full blur-3xl" />
+
+          {/* "you're moving X" hint while an accessory is selected. */}
+          {activeType && (
+            <div className="pointer-events-none absolute left-1/2 top-2 z-20 -translate-x-1/2 rounded-full bg-metaverse-purple/80 px-3 py-1 text-[11px] font-bold text-white shadow-lg">
+              ↕ กำลังขยับ: <span className="capitalize">{activeType}</span>
+            </div>
+          )}
           
-          {/* Avatar */}
+          {/* Avatar — key only on avatar identity + equipped set, NOT offsets,
+            * so nudging/dragging doesn't re-trigger the entrance animation
+            * (which made the whole avatar look like it was being dragged). */}
           <motion.div
-            key={JSON.stringify(avatarData)}
+            key={`${avatarData.currentAvatar.id}-${JSON.stringify(
+              avatarData.currentAvatar.accessories,
+            )}`}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", duration: 0.5 }}
-            className="relative z-10"
+            transition={{ type: 'spring', duration: 0.5 }}
+            className="pointer-events-none relative z-10"
           >
             <EnhancedAvatarDisplay
               userId="preview-user"
@@ -86,7 +189,57 @@ export default function AvatarCustomizationTab({
             />
           </motion.div>
         </div>
-        
+
+        {/* Layer list — sits beside the preview. Tap a row to SELECT it (then
+          * drag on the preview to move it). Drag the handle to REORDER; top
+          * row = front-most. */}
+        {layerList.length >= 1 && (
+          <div className="mt-4 rounded-xl border border-metaverse-purple/30 bg-white/5 p-3 md:mt-0 md:w-60">
+            <div className="mb-1 flex items-center gap-2 text-sm font-bold text-white">
+              <Layers className="h-4 w-4 text-metaverse-purple" />
+              ลำดับชั้น (Layer)
+            </div>
+            <p className="mb-3 text-xs text-white/50">
+              แตะเพื่อเลือก · ลาก ⠿ เพื่อสลับชั้น (บนสุด = หน้าสุด)
+            </p>
+            <Reorder.Group
+              axis="y"
+              values={layerList}
+              onReorder={handleReorder}
+              className="space-y-1.5"
+            >
+              {layerList.map((type, i) => {
+                const id = avatarData.currentAvatar.accessories[type as OffsetKey];
+                const name = accessories.find((a) => a.id === id)?.name || type;
+                return (
+                  <LayerRow
+                    key={type}
+                    type={type}
+                    index={i}
+                    name={name}
+                    selected={activeType === type}
+                    onSelect={() => setSelectedType(type as OffsetKey)}
+                  />
+                );
+              })}
+            </Reorder.Group>
+          </div>
+        )}
+        </div>
+
+        {/* Hint for the drag-to-position interaction. */}
+        {equippedTypes.length > 0 && (
+          <p className="mt-3 text-center text-xs text-white/50">
+            {activeType ? (
+              <>
+                กำลังเลือก <span className="font-semibold capitalize text-white/80">{activeType}</span> — ลากบนรูปเพื่อขยับ
+              </>
+            ) : (
+              'แตะชิ้นในลำดับชั้นเพื่อเลือก แล้วลากบนรูปเพื่อขยับตำแหน่ง'
+            )}
+          </p>
+        )}
+
         {/* Current Setup Info */}
         <div className="mt-4 p-3 glass rounded-lg space-y-1.5 text-xs md:text-sm">
           <div className="flex justify-between text-white/70">
@@ -348,5 +501,61 @@ export default function AvatarCustomizationTab({
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+// One draggable layer row. Uses Reorder.Item so it lifts and the rest reflow
+// live; drag is restricted to the ⠿ handle (useDragControls) so tapping the
+// row body still selects instead of dragging.
+function LayerRow({
+  type,
+  index,
+  name,
+  selected,
+  onSelect,
+}: {
+  type: string;
+  index: number;
+  name: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const controls = useDragControls();
+  return (
+    <Reorder.Item
+      value={type}
+      dragListener={false}
+      dragControls={controls}
+      whileDrag={{ scale: 1.04, zIndex: 10 }}
+      className={`relative flex select-none items-center gap-2 rounded-xl px-2.5 py-2 ${
+        selected
+          ? 'bg-metaverse-purple/30 ring-1 ring-metaverse-purple'
+          : 'bg-white/[0.04]'
+      }`}
+    >
+      {/* Tap the body to SELECT. */}
+      <button
+        type="button"
+        onClick={onSelect}
+        className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 text-left focus:outline-none"
+      >
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-metaverse-purple/30 text-[11px] font-bold text-white">
+          {index + 1}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-white">{name}</p>
+          <p className="text-[10px] capitalize text-white/40">{type}</p>
+        </div>
+      </button>
+      {/* Drag handle — starts the reorder drag. */}
+      <div
+        onPointerDown={(e) => controls.start(e)}
+        className="-mr-1 flex shrink-0 cursor-grab select-none touch-none items-center rounded-lg bg-white/5 p-1.5 text-white/60 transition hover:bg-white/10 hover:text-white active:cursor-grabbing"
+        aria-label="ลากเพื่อสลับชั้น"
+        title="ลากเพื่อสลับชั้น"
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+    </Reorder.Item>
   );
 }
