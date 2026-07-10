@@ -9,6 +9,16 @@ import { useEffect, useRef, useState } from 'react';
 import type { ClickFractionQuestion } from '@/types/curriculum';
 import FractionBar from '@/components/visuals/FractionBar';
 import FractionCircle from '@/components/visuals/FractionCircle';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    filledCount: (n: number, total: number) => `ระบายแล้ว: ${n} / ${total}`,
+  },
+  en: {
+    filledCount: (n: number, total: number) => `Filled: ${n} / ${total}`,
+  },
+} as const;
 
 interface Props {
   question: ClickFractionQuestion;
@@ -27,6 +37,8 @@ export default function ClickFractionQuestionView({
   onDraftValidityChange,
   submitSignal,
 }: Props) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [filled, setFilled] = useState<number[]>([]);
   const filledRef = useRef<number[]>([]);
   filledRef.current = filled;
@@ -90,7 +102,7 @@ export default function ClickFractionQuestionView({
           className="text-base font-semibold text-white/80"
           style={{ fontFamily: 'ui-monospace, Menlo, monospace' }}
         >
-          ระบายแล้ว: {filled.length} / {question.totalParts}
+          {L.filledCount(filled.length, question.totalParts)}
         </p>
       </div>
     </div>

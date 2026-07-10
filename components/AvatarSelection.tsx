@@ -4,6 +4,24 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Sparkles, Shield, Zap } from 'lucide-react';
 import { basicAvatars } from '@/lib/data/avatars';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    heading: 'เลือกตัวละครของคุณ',
+    warriors: 'นักรบ',
+    creatures: 'สัตว์มหัศจรรย์',
+    mystical: 'ผู้วิเศษ',
+    youPicked: 'คุณเลือก:',
+  },
+  en: {
+    heading: 'Choose your character',
+    warriors: 'Warriors',
+    creatures: 'Magical Creatures',
+    mystical: 'Mystics',
+    youPicked: 'You picked:',
+  },
+} as const;
 
 interface AvatarSelectionProps {
   selectedAvatar: string | null;
@@ -11,6 +29,8 @@ interface AvatarSelectionProps {
 }
 
 export default function AvatarSelection({ selectedAvatar, onSelectAvatar }: AvatarSelectionProps) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [selectedCategory, setSelectedCategory] = useState('warriors');
 
   // Get selected avatar details
@@ -27,15 +47,15 @@ export default function AvatarSelection({ selectedAvatar, onSelectAvatar }: Avat
 
   // Category data
   const categories = [
-    { id: 'warriors', title: 'นักรบ', icon: <Shield className="w-5 h-5" /> },
-    { id: 'creatures', title: 'สัตว์มหัศจรรย์', icon: <Sparkles className="w-5 h-5" /> },
-    { id: 'mystical', title: 'ผู้วิเศษ', icon: <Zap className="w-5 h-5" /> }
+    { id: 'warriors', title: L.warriors, icon: <Shield className="w-5 h-5" /> },
+    { id: 'creatures', title: L.creatures, icon: <Sparkles className="w-5 h-5" /> },
+    { id: 'mystical', title: L.mystical, icon: <Zap className="w-5 h-5" /> }
   ];
 
   return (
     <div className="w-full max-w-4xl mx-auto">
       <h2 className="text-3xl font-bold text-center text-white mb-8">
-        เลือกตัวละครของคุณ
+        {L.heading}
       </h2>
 
       {/* Category Tabs */}
@@ -131,7 +151,7 @@ export default function AvatarSelection({ selectedAvatar, onSelectAvatar }: Avat
           animate={{ opacity: 1, y: 0 }}
           className="text-center glass-dark rounded-2xl p-6 shadow-lg border border-metaverse-purple/30"
         >
-          <p className="text-lg text-white/60 mb-2">คุณเลือก:</p>
+          <p className="text-lg text-white/60 mb-2">{L.youPicked}</p>
           <div className="flex items-center justify-center gap-3">
             <motion.span 
               className="text-6xl filter drop-shadow-[0_0_20px_rgba(147,51,234,0.5)]"

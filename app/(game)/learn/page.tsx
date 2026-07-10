@@ -17,15 +17,25 @@ import { families } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
 import { findContinueLesson } from '@/lib/curricula/progress-helpers';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import type {
   CurriculumFamily,
   CurriculumFamilyGrade,
 } from '@/types/curriculum';
 import { ChevronRight, Lock } from 'lucide-react';
 
+// Pick the family display name for the active language (families carry
+// name (EN) + thaiName instead of title/thaiTitle, so localizeTitle
+// doesn't apply directly).
+const familyName = (
+  lang: 'th' | 'en',
+  f: { name: string; thaiName?: string },
+): string => (lang === 'en' ? f.name : f.thaiName ?? f.name);
+
 export default function LearnHomePage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { lang, t } = useLanguage();
   const [showFamilies, setShowFamilies] = useState(false);
 
   const active = useMemo(() => {
@@ -73,9 +83,11 @@ export default function LearnHomePage() {
         <div className="px-4 pb-6 pt-8 sm:px-6 sm:pb-8 sm:pt-12">
           <div className="mx-auto max-w-3xl space-y-6">
             <header>
-              <h1 className="text-3xl font-bold text-white">เรียนคณิตศาสตร์</h1>
+              <h1 className="text-3xl font-bold text-white">
+                {t.curriculum.learnTitle}
+              </h1>
               <p className="mt-1 text-base text-white/70">
-                {active ? 'ยินดีต้อนรับกลับมา' : 'เลือกหลักสูตร'}
+                {active ? t.curriculum.welcomeBack : t.curriculum.pickCurriculum}
               </p>
             </header>
 
@@ -83,7 +95,7 @@ export default function LearnHomePage() {
               <CurriculumTimeline
                 curriculum={active.curriculum}
                 progress={active.progress}
-                heading={`${active.family.thaiName ?? active.family.name} · ${active.grade.label}`}
+                heading={`${familyName(lang, active.family)} · ${active.grade.label}`}
                 continueLessonId={active.continueLesson?.lesson.id ?? null}
                 onContinue={() => {
                   if (!active.continueLesson) return;
@@ -103,7 +115,7 @@ export default function LearnHomePage() {
                 onClick={() => setShowFamilies(true)}
                 className="text-sm text-white/50 underline-offset-2 hover:text-white/80 hover:underline"
               >
-                เลือกหลักสูตรอื่น
+                {t.curriculum.otherCurricula}
               </button>
             )}
 
@@ -111,7 +123,7 @@ export default function LearnHomePage() {
               <div className="space-y-3">
                 {active && (
                   <p className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                    หลักสูตรทั้งหมด
+                    {t.curriculum.allCurricula}
                   </p>
                 )}
                 {families.map((f) => (
@@ -130,17 +142,20 @@ export default function LearnHomePage() {
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <h2 className="text-lg font-bold text-white">
-                            {f.thaiName ?? f.name}
+                            {familyName(lang, f)}
                           </h2>
                           {f.comingSoon && (
                             <span className="rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-bold text-amber-300">
-                              เร็วๆ นี้
+                              {t.curriculum.comingSoon}
                             </span>
                           )}
                         </div>
                         <p className="mt-1 text-sm text-white/70">{f.description}</p>
                         <p className="mt-2 text-xs text-white/50">
-                          {f.grades.filter((g) => g.curriculumId).length}/{f.grades.length} ระดับชั้นพร้อมใช้งาน
+                          {t.curriculum.gradesReady(
+                            f.grades.filter((g) => g.curriculumId).length,
+                            f.grades.length,
+                          )}
                         </p>
                       </div>
                     </div>

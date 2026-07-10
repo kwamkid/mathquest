@@ -11,10 +11,18 @@ import AuthGuard from '@/components/auth/AuthGuard';
 import LessonPlayerHost from '@/components/curriculum/LessonPlayerHost';
 import { getFamilyGrade } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: { lessonNotFound: 'ไม่พบบทเรียนนี้', backToLearn: 'กลับหน้าเรียน' },
+  en: { lessonNotFound: 'Lesson not found', backToLearn: 'Back to Learn' },
+} as const;
 
 export default function LessonPlayerPage() {
   const params = useParams();
   const router = useRouter();
+  const { lang } = useLanguage();
+  const L = STR[lang];
 
   const familyKey = String(params.familyKey);
   const gradeKey = String(params.gradeKey);
@@ -35,12 +43,12 @@ export default function LessonPlayerPage() {
       <AuthGuard>
         <div className="flex min-h-screen items-center justify-center bg-[#FFFCF8] p-6">
           <div className="space-y-3 text-center">
-            <p className="text-lg font-semibold text-gray-900">ไม่พบบทเรียนนี้</p>
+            <p className="text-lg font-semibold text-gray-900">{L.lessonNotFound}</p>
             <button
               onClick={() => router.push('/learn')}
               className="rounded-2xl bg-[#FF6B9D] px-5 py-2 text-base font-bold text-white"
             >
-              กลับหน้าเรียน
+              {L.backToLearn}
             </button>
           </div>
         </div>

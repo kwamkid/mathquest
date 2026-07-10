@@ -17,6 +17,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import TopicIcon from '@/components/lesson/TopicIcon';
 import CurriculumProgressHeader from '@/components/curriculum/CurriculumProgressHeader';
+import { localizeTitle, useLanguage } from '@/lib/i18n/LanguageContext';
 import {
   getSubTopicProgress,
   isLessonCompleted,
@@ -143,7 +144,8 @@ function TopicTimeline({
   onToggleChapter,
   hideHeading = false,
 }: TopicTimelineProps) {
-  const topicTitle = topic.thaiTitle ?? topic.title;
+  const { lang } = useLanguage();
+  const topicTitle = localizeTitle(lang, topic);
 
   // When a topic has a single chapter whose title matches the topic, the
   // "topic heading + accordion header" would just say the same thing twice.
@@ -151,8 +153,7 @@ function TopicTimeline({
   // header carry the topic icon instead.
   const onlySubTopic = topic.subTopics.length === 1 ? topic.subTopics[0] : null;
   const collapseHeading =
-    !!onlySubTopic &&
-    (onlySubTopic.thaiTitle ?? onlySubTopic.title) === topicTitle;
+    !!onlySubTopic && localizeTitle(lang, onlySubTopic) === topicTitle;
 
   const showHeading = !hideHeading && !collapseHeading;
 
@@ -215,6 +216,7 @@ function ChapterTimeline({
   open,
   onToggle,
 }: ChapterTimelineProps) {
+  const { lang, t } = useLanguage();
   const chapterProgress = getSubTopicProgress(progress, subTopic, topic);
   const unlocked = isSubTopicUnlocked(progress, subTopic, topic);
 
@@ -255,12 +257,12 @@ function ChapterTimeline({
                     : 'text-white'
               }`}
             >
-              {subTopic.thaiTitle ?? subTopic.title}
+              {localizeTitle(lang, subTopic)}
             </h4>
             {!unlocked && <Lock className="h-4 w-4 shrink-0 text-white/40" />}
             {isCurrent && !chapterProgress.done && (
-              <span className="shrink-0 rounded-full bg-pink-500/25 px-2 py-0.5 text-[10px] font-bold text-pink-200">
-                กำลังเรียนอยู่
+              <span className="shrink-0 rounded-full bg-pink-500/25 px-2 py-0.5 text-xs font-bold text-pink-200">
+                {t.common.inProgress}
               </span>
             )}
           </div>
@@ -269,8 +271,11 @@ function ChapterTimeline({
           {/* Lesson count sits inline at the end of the row, before the chevron. */}
           <span className="text-xs text-white/45">
             {chapterProgress.done
-              ? 'เรียนจบแล้ว'
-              : `${chapterProgress.completed}/${chapterProgress.total} บทเรียน`}
+              ? t.common.completed
+              : t.curriculum.lessonsProgress(
+                  chapterProgress.completed,
+                  chapterProgress.total,
+                )}
           </span>
           {chapterProgress.done && (
             <CheckCircle2 className="h-5 w-5 text-emerald-400/70" />
@@ -334,6 +339,7 @@ function LessonRow({
   isLocked,
   href,
 }: LessonRowProps) {
+  const { t } = useLanguage();
   const kind = lesson.kind ?? 'lesson';
 
   const kindIcon =
@@ -381,12 +387,12 @@ function LessonRow({
 
   const kindBadge =
     kind === 'mini' ? (
-      <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold text-cyan-200">
-        ฝึก
+      <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-xs font-bold text-cyan-200">
+        {t.common.practice}
       </span>
     ) : kind === 'quiz' ? (
-      <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-200">
-        QUIZ
+      <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-bold text-amber-200">
+        {t.common.quiz}
       </span>
     ) : null;
 
@@ -421,13 +427,13 @@ function LessonRow({
       )}
 
       {isContinue && (
-        <span className="shrink-0 rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-          {isStart ? 'เริ่มเรียน' : 'เรียนต่อ'}
+        <span className="shrink-0 rounded-full bg-white/25 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+          {isStart ? t.common.start : t.common.continue}
         </span>
       )}
 
       <span className={`shrink-0 text-xs ${metaTextClass}`}>
-        ⏱ {lesson.estimatedMinutes} นาที
+        {t.curriculum.estMinutes(lesson.estimatedMinutes)}
       </span>
 
       {completed ? (

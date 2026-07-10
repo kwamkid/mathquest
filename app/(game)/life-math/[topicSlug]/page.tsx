@@ -18,14 +18,31 @@ import {
   getSubTopicProgress,
   isSubTopicUnlocked,
 } from '@/lib/curricula/progress-helpers';
+import { localizeTitle, useLanguage } from '@/lib/i18n/LanguageContext';
 import { CheckCircle2, ChevronRight, Lock } from 'lucide-react';
 
 const CURRICULUM_ID = 'life-math-beginner';
+
+// Page-specific bilingual UI strings (see lib/i18n/strings.ts conventions).
+const STR = {
+  th: {
+    topicNotFound: 'ไม่พบหัวข้อนี้',
+    chapterN: (n: number) => `บทที่ ${n}`,
+    done: 'เรียนจบ',
+  },
+  en: {
+    topicNotFound: 'Topic not found',
+    chapterN: (n: number) => `Chapter ${n}`,
+    done: 'Completed',
+  },
+} as const;
 
 export default function LifeMathTopicPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const topicSlug = String(params.topicSlug);
 
   const curriculum = getCurriculum(CURRICULUM_ID);
@@ -47,7 +64,7 @@ export default function LifeMathTopicPage() {
     return (
       <AuthGuard>
         <div className="learn-bg flex min-h-screen items-center justify-center p-6">
-          <p className="text-lg font-semibold text-white">ไม่พบหัวข้อนี้</p>
+          <p className="text-lg font-semibold text-white">{L.topicNotFound}</p>
         </div>
       </AuthGuard>
     );
@@ -68,12 +85,12 @@ export default function LifeMathTopicPage() {
           <LearnBreadcrumb
             items={[
               { label: 'Life Math', href: '/life-math' },
-              { label: topic.thaiTitle ?? topic.title },
+              { label: localizeTitle(lang, topic) },
             ]}
           />
           <header className="space-y-2">
             <h1 className="text-3xl font-bold text-white">
-              {topic.thaiTitle ?? topic.title}
+              {localizeTitle(lang, topic)}
             </h1>
             <p className="text-base text-white/70">{topic.description}</p>
           </header>
@@ -108,10 +125,10 @@ export default function LifeMathTopicPage() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                        บทที่ {i + 1}
+                        {L.chapterN(i + 1)}
                       </p>
                       <h2 className="mt-0.5 text-lg font-bold text-white">
-                        {st.thaiTitle ?? st.title}
+                        {localizeTitle(lang, st)}
                       </h2>
                       <p className="mt-1 text-sm text-white/70">{st.description}</p>
                     </div>
@@ -121,7 +138,7 @@ export default function LifeMathTopicPage() {
                   ) : isDone ? (
                     <CheckCircle2
                       className="h-10 w-10 shrink-0 text-emerald-400"
-                      aria-label="เรียนจบ"
+                      aria-label={L.done}
                     />
                   ) : (
                     <ChevronRight className="h-5 w-5 shrink-0 text-white/60" />

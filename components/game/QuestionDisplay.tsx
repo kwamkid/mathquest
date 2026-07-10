@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Question } from '@/types';
 import { useSound } from '@/lib/game/soundManager';
 import { Check, X, Send } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface QuestionDisplayProps {
   question: Question;
@@ -13,11 +14,27 @@ interface QuestionDisplayProps {
   onAnswer: (answer: number) => void;
 }
 
+// Local bilingual UI strings for this component
+const STR = {
+  th: {
+    submit: 'ตอบ',
+    correct: 'ถูกต้อง!',
+    answerWas: (answer: number) => `ตอบ: ${answer}`,
+  },
+  en: {
+    submit: 'Answer',
+    correct: 'Correct!',
+    answerWas: (answer: number) => `Answer: ${answer}`,
+  },
+} as const;
+
 function QuestionDisplay({ question, questionNumber, onAnswer }: QuestionDisplayProps) {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const { playSound } = useSound();
+  const { lang } = useLanguage();
+  const L = STR[lang];
 
   // ✅ Handle answer click with faster transition
   const handleAnswerClick = useCallback((answer: number) => {
@@ -143,7 +160,7 @@ function QuestionDisplay({ question, questionNumber, onAnswer }: QuestionDisplay
               whileTap={{ scale: 0.95 }}
             >
               <Send className="w-5 h-5" />
-              ตอบ
+              {L.submit}
             </motion.button>
           )}
           
@@ -156,12 +173,12 @@ function QuestionDisplay({ question, questionNumber, onAnswer }: QuestionDisplay
               {selectedAnswer === question.answer ? (
                 <>
                   <Check className="w-8 h-8 text-green-400" />
-                  <span className="text-green-400">ถูกต้อง!</span>
+                  <span className="text-green-400">{L.correct}</span>
                 </>
               ) : (
                 <>
                   <X className="w-8 h-8 text-red-400" />
-                  <span className="text-red-400">ตอบ: {question.answer}</span>
+                  <span className="text-red-400">{L.answerWas(question.answer)}</span>
                 </>
               )}
             </motion.div>

@@ -44,10 +44,42 @@ import {
   Menu,
   ChevronLeft
 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    subtitle: 'จัดการตัวละครและเครื่องประดับ',
+    refresh: 'รีเฟรชข้อมูล',
+    rewardFallbackDesc: 'ได้รับจากการแลกรางวัล',
+    saveError: 'เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง',
+    cancel: 'ยกเลิก',
+    save: 'บันทึก',
+    saveSuccessTitle: 'บันทึกสำเร็จ!',
+    saveSuccessDesc: 'การเปลี่ยนแปลงของคุณถูกบันทึกเรียบร้อยแล้ว',
+    ok: 'ตกลง',
+    errorTitle: 'เกิดข้อผิดพลาด',
+    close: 'ปิด',
+  },
+  en: {
+    subtitle: 'Customize your character and accessories',
+    refresh: 'Refresh data',
+    rewardFallbackDesc: 'Earned from the Reward Shop',
+    saveError: 'Something went wrong while saving. Please try again.',
+    cancel: 'Cancel',
+    save: 'Save',
+    saveSuccessTitle: 'Saved!',
+    saveSuccessDesc: 'Your changes have been saved',
+    ok: 'OK',
+    errorTitle: 'Something went wrong',
+    close: 'Close',
+  },
+} as const;
 
 export default function MyAvatarPage() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<'avatar' | 'title' | 'badges'>('avatar');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -299,7 +331,7 @@ export default function MyAvatarPage() {
             loadedTitles.push({
               id: titleId,
               name: rewardData.name,
-              description: rewardData.description || 'ได้รับจากการแลกรางวัล',
+              description: rewardData.description || L.rewardFallbackDesc,
               rarity: 'rare',
               color: '#6B7280'
             });
@@ -497,7 +529,7 @@ export default function MyAvatarPage() {
       setShowSuccessDialog(true);
     } catch (error) {
       console.error('Error saving:', error);
-      setErrorMessage('เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่อีกครั้ง');
+      setErrorMessage(L.saveError);
       setShowErrorDialog(true);
     } finally {
       setSaving(false);
@@ -544,7 +576,7 @@ export default function MyAvatarPage() {
           user={user}
           variant="sub"
           title="My Avatar"
-          subtitle="จัดการตัวละครและเครื่องประดับ"
+          subtitle={L.subtitle}
           titleIcon={<Sparkles className="h-4 w-4 text-metaverse-purple" />}
           backHref="/"
           extras={
@@ -553,7 +585,7 @@ export default function MyAvatarPage() {
               className="p-2 glass rounded-lg hover:bg-white/10 transition"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              title="รีเฟรชข้อมูล"
+              title={L.refresh}
             >
               <RefreshCw className="w-4 h-4 text-white/70" />
             </motion.button>
@@ -683,8 +715,8 @@ export default function MyAvatarPage() {
             className="glass flex h-10 w-10 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            title="ยกเลิก"
-            aria-label="ยกเลิก"
+            title={L.cancel}
+            aria-label={L.cancel}
           >
             <RefreshCw className="w-4 h-4" />
           </motion.button>
@@ -706,7 +738,7 @@ export default function MyAvatarPage() {
             ) : (
               <Save className="w-4 h-4" />
             )}
-            <span>บันทึก</span>
+            <span>{L.save}</span>
           </motion.button>
         </motion.div>
       )}
@@ -739,11 +771,11 @@ export default function MyAvatarPage() {
               </motion.div>
               
               <h3 className="text-xl font-bold text-white text-center mb-1">
-                บันทึกสำเร็จ!
+                {L.saveSuccessTitle}
               </h3>
-              
+
               <p className="text-white/60 text-center mb-4 text-sm">
-                การเปลี่ยนแปลงของคุณถูกบันทึกเรียบร้อยแล้ว
+                {L.saveSuccessDesc}
               </p>
               
               <motion.button
@@ -752,7 +784,7 @@ export default function MyAvatarPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                ตกลง
+                {L.ok}
               </motion.button>
             </motion.div>
           </motion.div>
@@ -787,7 +819,7 @@ export default function MyAvatarPage() {
               </motion.div>
               
               <h3 className="text-xl font-bold text-white text-center mb-1">
-                เกิดข้อผิดพลาด
+                {L.errorTitle}
               </h3>
               
               <p className="text-white/60 text-center mb-4 text-sm">
@@ -800,7 +832,7 @@ export default function MyAvatarPage() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                ปิด
+                {L.close}
               </motion.button>
             </motion.div>
           </motion.div>

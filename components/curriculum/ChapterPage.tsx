@@ -30,6 +30,7 @@ import {
   isLessonCompleted,
   lessonStarsEarned,
 } from '@/lib/curricula/progress-helpers';
+import { localizeTitle, useLanguage } from '@/lib/i18n/LanguageContext';
 import type {
   CurriculumProgress,
   Lesson,
@@ -37,6 +38,22 @@ import type {
   Topic,
 } from '@/types/curriculum';
 import type { User } from '@/types';
+
+// Page-specific bilingual UI strings (see lib/i18n/strings.ts conventions).
+const STR = {
+  th: {
+    goFinalQuiz: 'ลุย Final Quiz',
+    objectives: 'เป้าหมายของบทนี้',
+    lessonsHeading: 'บทเรียน',
+    finishAllFirst: '(ต้องเรียนจบทุกบทก่อน)',
+  },
+  en: {
+    goFinalQuiz: 'Take the Final Quiz',
+    objectives: 'Goals for this chapter',
+    lessonsHeading: 'Lessons',
+    finishAllFirst: '(finish every lesson first)',
+  },
+} as const;
 
 interface Props {
   user: User | null;
@@ -66,6 +83,8 @@ export default function ChapterPage({
   eyebrow,
   collapseTopicTitle = false,
 }: Props) {
+  const { lang, t } = useLanguage();
+  const L = STR[lang];
   const sp = getSubTopicProgress(progress, subTopic, topic);
 
   // Split lessons by kind. Within each bucket, order by `order`.
@@ -109,22 +128,20 @@ export default function ChapterPage({
 
   const continueLabel =
     sp.completed === 0
-      ? 'เริ่มเรียน'
+      ? t.common.start
       : continueLesson?.kind === 'quiz'
-        ? 'ลุย Final Quiz'
-        : 'เรียนต่อ';
+        ? L.goFinalQuiz
+        : t.common.continue;
 
   const displayTitle = collapseTopicTitle
-    ? topic.thaiTitle ?? topic.title
-    : subTopic.thaiTitle ?? subTopic.title;
+    ? localizeTitle(lang, topic)
+    : localizeTitle(lang, subTopic);
 
   // Compact progress strip + Continue CTA share one row on >=md.
   const progressStrip = sp.pct > 0 && (
     <div className="learn-accent-soft rounded-2xl px-4 py-3">
       <div className="flex items-center justify-between text-sm font-semibold text-pink-100">
-        <span>
-          {sp.completed} / {sp.total} บทเรียน
-        </span>
+        <span>{t.curriculum.lessonsProgress(sp.completed, sp.total)}</span>
         <span>{Math.round(sp.pct * 100)}%</span>
       </div>
       <div className="learn-progress-track mt-1.5 h-2 w-full overflow-hidden rounded-full">
@@ -170,7 +187,7 @@ export default function ChapterPage({
       <p className="text-base text-white/70">{subTopic.description}</p>
       {subTopic.learningObjectives.length > 0 && (
         <div className="learn-card rounded-2xl p-4">
-          <p className="text-sm font-bold text-white">เป้าหมายของบทนี้</p>
+          <p className="text-sm font-bold text-white">{L.objectives}</p>
           <ul className="mt-2 space-y-1 text-sm text-white/80">
             {subTopic.learningObjectives.map((obj, i) => (
               <li key={i} className="flex gap-2">
@@ -197,7 +214,7 @@ export default function ChapterPage({
         <section className="space-y-3">
           <h2 className="flex items-center gap-2 text-xl font-bold text-white sm:text-2xl">
             <BookOpen className="h-6 w-6 text-pink-300 sm:h-7 sm:w-7" />
-            บทเรียน
+            {L.lessonsHeading}
           </h2>
           <div className="space-y-3">
             {teaching.map((l, idx) => {
@@ -225,7 +242,7 @@ export default function ChapterPage({
             Final Quiz · {quizzes.length} Level
             {!allTeachingDone && (
               <span className="ml-2 text-xs font-normal text-white/50">
-                (ต้องเรียนจบทุกบทก่อน)
+                {L.finishAllFirst}
               </span>
             )}
           </h2>

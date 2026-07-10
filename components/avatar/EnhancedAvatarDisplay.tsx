@@ -458,7 +458,7 @@ export default function EnhancedAvatarDisplay({
                       {/* Debug info for earrings */}
                       {debug && (
                         <div 
-                          className="absolute bg-yellow-500/90 text-black text-[10px] p-1 rounded pointer-events-none z-50 font-mono"
+                          className="absolute bg-yellow-500/90 text-black text-xs p-1 rounded pointer-events-none z-50 font-mono"
                           style={{
                             left: left,
                             top: top,
@@ -504,7 +504,7 @@ export default function EnhancedAvatarDisplay({
                     {/* Debug info */}
                     {debug && (
                       <div 
-                        className="absolute bg-yellow-500/90 text-black text-[10px] p-1 rounded pointer-events-none z-50 font-mono"
+                        className="absolute bg-yellow-500/90 text-black text-xs p-1 rounded pointer-events-none z-50 font-mono"
                         style={{
                           left: left,
                           top: top,

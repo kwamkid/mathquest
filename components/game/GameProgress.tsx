@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { CheckCircle, Zap } from 'lucide-react';
 import { memo } from 'react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface GameProgressProps {
   current: number;
@@ -10,20 +11,42 @@ interface GameProgressProps {
   score: number;
 }
 
+// Local bilingual UI strings for this component
+const STR = {
+  th: {
+    questionOf: (current: number, total: number) => `ข้อที่ ${current}/${total}`,
+    correctCount: (score: number) => `${score} ข้อ`,
+    cheer1: 'เริ่มต้นได้ดี! 💪',
+    cheer2: 'ทำได้ดีมาก! 🌟',
+    cheer3: 'ใกล้สำเร็จแล้ว! 🚀',
+    cheer4: 'อีกนิดเดียว! 🏆',
+  },
+  en: {
+    questionOf: (current: number, total: number) => `Question ${current}/${total}`,
+    correctCount: (score: number) => `${score} correct`,
+    cheer1: 'Great start! 💪',
+    cheer2: 'Doing great! 🌟',
+    cheer3: 'Almost there! 🚀',
+    cheer4: 'Just a little more! 🏆',
+  },
+} as const;
+
 function GameProgress({ current, total, score }: GameProgressProps) {
   const progress = (current / total) * 100;
+  const { lang } = useLanguage();
+  const L = STR[lang];
 
   return (
     <div className="glass-dark rounded-2xl shadow-lg p-6 mb-6 border border-metaverse-purple/30">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
           <span className="text-2xl font-bold text-white">
-            ข้อที่ {current}/{total}
+            {L.questionOf(current, total)}
           </span>
           <div className="flex items-center gap-2 glass px-3 py-1 rounded-full">
             <CheckCircle className="w-5 h-5 text-green-400" />
             <span className="text-xl text-green-400 font-medium">
-              {score} ข้อ
+              {L.correctCount(score)}
             </span>
           </div>
         </div>
@@ -80,10 +103,10 @@ function GameProgress({ current, total, score }: GameProgressProps) {
 
       {/* Motivational Text - ✅ ไม่มี animation */}
       <p className="text-center text-white/60 text-sm mt-2">
-        {progress < 30 && "เริ่มต้นได้ดี! 💪"}
-        {progress >= 30 && progress < 60 && "ทำได้ดีมาก! 🌟"}
-        {progress >= 60 && progress < 90 && "ใกล้สำเร็จแล้ว! 🚀"}
-        {progress >= 90 && "อีกนิดเดียว! 🏆"}
+        {progress < 30 && L.cheer1}
+        {progress >= 30 && progress < 60 && L.cheer2}
+        {progress >= 60 && progress < 90 && L.cheer3}
+        {progress >= 90 && L.cheer4}
       </p>
     </div>
   );

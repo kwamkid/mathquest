@@ -13,12 +13,31 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { getFamilyGrade } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
 import { getTopicProgress } from '@/lib/curricula/progress-helpers';
+import { localizeTitle, useLanguage } from '@/lib/i18n/LanguageContext';
 import { ChevronRight, CheckCircle2 } from 'lucide-react';
 import TopicIcon from '@/components/lesson/TopicIcon';
+
+// Page-specific bilingual UI strings (see lib/i18n/strings.ts conventions).
+const STR = {
+  th: {
+    pickTopicToLearn: 'เลือกหัวข้อที่อยากเรียน',
+    pickTopic: 'เลือกหัวข้อ',
+    chaptersCount: (n: number) => `${n} บท`,
+    done: 'เรียนจบ',
+  },
+  en: {
+    pickTopicToLearn: 'Pick a topic to learn',
+    pickTopic: 'Pick a topic',
+    chaptersCount: (n: number) => `${n} chapters`,
+    done: 'Completed',
+  },
+} as const;
 
 export default function GradeTopicsPage() {
   const params = useParams();
   const { user } = useAuth();
+  const { lang, t: tr } = useLanguage();
+  const L = STR[lang];
   const familyKey = String(params.familyKey);
   const gradeKey = String(params.gradeKey);
 
@@ -31,13 +50,14 @@ export default function GradeTopicsPage() {
     return (
       <AuthGuard>
         <div className="learn-bg flex min-h-screen items-center justify-center p-6">
-          <p className="text-lg font-semibold text-white">ยังไม่พร้อมใช้งาน</p>
+          <p className="text-lg font-semibold text-white">{tr.common.notReady}</p>
         </div>
       </AuthGuard>
     );
   }
 
   const { family, grade } = resolved;
+  const famName = lang === 'en' ? family.name : family.thaiName ?? family.name;
   const progress = user?.curriculumProgress?.[curriculum.id];
   const sortedTopics = [...curriculum.topics].sort((a, b) => a.order - b.order);
 
@@ -53,10 +73,10 @@ export default function GradeTopicsPage() {
           <LearnBreadcrumb
             items={
               hideGrade
-                ? [{ label: family.thaiName ?? family.name }]
+                ? [{ label: famName }]
                 : [
                     {
-                      label: family.thaiName ?? family.name,
+                      label: famName,
                       href: `/learn/${family.key}`,
                     },
                     { label: grade.label },
@@ -72,20 +92,20 @@ export default function GradeTopicsPage() {
                     {family.flag ?? '📘'}
                   </span>
                   <h1 className="text-3xl font-bold text-white">
-                    {family.thaiName ?? family.name}
+                    {famName}
                   </h1>
                 </div>
                 <p className="text-base text-white/70">{family.description}</p>
-                <p className="text-sm font-semibold text-white/50">เลือกหัวข้อที่อยากเรียน</p>
+                <p className="text-sm font-semibold text-white/50">{L.pickTopicToLearn}</p>
               </>
             ) : (
               <>
                 <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
-                  {family.thaiName ?? family.name}
+                  {famName}
                 </p>
                 <h1 className="text-3xl font-bold text-white">{grade.label}</h1>
                 <p className="text-base text-white/70">{curriculum.description}</p>
-                <p className="text-sm font-semibold text-white/50">เลือกหัวข้อ</p>
+                <p className="text-sm font-semibold text-white/50">{L.pickTopic}</p>
               </>
             )}
           </header>
@@ -116,19 +136,19 @@ export default function GradeTopicsPage() {
                     />
                     <div>
                       <h2 className="text-lg font-bold text-white">
-                        {t.thaiTitle ?? t.title}
+                        {localizeTitle(lang, t)}
                       </h2>
                       <p className="mt-0.5 text-sm text-white/70">{t.description}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/60">
-                        <span>{t.subTopics.length} บท</span>
+                        <span>{L.chaptersCount(t.subTopics.length)}</span>
                         {tp.total > 0 && (
                           <span>
-                            {tp.completed}/{tp.total} บทเรียน
+                            {tr.curriculum.lessonsProgress(tp.completed, tp.total)}
                           </span>
                         )}
                         {isDone && (
                           <span className="inline-flex items-center gap-1 text-emerald-300">
-                            <CheckCircle2 className="h-4 w-4" /> เรียนจบ
+                            <CheckCircle2 className="h-4 w-4" /> {L.done}
                           </span>
                         )}
                       </div>
@@ -143,7 +163,7 @@ export default function GradeTopicsPage() {
                     </div>
                   </div>
                   {isDone ? (
-                    <CheckCircle2 className="h-10 w-10 shrink-0 text-emerald-400" aria-label="เรียนจบ" />
+                    <CheckCircle2 className="h-10 w-10 shrink-0 text-emerald-400" aria-label={L.done} />
                   ) : (
                     <ChevronRight className="h-6 w-6 shrink-0 text-white/60" />
                   )}

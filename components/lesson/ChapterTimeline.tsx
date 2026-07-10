@@ -22,6 +22,21 @@ import {
 } from 'lucide-react';
 import type { Lesson } from '@/types/curriculum';
 import { getLessonRewardPreview } from '@/lib/curricula/progress-helpers';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+// Local bilingual UI strings (see lib/i18n/strings.ts conventions).
+const STR = {
+  th: {
+    completedAria: 'เรียนแล้ว',
+    maxStars: (n: number) => `สูงสุด ${n}`,
+    readyToPlay: 'พร้อมเล่น',
+  },
+  en: {
+    completedAria: 'Completed',
+    maxStars: (n: number) => `up to ${n}`,
+    readyToPlay: 'Ready to play',
+  },
+} as const;
 
 // ---------------------------------------------------------------------------
 // Continue card — "Resume the next thing you should do"
@@ -75,6 +90,8 @@ export function LessonListItem({
   stars,
   isContinue,
 }: LessonListItemProps) {
+  const { lang, t } = useLanguage();
+  const L = STR[lang];
   const dim = completed ? 'opacity-55' : '';
 
   // Active row uses the full gradient pill (matches the old ContinueCard
@@ -123,7 +140,7 @@ export function LessonListItem({
               isContinue ? 'text-white/80' : 'text-white/55'
             }`}
           >
-            <span>⏱ {lesson.estimatedMinutes} นาที</span>
+            <span>{t.curriculum.estMinutes(lesson.estimatedMinutes)}</span>
             {stars > 0 && (
               <span
                 className={`inline-flex items-center gap-0.5 ${
@@ -135,8 +152,8 @@ export function LessonListItem({
               </span>
             )}
             {isContinue && (
-              <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                เรียนต่อ
+              <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
+                {t.common.continue}
               </span>
             )}
           </div>
@@ -145,7 +162,7 @@ export function LessonListItem({
         {completed ? (
           <CheckCircle2
             className="h-7 w-7 shrink-0 text-emerald-400/80"
-            aria-label="เรียนแล้ว"
+            aria-label={L.completedAria}
           />
         ) : (
           <ChevronRight
@@ -187,6 +204,8 @@ export function QuizLevelItem({
   unlocked,
   isNext,
 }: QuizLevelItemProps) {
+  const { lang, t } = useLanguage();
+  const L = STR[lang];
   const dim = completed ? 'opacity-55' : !unlocked ? 'opacity-40' : '';
   const ring = isNext
     ? 'ring-2 ring-amber-400/70 shadow-lg shadow-amber-500/20'
@@ -230,7 +249,7 @@ export function QuizLevelItem({
         </div>
         <p className="mt-0.5 truncate text-sm text-white/65">{cleanTitle}</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="text-white/55">⏱ {lesson.estimatedMinutes} นาที</span>
+          <span className="text-white/55">{t.curriculum.estMinutes(lesson.estimatedMinutes)}</span>
           {/* Reward preview — stars + EXP. Always shown so the learner sees
             * what they're earning even before unlocking. */}
           <span
@@ -241,14 +260,14 @@ export function QuizLevelItem({
             }`}
           >
             <Star className="h-3 w-3 fill-current" />
-            {completed && stars > 0 ? `${stars}/${reward.stars}` : `สูงสุด ${reward.stars}`}
+            {completed && stars > 0 ? `${stars}/${reward.stars}` : L.maxStars(reward.stars)}
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-500/15 px-2 py-0.5 font-bold text-fuchsia-200">
             <Zap className="h-3 w-3 fill-current" />+{reward.exp} EXP
           </span>
           {isNext && (
-            <span className="rounded-full bg-amber-500/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200">
-              พร้อมเล่น
+            <span className="rounded-full bg-amber-500/25 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-200">
+              {L.readyToPlay}
             </span>
           )}
         </div>

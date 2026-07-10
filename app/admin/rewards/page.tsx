@@ -202,7 +202,7 @@ export default function AdminRewardsPage() {
       return (
         <div className="w-full h-full flex flex-col items-center justify-center p-1">
           <Crown className="w-5 h-5 mb-1" style={{ color: reward.color || '#FFD700' }} />
-          <span className="text-[10px] font-bold text-center leading-tight" style={{ color: reward.color || '#FFD700' }}>
+          <span className="text-xs font-bold text-center leading-tight" style={{ color: reward.color || '#FFD700' }}>
             {reward.name.slice(0, 8)}
           </span>
         </div>

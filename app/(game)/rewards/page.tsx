@@ -36,30 +36,94 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import AppHeader from '@/components/layout/AppHeader';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
-// Category filters
+// Category filters (bilingual labels)
 const categories = [
-  { id: 'all', label: 'ทั้งหมด', icon: <Sparkles className="w-4 h-4" /> },
-  { id: RewardType.AVATAR, label: 'Avatars', icon: '🦸' },
-  { id: RewardType.ACCESSORY, label: 'Accessories', icon: '👑' },
-  { id: RewardType.TITLE_BADGE, label: 'Title Badges', icon: '🏆' },
-  { id: RewardType.BOOST, label: 'Boosts', icon: '⚡' },
-  { id: RewardType.PHYSICAL, label: 'ของจริง', icon: '📦' },
+  { id: 'all', label: { th: 'ทั้งหมด', en: 'All' }, icon: <Sparkles className="w-4 h-4" /> },
+  { id: RewardType.AVATAR, label: { th: 'Avatars', en: 'Avatars' }, icon: '🦸' },
+  { id: RewardType.ACCESSORY, label: { th: 'Accessories', en: 'Accessories' }, icon: '👑' },
+  { id: RewardType.TITLE_BADGE, label: { th: 'Title Badges', en: 'Title Badges' }, icon: '🏆' },
+  { id: RewardType.BOOST, label: { th: 'Boosts', en: 'Boosts' }, icon: '⚡' },
+  { id: RewardType.PHYSICAL, label: { th: 'ของจริง', en: 'Real prizes' }, icon: '📦' },
 ];
 
-// Sorting options
+// Sorting options (bilingual labels)
 const sortOptions = [
-  { id: 'popular', label: 'ยอดนิยม', icon: <Star className="w-4 h-4" /> },
-  { id: 'newest', label: 'ใหม่ล่าสุด', icon: <Calendar className="w-4 h-4" /> },
-  { id: 'price-low', label: 'ราคาต่ำ-สูง', icon: <DollarSign className="w-4 h-4" /> },
-  { id: 'price-high', label: 'ราคาสูง-ต่ำ', icon: <DollarSign className="w-4 h-4" /> },
+  { id: 'popular', label: { th: 'ยอดนิยม', en: 'Popular' }, icon: <Star className="w-4 h-4" /> },
+  { id: 'newest', label: { th: 'ใหม่ล่าสุด', en: 'Newest' }, icon: <Calendar className="w-4 h-4" /> },
+  { id: 'price-low', label: { th: 'ราคาต่ำ-สูง', en: 'Price: low-high' }, icon: <DollarSign className="w-4 h-4" /> },
+  { id: 'price-high', label: { th: 'ราคาสูง-ต่ำ', en: 'Price: high-low' }, icon: <DollarSign className="w-4 h-4" /> },
 ];
+
+const STR = {
+  th: {
+    subtitle: 'แลกรางวัลด้วย EXP',
+    history: 'ประวัติ',
+    sortBy: 'เรียงตาม',
+    searchPlaceholder: 'ค้นหารางวัล...',
+    resultsCount: (n: number) => `พบ ${n} รางวัล`,
+    pageOf: (page: number, total: number) => `หน้า ${page} จาก ${total}`,
+    notEnoughExp: (have: number, need: number) =>
+      `EXP ไม่พอ! คุณมี ${have} EXP แต่ต้องการ ${need} EXP`,
+    alreadyOwned: 'คุณมีไอเทมนี้แล้ว',
+    purchaseError: 'เกิดข้อผิดพลาดในการแลกรางวัล',
+    owned: 'มีแล้ว',
+    outOfStock: 'หมด',
+    stockLeft: (n: number) => `เหลือ ${n}`,
+    hot: '🔥 ฮิต',
+    boostMinutes: (m: number) => `${m} นาที`,
+    requiresLevel: (lv: number) => `ต้องการ Level ${lv}+`,
+    ownedPrice: 'Owned',
+    redeem: 'แลก',
+    emptySearch: 'ไม่พบรางวัลที่ค้นหา',
+    confirmTitle: 'ยืนยันการแลกรางวัล',
+    priceLabel: 'ราคา:',
+    expLeftLabel: 'EXP คงเหลือ:',
+    shipTo: 'จัดส่งไปที่:',
+    phoneLabel: 'โทร:',
+    cancel: 'ยกเลิก',
+    processing: 'กำลังดำเนินการ...',
+    confirmRedeem: 'ยืนยันการแลก',
+  },
+  en: {
+    subtitle: 'Redeem rewards with EXP',
+    history: 'History',
+    sortBy: 'Sort by',
+    searchPlaceholder: 'Search rewards...',
+    resultsCount: (n: number) => `${n} rewards found`,
+    pageOf: (page: number, total: number) => `Page ${page} of ${total}`,
+    notEnoughExp: (have: number, need: number) =>
+      `Not enough EXP! You have ${have} EXP but need ${need} EXP`,
+    alreadyOwned: 'You already own this item',
+    purchaseError: 'Something went wrong while redeeming',
+    owned: 'Owned',
+    outOfStock: 'Sold out',
+    stockLeft: (n: number) => `${n} left`,
+    hot: '🔥 Hot',
+    boostMinutes: (m: number) => `${m} min`,
+    requiresLevel: (lv: number) => `Requires Level ${lv}+`,
+    ownedPrice: 'Owned',
+    redeem: 'Redeem',
+    emptySearch: 'No rewards match your search',
+    confirmTitle: 'Confirm redemption',
+    priceLabel: 'Price:',
+    expLeftLabel: 'EXP after:',
+    shipTo: 'Ship to:',
+    phoneLabel: 'Tel:',
+    cancel: 'Cancel',
+    processing: 'Processing...',
+    confirmRedeem: 'Confirm',
+  },
+} as const;
 
 const ITEMS_PER_PAGE = 12;
 
 export default function RewardShopPage() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -210,13 +274,13 @@ export default function RewardShopPage() {
     
     // Check if can afford
     if (user.experience < reward.price) {
-      errorDialog.showDialog(`EXP ไม่พอ! คุณมี ${user.experience} EXP แต่ต้องการ ${reward.price} EXP`);
+      errorDialog.showDialog(L.notEnoughExp(user.experience, reward.price));
       return;
     }
 
     // Check if already owned
     if (isItemOwned(reward)) {
-      errorDialog.showDialog('คุณมีไอเทมนี้แล้ว');
+      errorDialog.showDialog(L.alreadyOwned);
       return;
     }
 
@@ -270,7 +334,7 @@ export default function RewardShopPage() {
       }
     } catch (error) {
       console.error('Purchase error:', error);
-      errorDialog.showDialog('เกิดข้อผิดพลาดในการแลกรางวัล');
+      errorDialog.showDialog(L.purchaseError);
     } finally {
       setPurchasing(false);
     }
@@ -400,7 +464,7 @@ export default function RewardShopPage() {
           user={user}
           variant="sub"
           title="Reward Shop"
-          subtitle="แลกรางวัลด้วย EXP"
+          subtitle={L.subtitle}
           titleIcon={<Gift className="h-4 w-4 text-metaverse-purple" />}
           backHref="/learn"
           extras={
@@ -411,7 +475,7 @@ export default function RewardShopPage() {
               whileTap={{ scale: 0.95 }}
             >
               <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">ประวัติ</span>
+              <span className="hidden sm:inline">{L.history}</span>
             </motion.button>
           }
         />
@@ -444,7 +508,7 @@ export default function RewardShopPage() {
                           ) : (
                             category.icon
                           )}
-                          <span className="hidden sm:inline">{category.label}</span>
+                          <span className="hidden sm:inline">{category.label[lang]}</span>
                         </motion.button>
                       ))}
                     </div>
@@ -462,7 +526,7 @@ export default function RewardShopPage() {
                     >
                       <ArrowUpDown className="w-4 h-4" />
                       <span className="hidden sm:inline">
-                        {sortOptions.find(opt => opt.id === sortBy)?.label || 'เรียงตาม'}
+                        {sortOptions.find(opt => opt.id === sortBy)?.label[lang] || L.sortBy}
                       </span>
                     </button>
                     
@@ -486,7 +550,7 @@ export default function RewardShopPage() {
                             }`}
                           >
                             {option.icon}
-                            <span>{option.label}</span>
+                            <span>{option.label[lang]}</span>
                             {sortBy === option.id && (
                               <Check className="w-3 h-3 ml-auto" />
                             )}
@@ -504,7 +568,7 @@ export default function RewardShopPage() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="ค้นหารางวัล..."
+                    placeholder={L.searchPlaceholder}
                     className="w-full pl-9 pr-3 py-1.5 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-lg focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 text-sm"
                   />
                 </div>
@@ -513,8 +577,8 @@ export default function RewardShopPage() {
 
             {/* Results count */}
             <div className="flex items-center justify-between mt-2 text-xs text-white/60">
-              <span>พบ {processedRewards.length} รางวัล</span>
-              <span>หน้า {currentPage} จาก {totalPages || 1}</span>
+              <span>{L.resultsCount(processedRewards.length)}</span>
+              <span>{L.pageOf(currentPage, totalPages || 1)}</span>
             </div>
           </div>
         </div>
@@ -563,16 +627,16 @@ export default function RewardShopPage() {
                             {isOwned && (
                               <div className="glass bg-green-500/20 rounded-full px-2 py-0.5 text-xs font-medium border border-green-500/30 flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3" />
-                                <span className="text-green-400">มีแล้ว</span>
+                                <span className="text-green-400">{L.owned}</span>
                               </div>
                             )}
                             
                             {!isOwned && reward.stock !== undefined && (
                               <div className="glass rounded-full px-2 py-0.5 text-xs font-medium">
                                 {outOfStock ? (
-                                  <span className="text-red-400">หมด</span>
+                                  <span className="text-red-400">{L.outOfStock}</span>
                                 ) : (
-                                  <span className="text-white/80">เหลือ {reward.stock}</span>
+                                  <span className="text-white/80">{L.stockLeft(reward.stock)}</span>
                                 )}
                               </div>
                             )}
@@ -580,7 +644,7 @@ export default function RewardShopPage() {
                             {/* Popularity badge */}
                             {(reward as any).popularity > 800 && !isOwned && (
                               <div className="glass bg-yellow-400/20 rounded-full px-2 py-0.5 text-xs font-medium border border-yellow-400/30">
-                                <span className="text-yellow-400">🔥 ฮิต</span>
+                                <span className="text-yellow-400">{L.hot}</span>
                               </div>
                             )}
                           </div>
@@ -607,7 +671,7 @@ export default function RewardShopPage() {
                                 <TrendingUp className="w-3 h-3" />
                                 <span className="font-bold">{reward.boostMultiplier}x EXP</span>
                                 <Clock className="w-3 h-3" />
-                                <span>{reward.boostDuration} นาที</span>
+                                <span>{L.boostMinutes(reward.boostDuration ?? 0)}</span>
                               </div>
                             </div>
                           )}
@@ -615,7 +679,7 @@ export default function RewardShopPage() {
                           {/* Level Requirement */}
                           {reward.requiredLevel && (
                             <div className="text-xs text-white/60 mb-1">
-                              ต้องการ Level {reward.requiredLevel}+
+                              {L.requiresLevel(reward.requiredLevel)}
                             </div>
                           )}
                           
@@ -628,7 +692,7 @@ export default function RewardShopPage() {
                               <span className={`text-sm md:text-base font-bold ${
                                 isOwned ? 'text-green-400' : canAfford ? 'text-yellow-400' : 'text-red-400'
                               }`}>
-                                {isOwned ? 'Owned' : reward.price}
+                                {isOwned ? L.ownedPrice : reward.price}
                               </span>
                             </div>
                             
@@ -650,9 +714,9 @@ export default function RewardShopPage() {
                               ) : isLocked ? (
                                 <Lock className="w-4 h-4" />
                               ) : outOfStock ? (
-                                'หมด'
+                                L.outOfStock
                               ) : (
-                                'แลก'
+                                L.redeem
                               )}
                             </motion.button>
                           </div>
@@ -670,7 +734,7 @@ export default function RewardShopPage() {
               {!loading && processedRewards.length === 0 && (
                 <div className="text-center py-12">
                   <div className="text-5xl mb-3">🔍</div>
-                  <p className="text-lg text-white/60">ไม่พบรางวัลที่ค้นหา</p>
+                  <p className="text-lg text-white/60">{L.emptySearch}</p>
                 </div>
               )}
             </>
@@ -723,7 +787,7 @@ export default function RewardShopPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-xl font-bold text-white mb-4 text-center">
-                ยืนยันการแลกรางวัล
+                {L.confirmTitle}
               </h3>
               
               {/* Reward Preview */}
@@ -746,7 +810,7 @@ export default function RewardShopPage() {
               {/* Cost */}
               <div className="glass rounded-xl p-3 mb-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-white/60 text-sm">ราคา:</span>
+                  <span className="text-white/60 text-sm">{L.priceLabel}</span>
                   <div className="flex items-center gap-1">
                     <Zap className="w-4 h-4 text-yellow-400" />
                     <span className="text-lg font-bold text-yellow-400">
@@ -755,7 +819,7 @@ export default function RewardShopPage() {
                   </div>
                 </div>
                 <div className="flex justify-between items-center mt-1">
-                  <span className="text-white/60 text-sm">EXP คงเหลือ:</span>
+                  <span className="text-white/60 text-sm">{L.expLeftLabel}</span>
                   <span className="text-white">
                     {user ? (user.experience - selectedReward.price).toLocaleString() : 0}
                   </span>
@@ -765,7 +829,7 @@ export default function RewardShopPage() {
               {/* Shipping Address Preview */}
               {selectedReward.type === RewardType.PHYSICAL && shippingAddress && (
                 <div className="glass rounded-xl p-3 mb-4">
-                  <h5 className="text-xs font-medium text-white/60 mb-1">จัดส่งไปที่:</h5>
+                  <h5 className="text-xs font-medium text-white/60 mb-1">{L.shipTo}</h5>
                   <p className="text-white text-sm">{shippingAddress.fullName}</p>
                   <p className="text-white/80 text-xs">
                     {shippingAddress.addressLine1}
@@ -774,7 +838,7 @@ export default function RewardShopPage() {
                   <p className="text-white/80 text-xs">
                     {shippingAddress.subDistrict} {shippingAddress.district} {shippingAddress.province} {shippingAddress.postalCode}
                   </p>
-                  <p className="text-white/80 text-xs">โทร: {shippingAddress.phone}</p>
+                  <p className="text-white/80 text-xs">{L.phoneLabel} {shippingAddress.phone}</p>
                 </div>
               )}
               
@@ -787,7 +851,7 @@ export default function RewardShopPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  ยกเลิก
+                  {L.cancel}
                 </motion.button>
                 
                 <motion.button
@@ -800,12 +864,12 @@ export default function RewardShopPage() {
                   {purchasing ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      กำลังดำเนินการ...
+                      {L.processing}
                     </>
                   ) : (
                     <>
                       <ShoppingCart className="w-4 h-4" />
-                      ยืนยันการแลก
+                      {L.confirmRedeem}
                     </>
                   )}
                 </motion.button>

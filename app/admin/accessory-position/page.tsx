@@ -369,7 +369,7 @@ export default function AccessoryPositionPage() {
                         }`}
                       >
                         <div className="text-2xl">{avatar.emoji}</div>
-                        <p className="text-[10px] truncate">{avatar.name}</p>
+                        <p className="text-xs truncate">{avatar.name}</p>
                         {hasSaved && (
                           <div className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"></div>
                         )}
@@ -409,7 +409,7 @@ export default function AccessoryPositionPage() {
                             <div className="w-full h-full flex items-center justify-center text-2xl">🦸</div>
                           )}
                         </div>
-                        <p className="text-[10px] truncate">{avatar.name}</p>
+                        <p className="text-xs truncate">{avatar.name}</p>
                         {hasSaved && (
                           <div className="absolute top-1 right-1 w-2 h-2 bg-green-400 rounded-full"></div>
                         )}

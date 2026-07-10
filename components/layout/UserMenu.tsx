@@ -13,6 +13,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut, Settings, ShoppingBag, Sparkles } from 'lucide-react';
 import { signOut } from '@/lib/firebase/auth';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import type { User } from '@/types';
 
 interface Props {
@@ -49,17 +50,21 @@ export default function UserMenu({ user }: Props) {
     router.push('/');
   };
 
+  const { t } = useLanguage();
+
+  // Menu labels stay English in BOTH modes on purpose — everyday app words
+  // (Avatar/Shop/Setting) are part of the vocab the kid should absorb.
   const items = [
-    { label: 'My Avatar', href: '/my-avatar', icon: Sparkles },
-    { label: 'Shop', href: '/rewards', icon: ShoppingBag },
-    { label: 'Setting', href: '/profile', icon: Settings },
+    { label: t.common.myAvatar, href: '/my-avatar', icon: Sparkles },
+    { label: t.common.shop, href: '/rewards', icon: ShoppingBag },
+    { label: t.common.settings, href: '/profile', icon: Settings },
   ];
 
   return (
     <div ref={rootRef} className="relative shrink-0">
       <button
         onClick={() => setOpen((v) => !v)}
-        aria-label="เมนูผู้ใช้"
+        aria-label={t.common.userMenu}
         aria-expanded={open}
         className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full ring-2 ring-metaverse-purple/50 transition hover:ring-metaverse-pink/70 sm:h-11 sm:w-11"
       >
@@ -111,7 +116,7 @@ export default function UserMenu({ user }: Props) {
                 className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-300 transition hover:bg-rose-500/15 hover:text-rose-200"
               >
                 <LogOut className="h-4 w-4 shrink-0" />
-                Log out
+                {t.common.logout}
               </button>
             </nav>
           </motion.div>

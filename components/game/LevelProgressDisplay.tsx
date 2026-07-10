@@ -4,22 +4,41 @@
 import { motion } from 'framer-motion';
 import { GRADE_CONFIGS } from '@/lib/game/config';
 import { TrendingUp, Lock, CheckCircle, Star } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface LevelProgressDisplayProps {
   grade: string;
   currentLevel: number;
 }
 
+// Local bilingual UI strings for this component
+const STR = {
+  th: {
+    yourProgress: 'ความก้าวหน้าของคุณ',
+    currentLevel: 'ระดับปัจจุบัน',
+    ofThisRange: (pct: number) => `${pct}% ของช่วงนี้`,
+    overallProgress: 'ความก้าวหน้ารวม',
+  },
+  en: {
+    yourProgress: 'Your progress',
+    currentLevel: 'Current level',
+    ofThisRange: (pct: number) => `${pct}% of this range`,
+    overallProgress: 'Overall progress',
+  },
+} as const;
+
 export default function LevelProgressDisplay({ grade, currentLevel }: LevelProgressDisplayProps) {
   const gradeConfigs = GRADE_CONFIGS[grade];
-  
+  const { lang } = useLanguage();
+  const L = STR[lang];
+
   if (!gradeConfigs) return null;
   
   return (
     <div className="glass-dark rounded-2xl p-6 border border-metaverse-purple/20">
       <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
         <TrendingUp className="w-6 h-6 text-metaverse-purple" />
-        ความก้าวหน้าของคุณ
+        {L.yourProgress}
       </h3>
       
       <div className="space-y-3">
@@ -74,7 +93,7 @@ export default function LevelProgressDisplay({ grade, currentLevel }: LevelProgr
                       <p className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                         {currentLevel}
                       </p>
-                      <p className="text-xs text-white/60">ระดับปัจจุบัน</p>
+                      <p className="text-xs text-white/60">{L.currentLevel}</p>
                     </div>
                   </div>
                 )}
@@ -101,7 +120,7 @@ export default function LevelProgressDisplay({ grade, currentLevel }: LevelProgr
                     />
                   </div>
                   <p className="text-xs text-white/50 mt-1 text-right">
-                    {Math.round(((currentLevel - config.minLevel) / (config.maxLevel - config.minLevel + 1)) * 100)}% ของช่วงนี้
+                    {L.ofThisRange(Math.round(((currentLevel - config.minLevel) / (config.maxLevel - config.minLevel + 1)) * 100))}
                   </p>
                 </div>
               )}
@@ -113,7 +132,7 @@ export default function LevelProgressDisplay({ grade, currentLevel }: LevelProgr
       {/* Overall progress */}
       <div className="mt-6 pt-6 border-t border-metaverse-purple/20">
         <div className="flex justify-between text-sm mb-2">
-          <span className="text-white/60">ความก้าวหน้ารวม</span>
+          <span className="text-white/60">{L.overallProgress}</span>
           <span className="text-white font-semibold">{currentLevel}/100</span>
         </div>
         <div className="h-3 bg-white/10 rounded-full overflow-hidden">

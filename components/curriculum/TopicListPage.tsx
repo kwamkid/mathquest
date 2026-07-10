@@ -17,8 +17,23 @@ import LearnBreadcrumb, {
 } from '@/components/lesson/LearnBreadcrumb';
 import TopicIcon from '@/components/lesson/TopicIcon';
 import { getTopicProgress } from '@/lib/curricula/progress-helpers';
+import { localizeTitle, useLanguage } from '@/lib/i18n/LanguageContext';
 import type { Curriculum, CurriculumProgress, Topic } from '@/types/curriculum';
 import type { User } from '@/types';
+
+// Local bilingual UI strings (see lib/i18n/strings.ts conventions).
+const STR = {
+  th: {
+    pickTopic: 'เลือกหัวข้อที่อยากเรียน',
+    chaptersCount: (n: number) => `${n} บท`,
+    done: 'เรียนจบ',
+  },
+  en: {
+    pickTopic: 'Pick a topic to learn',
+    chaptersCount: (n: number) => `${n} chapters`,
+    done: 'Completed',
+  },
+} as const;
 
 interface Props {
   user: User | null;
@@ -47,6 +62,8 @@ export default function TopicListPage({
   buildTopicHref,
   breadcrumb,
 }: Props) {
+  const { lang, t } = useLanguage();
+  const L = STR[lang];
   const sortedTopics = [...curriculum.topics].sort((a, b) => a.order - b.order);
   const headingTitle = title ?? curriculum.name;
   const headingBody = description ?? curriculum.description;
@@ -70,19 +87,19 @@ export default function TopicListPage({
           </div>
           <p className="text-base text-white/70">{headingBody}</p>
           <p className="text-sm font-semibold text-white/50">
-            เลือกหัวข้อที่อยากเรียน
+            {L.pickTopic}
           </p>
         </header>
 
         <div className="space-y-3">
-          {sortedTopics.map((t) => {
-            const tp = getTopicProgress(progress, t);
-            const hasContent = t.subTopics.length > 0;
+          {sortedTopics.map((topicItem) => {
+            const tp = getTopicProgress(progress, topicItem);
+            const hasContent = topicItem.subTopics.length > 0;
             const isDone = tp.done && tp.total > 0;
             return (
               <Link
-                key={t.id}
-                href={hasContent ? buildTopicHref(t) : '#'}
+                key={topicItem.id}
+                href={hasContent ? buildTopicHref(topicItem) : '#'}
                 aria-disabled={!hasContent}
                 className={`flex items-center justify-between gap-3 rounded-2xl p-5 ${
                   !hasContent
@@ -94,27 +111,27 @@ export default function TopicListPage({
               >
                 <div className="flex items-start gap-3">
                   <TopicIcon
-                    topic={t}
+                    topic={topicItem}
                     className="mt-1 h-8 w-8 shrink-0 text-pink-300"
                     emojiClassName="text-3xl leading-none"
                   />
                   <div>
                     <h2 className="text-lg font-bold text-white">
-                      {t.thaiTitle ?? t.title}
+                      {localizeTitle(lang, topicItem)}
                     </h2>
                     <p className="mt-0.5 text-sm text-white/70">
-                      {t.description}
+                      {topicItem.description}
                     </p>
                     <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/60">
-                      <span>{t.subTopics.length} บท</span>
+                      <span>{L.chaptersCount(topicItem.subTopics.length)}</span>
                       {tp.total > 0 && (
                         <span>
-                          {tp.completed}/{tp.total} บทเรียน
+                          {t.curriculum.lessonsProgress(tp.completed, tp.total)}
                         </span>
                       )}
                       {isDone && (
                         <span className="inline-flex items-center gap-1 text-emerald-300">
-                          <CheckCircle2 className="h-4 w-4" /> เรียนจบ
+                          <CheckCircle2 className="h-4 w-4" /> {L.done}
                         </span>
                       )}
                     </div>
@@ -131,7 +148,7 @@ export default function TopicListPage({
                 {isDone ? (
                   <CheckCircle2
                     className="h-10 w-10 shrink-0 text-emerald-400"
-                    aria-label="เรียนจบ"
+                    aria-label={L.done}
                   />
                 ) : (
                   <ChevronRight className="h-6 w-6 shrink-0 text-white/60" />

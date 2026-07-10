@@ -11,12 +11,20 @@ import AuthGuard from '@/components/auth/AuthGuard';
 import ChapterPage from '@/components/curriculum/ChapterPage';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { getCurriculum } from '@/lib/curricula';
+import { localizeTitle, useLanguage } from '@/lib/i18n/LanguageContext';
 
 const CURRICULUM_ID = 'life-math-beginner';
+
+const STR = {
+  th: { lessonNotFound: 'ไม่พบบทเรียนนี้' },
+  en: { lessonNotFound: 'Lesson not found' },
+} as const;
 
 export default function LifeMathChapterPage() {
   const params = useParams();
   const { user } = useAuth();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const topicSlug = String(params.topicSlug);
   const subTopicSlug = String(params.subTopicSlug);
 
@@ -28,7 +36,7 @@ export default function LifeMathChapterPage() {
     return (
       <AuthGuard>
         <div className="learn-bg flex min-h-screen items-center justify-center p-6">
-          <p className="text-lg font-semibold text-white">ไม่พบบทเรียนนี้</p>
+          <p className="text-lg font-semibold text-white">{L.lessonNotFound}</p>
         </div>
       </AuthGuard>
     );
@@ -53,14 +61,14 @@ export default function LifeMathChapterPage() {
             ? []
             : [
                 {
-                  label: topic.thaiTitle ?? topic.title,
+                  label: localizeTitle(lang, topic),
                   href: `/life-math/${topic.slug}`,
                 },
               ]),
           {
             label: collapseTopic
-              ? topic.thaiTitle ?? topic.title
-              : subTopic.thaiTitle ?? subTopic.title,
+              ? localizeTitle(lang, topic)
+              : localizeTitle(lang, subTopic),
           },
         ]}
         collapseTopicTitle={collapseTopic}

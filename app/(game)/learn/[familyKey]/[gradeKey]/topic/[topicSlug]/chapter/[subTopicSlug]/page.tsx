@@ -13,10 +13,18 @@ import ChapterPage from '@/components/curriculum/ChapterPage';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { getFamilyGrade } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
+import { localizeTitle, useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: { lessonNotFound: 'ไม่พบบทเรียนนี้' },
+  en: { lessonNotFound: 'Lesson not found' },
+} as const;
 
 export default function SubTopicPage() {
   const params = useParams();
   const { user } = useAuth();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const familyKey = String(params.familyKey);
   const gradeKey = String(params.gradeKey);
   const topicSlug = String(params.topicSlug);
@@ -33,13 +41,14 @@ export default function SubTopicPage() {
     return (
       <AuthGuard>
         <div className="learn-bg flex min-h-screen items-center justify-center p-6">
-          <p className="text-lg font-semibold text-white">ไม่พบบทเรียนนี้</p>
+          <p className="text-lg font-semibold text-white">{L.lessonNotFound}</p>
         </div>
       </AuthGuard>
     );
   }
 
   const { family, grade } = resolved;
+  const famName = lang === 'en' ? family.name : family.thaiName ?? family.name;
   const progress = user?.curriculumProgress?.[curriculum.id];
   const hideGrade = !!family.skipGradePicker;
   const collapseTopic = topic.subTopics.length === 1;
@@ -51,7 +60,7 @@ export default function SubTopicPage() {
   const eyebrow =
     collapseTopic || hideGrade
       ? undefined
-      : `${grade.label} · ${topic.thaiTitle ?? topic.title}`;
+      : `${grade.label} · ${localizeTitle(lang, topic)}`;
 
   return (
     <AuthGuard>
@@ -63,7 +72,7 @@ export default function SubTopicPage() {
         chapterUrl={chapterUrl}
         breadcrumb={[
           {
-            label: family.thaiName ?? family.name,
+            label: famName,
             href: `/learn/${family.key}/${grade.key}`,
           },
           ...(hideGrade
@@ -78,14 +87,14 @@ export default function SubTopicPage() {
             ? []
             : [
                 {
-                  label: topic.thaiTitle ?? topic.title,
+                  label: localizeTitle(lang, topic),
                   href: `/learn/${family.key}/${grade.key}/topic/${topic.slug}`,
                 },
               ]),
           {
             label: collapseTopic
-              ? topic.thaiTitle ?? topic.title
-              : subTopic.thaiTitle ?? subTopic.title,
+              ? localizeTitle(lang, topic)
+              : localizeTitle(lang, subTopic),
           },
         ]}
         eyebrow={eyebrow}

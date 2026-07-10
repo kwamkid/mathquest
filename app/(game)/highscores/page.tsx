@@ -9,10 +9,71 @@ import { LevelScore } from '@/types';
 import { ArrowLeft, Trophy, Star, TrendingUp, Calendar, Target, Zap, ChevronRight } from 'lucide-react';
 import { getQuestionCount, getLevelConfig, GRADE_CONFIGS } from '@/lib/game/config';
 import AppHeader from '@/components/layout/AppHeader';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface ScoreWithDescription extends LevelScore {
   description: string;
 }
+
+// Local bilingual grade display names (UI chrome)
+const GRADE_NAMES = {
+  th: {
+    K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
+    P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
+    P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
+    M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
+    M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
+  } as Record<string, string>,
+  en: {
+    K1: 'Kindergarten 1', K2: 'Kindergarten 2', K3: 'Kindergarten 3',
+    P1: 'Grade 1', P2: 'Grade 2', P3: 'Grade 3',
+    P4: 'Grade 4', P5: 'Grade 5', P6: 'Grade 6',
+    M1: 'Grade 7', M2: 'Grade 8', M3: 'Grade 9',
+    M4: 'Grade 10', M5: 'Grade 11', M6: 'Grade 12',
+  } as Record<string, string>,
+} as const;
+
+// Local bilingual UI strings for this page
+const STR = {
+  th: {
+    pageTitle: 'คะแนนสูงสุดของฉัน',
+    nowPlaying: 'กำลังเล่น',
+    highScoreOf: (score: number, total: number) => `คะแนนสูงสุด: ${score}/${total}`,
+    successRate: 'ความสำเร็จ',
+    levelsPlayedStat: 'Level ที่เล่น',
+    totalScore: 'คะแนนรวม',
+    average: 'เฉลี่ย',
+    current: 'ปัจจุบัน',
+    playedLevelsTitle: (grade: string) => `${grade} - Level ที่เล่นแล้ว`,
+    noHistoryTitle: 'ยังไม่มีประวัติการเล่น',
+    noHistoryDesc: 'เริ่มเล่นเกมเพื่อบันทึกคะแนนสูงสุดของคุณ',
+    levelCount: (n: number) => `${n} Level`,
+    percentAverage: (pct: number) => `${pct}% เฉลี่ย`,
+    playedTimes: (n: number) => `เล่น ${n} ครั้ง`,
+    tipLabel: '💡 เคล็ดลับ:',
+    tipBody:
+      'กลับมาเล่น level เดิมเพื่อทำคะแนนให้ดีขึ้น คะแนนสูงสุดจะถูกบันทึกไว้และนับรวมในคะแนนรวมของคุณ',
+  },
+  en: {
+    pageTitle: 'My High Scores',
+    nowPlaying: 'Playing',
+    highScoreOf: (score: number, total: number) => `High score: ${score}/${total}`,
+    successRate: 'Success rate',
+    levelsPlayedStat: 'Levels played',
+    totalScore: 'Total score',
+    average: 'Average',
+    current: 'Current',
+    playedLevelsTitle: (grade: string) => `${grade} - Levels played`,
+    noHistoryTitle: 'No play history yet',
+    noHistoryDesc: 'Play a game to record your first high score',
+    levelCount: (n: number) => `${n} levels`,
+    percentAverage: (pct: number) => `${pct}% average`,
+    playedTimes: (n: number) => `Played ${n} times`,
+    tipLabel: '💡 Tip:',
+    tipBody:
+      'Replay a level to beat your score — your best score is saved and counts toward your total.',
+  },
+} as const;
 
 interface GroupedScores {
   [key: string]: {
@@ -26,6 +87,8 @@ interface GroupedScores {
 export default function HighScoresPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [groupedScores, setGroupedScores] = useState<GroupedScores>({});
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
@@ -99,14 +162,7 @@ export default function HighScoresPage() {
   };
 
   const getGradeDisplayName = (grade: string): string => {
-    const gradeMap: Record<string, string> = {
-      K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
-      P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
-      P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
-      M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
-      M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
-    };
-    return gradeMap[grade] || grade;
+    return GRADE_NAMES[lang][grade] || grade;
   };
 
   const calculateTotalHighScore = (): number => {
@@ -142,7 +198,7 @@ export default function HighScoresPage() {
       <AppHeader
         user={user}
         variant="sub"
-        title="คะแนนสูงสุดของฉัน"
+        title={L.pageTitle}
         titleIcon={<Trophy className="h-4 w-4 text-yellow-400" />}
         backHref="/learn"
       />
@@ -168,10 +224,10 @@ export default function HighScoresPage() {
                   </span>
                 </h2>
                 <p className="text-sm md:text-base text-white/80">
-                  กำลังเล่น <span className="font-bold text-metaverse-purple">Level {user.level}</span>
+                  {L.nowPlaying} <span className="font-bold text-metaverse-purple">Level {user.level}</span>
                   {user.levelScores && user.levelScores[user.level.toString()] && (
                     <span className="text-white/60 hidden sm:inline">
-                      {' '}• คะแนนสูงสุด: {user.levelScores[user.level.toString()].highScore}/{questionsPerLevel}
+                      {' '}• {L.highScoreOf(user.levelScores[user.level.toString()].highScore, questionsPerLevel)}
                     </span>
                   )}
                 </p>
@@ -182,7 +238,7 @@ export default function HighScoresPage() {
                 <p className="text-2xl md:text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                   {Math.round((user.levelScores[user.level.toString()].highScore / questionsPerLevel) * 100)}%
                 </p>
-                <p className="text-xs text-white/60">ความสำเร็จ</p>
+                <p className="text-xs text-white/60">{L.successRate}</p>
               </div>
             )}
           </div>
@@ -200,7 +256,7 @@ export default function HighScoresPage() {
             <p className="text-lg md:text-2xl font-bold text-white">
               {calculateTotalLevelsPlayed()}
             </p>
-            <p className="text-xs text-white/60">Level ที่เล่น</p>
+            <p className="text-xs text-white/60">{L.levelsPlayedStat}</p>
           </div>
           
           <div className="glass-dark rounded-lg p-3 border border-metaverse-purple/30 text-center">
@@ -208,7 +264,7 @@ export default function HighScoresPage() {
             <p className="text-lg md:text-2xl font-bold text-white">
               {calculateTotalHighScore()}
             </p>
-            <p className="text-xs text-white/60">คะแนนรวม</p>
+            <p className="text-xs text-white/60">{L.totalScore}</p>
           </div>
           
           <div className="glass-dark rounded-lg p-3 border border-metaverse-purple/30 text-center">
@@ -216,7 +272,7 @@ export default function HighScoresPage() {
             <p className="text-lg md:text-2xl font-bold text-white">
               {calculateAveragePercentage()}
             </p>
-            <p className="text-xs text-white/60">เฉลี่ย</p>
+            <p className="text-xs text-white/60">{L.average}</p>
           </div>
           
           <div className="glass-dark rounded-lg p-3 border border-metaverse-purple/30 text-center">
@@ -224,7 +280,7 @@ export default function HighScoresPage() {
             <p className="text-lg md:text-2xl font-bold text-white">
               Level {user.level}
             </p>
-            <p className="text-xs text-white/60">ปัจจุบัน</p>
+            <p className="text-xs text-white/60">{L.current}</p>
           </div>
         </motion.div>
 
@@ -236,14 +292,14 @@ export default function HighScoresPage() {
           className="glass-dark rounded-2xl p-4 border border-metaverse-purple/30 mb-4"
         >
           <h3 className="text-lg md:text-xl font-bold text-white mb-4">
-            {getGradeDisplayName(user.grade)} - Level ที่เล่นแล้ว
+            {L.playedLevelsTitle(getGradeDisplayName(user.grade))}
           </h3>
           
           {Object.keys(groupedScores).length === 0 ? (
             <div className="text-center py-12">
               <Trophy className="w-16 h-16 md:w-20 md:h-20 text-white/30 mx-auto mb-4" />
-              <p className="text-lg md:text-xl text-white/60 mb-2">ยังไม่มีประวัติการเล่น</p>
-              <p className="text-sm md:text-base text-white/40">เริ่มเล่นเกมเพื่อบันทึกคะแนนสูงสุดของคุณ</p>
+              <p className="text-lg md:text-xl text-white/60 mb-2">{L.noHistoryTitle}</p>
+              <p className="text-sm md:text-base text-white/40">{L.noHistoryDesc}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -284,7 +340,7 @@ export default function HighScoresPage() {
                             Level {group.minLevel}-{group.maxLevel}
                             {hasCurrentLevel && (
                               <span className="text-xs px-2 py-1 bg-gradient-to-r from-metaverse-purple to-metaverse-pink text-white rounded-full">
-                                กำลังเล่น
+                                {L.nowPlaying}
                               </span>
                             )}
                           </h4>
@@ -294,14 +350,14 @@ export default function HighScoresPage() {
                       
                       <div className="text-right">
                         <p className="text-lg font-bold text-white">
-                          {group.scores.length} Level
+                          {L.levelCount(group.scores.length)}
                         </p>
                         <p className={`text-sm font-medium ${
                           groupPercentage >= 85 ? 'text-green-400' :
                           groupPercentage >= 50 ? 'text-yellow-400' :
                           'text-red-400'
                         }`}>
-                          {groupPercentage}% เฉลี่ย
+                          {L.percentAverage(groupPercentage)}
                         </p>
                       </div>
                     </button>
@@ -349,7 +405,7 @@ export default function HighScoresPage() {
                                     <div className="flex items-center gap-2 mb-1">
                                       {isCurrentLevel && (
                                         <span className="text-xs px-2 py-0.5 bg-gradient-to-r from-metaverse-purple to-metaverse-pink text-white rounded-full whitespace-nowrap">
-                                          กำลังเล่น
+                                          {L.nowPlaying}
                                         </span>
                                       )}
                                       {percentage === 100 && (
@@ -359,10 +415,10 @@ export default function HighScoresPage() {
                                     <div className="flex items-center gap-4 text-xs md:text-sm text-white/60">
                                       <span className="flex items-center gap-1">
                                         <Calendar className="w-3 h-3 md:w-4 md:h-4" />
-                                        <span className="hidden sm:inline">{new Date(score.lastPlayed).toLocaleDateString('th-TH')}</span>
-                                        <span className="sm:hidden">{new Date(score.lastPlayed).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })}</span>
+                                        <span className="hidden sm:inline">{new Date(score.lastPlayed).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US')}</span>
+                                        <span className="sm:hidden">{new Date(score.lastPlayed).toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', { day: 'numeric', month: 'short' })}</span>
                                       </span>
-                                      <span>เล่น {score.playCount} ครั้ง</span>
+                                      <span>{L.playedTimes(score.playCount)}</span>
                                     </div>
                                   </div>
                                   
@@ -401,8 +457,7 @@ export default function HighScoresPage() {
           className="glass-dark p-4 rounded-xl text-sm border border-metaverse-purple/20 mb-8"
         >
           <p className="text-white/60">
-            <span className="font-semibold text-metaverse-purple">💡 เคล็ดลับ:</span> กลับมาเล่น level เดิมเพื่อทำคะแนนให้ดีขึ้น 
-            คะแนนสูงสุดจะถูกบันทึกไว้และนับรวมในคะแนนรวมของคุณ
+            <span className="font-semibold text-metaverse-purple">{L.tipLabel}</span> {L.tipBody}
           </p>
         </motion.div>
       </div>

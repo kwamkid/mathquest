@@ -4,6 +4,26 @@
 import { motion } from 'framer-motion';
 import { Crown, Star, Check } from 'lucide-react';
 import { TitleBadge } from '@/types/avatar';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    currentTitle: 'ฉายาปัจจุบัน:',
+    removeTitle: 'ถอดฉายา',
+    noTitle: 'ไม่ได้ใส่ฉายา',
+    ownedTitles: 'Title Badges ที่มี',
+    empty: 'ยังไม่มี Title Badge',
+    emptyHint: 'แลกรางวัลเพื่อปลดล็อค Title Badge พิเศษ!',
+  },
+  en: {
+    currentTitle: 'Current title:',
+    removeTitle: 'Remove title',
+    noTitle: 'No title equipped',
+    ownedTitles: 'Your Title Badges',
+    empty: 'No Title Badges yet',
+    emptyHint: 'Redeem rewards to unlock special Title Badges!',
+  },
+} as const;
 
 interface TitleBadgesTabProps {
   titleBadges: TitleBadge[];
@@ -16,6 +36,8 @@ export default function TitleBadgesTab({
   selectedTitle,
   onTitleChange
 }: TitleBadgesTabProps) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const getRarityStars = (rarity: string): number => {
     switch (rarity) {
       case 'common': return 1;
@@ -36,7 +58,7 @@ export default function TitleBadgesTab({
     >
       {/* Current Title */}
       <div className="glass-dark rounded-xl p-4 border border-metaverse-purple/30">
-        <p className="text-white/60 mb-2 text-sm">ฉายาปัจจุบัน:</p>
+        <p className="text-white/60 mb-2 text-sm">{L.currentTitle}</p>
         <div className="glass rounded-lg p-3 border border-metaverse-purple/30">
           {selectedTitle ? (
             <div className="flex items-center justify-between">
@@ -53,18 +75,18 @@ export default function TitleBadgesTab({
                 onClick={() => onTitleChange(null)}
                 className="text-red-400 hover:text-red-300 text-xs"
               >
-                ถอดฉายา
+                {L.removeTitle}
               </button>
             </div>
           ) : (
-            <p className="text-white/40 text-center text-sm">ไม่ได้ใส่ฉายา</p>
+            <p className="text-white/40 text-center text-sm">{L.noTitle}</p>
           )}
         </div>
       </div>
       
       {/* Available Titles */}
       <div className="glass-dark rounded-xl p-4 border border-metaverse-purple/30">
-        <h3 className="text-lg font-bold text-white mb-4">Title Badges ที่มี</h3>
+        <h3 className="text-lg font-bold text-white mb-4">{L.ownedTitles}</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {titleBadges.map(title => (
@@ -105,8 +127,8 @@ export default function TitleBadgesTab({
         {titleBadges.length === 0 && (
           <div className="text-center py-8">
             <Crown className="w-12 h-12 text-white/20 mx-auto mb-3" />
-            <p className="text-white/40">ยังไม่มี Title Badge</p>
-            <p className="text-xs text-white/30 mt-1">แลกรางวัลเพื่อปลดล็อค Title Badge พิเศษ!</p>
+            <p className="text-white/40">{L.empty}</p>
+            <p className="text-xs text-white/30 mt-1">{L.emptyHint}</p>
           </div>
         )}
       </div>

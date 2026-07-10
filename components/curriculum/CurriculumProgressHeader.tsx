@@ -11,6 +11,7 @@
 'use client';
 
 import { PlayCircle } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface Props {
   // Curriculum name shown as the card title (e.g. "Life Math · …").
@@ -29,17 +30,18 @@ export default function CurriculumProgressHeader({
   showContinue,
   onContinue,
 }: Props) {
+  const { t } = useLanguage();
   const pct =
     totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
   const continueCta = showContinue && onContinue && (
     <button
       onClick={onContinue}
-      aria-label="เรียนต่อ"
+      aria-label={t.common.continue}
       className="learn-accent-pill flex h-full w-full flex-col items-center justify-center gap-1 rounded-2xl px-4 py-3 shadow-lg shadow-pink-500/20 transition hover:brightness-110 active:scale-[0.99]"
     >
       <PlayCircle className="h-9 w-9 shrink-0" />
-      <span className="text-sm font-bold">เรียนต่อ</span>
+      <span className="text-sm font-bold">{t.common.continue}</span>
     </button>
   );
 
@@ -60,7 +62,7 @@ export default function CurriculumProgressHeader({
         <span className="shrink-0 text-sm font-bold text-white">{pct}%</span>
       </div>
       <p className="mt-1 text-xs text-white/55">
-        {completedCount}/{totalLessons} บทเรียน
+        {t.curriculum.lessonsProgress(completedCount, totalLessons)}
       </p>
     </div>
   );

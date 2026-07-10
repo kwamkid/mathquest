@@ -13,17 +13,96 @@ import Link from 'next/link';
 import { TITLE_BADGES } from '@/lib/data/items';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface GameHeaderProps {
   user: User;
   hideActions?: boolean;
 }
 
+// Local bilingual grade display names (UI chrome)
+const GRADE_NAMES = {
+  th: {
+    K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
+    P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
+    P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
+    M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
+    M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
+  } as Record<string, string>,
+  en: {
+    K1: 'Kindergarten 1', K2: 'Kindergarten 2', K3: 'Kindergarten 3',
+    P1: 'Grade 1', P2: 'Grade 2', P3: 'Grade 3',
+    P4: 'Grade 4', P5: 'Grade 5', P6: 'Grade 6',
+    M1: 'Grade 7', M2: 'Grade 8', M3: 'Grade 9',
+    M4: 'Grade 10', M5: 'Grade 11', M6: 'Grade 12',
+  } as Record<string, string>,
+} as const;
+
+// Local bilingual UI strings for this component
+const STR = {
+  th: {
+    tapToView: 'กดดู',
+    totalScore: 'คะแนนรวม',
+    backHomeTitle: 'กลับหน้าแรก (เรียน / เล่นเกม)',
+    expSystem: 'ระบบ EXP',
+    expSubtitle: 'Experience Points',
+    yourCurrentExp: 'EXP ปัจจุบันของคุณ',
+    goToRewardShop: 'ไปที่ Reward Shop',
+    playStreakDays: (days: number) => `เล่นต่อเนื่อง ${days} วัน!`,
+    streakBonusPerGame: (exp: number) => `รับโบนัส ${exp} EXP ต่อเกม`,
+    howToEarn: 'วิธีรับ EXP:',
+    baseLabel: 'คะแนนพื้นฐาน:',
+    baseDesc: '10-20 EXP ต่อข้อที่ถูก (เพิ่มตาม Level)',
+    achievementLabel: 'โบนัสความสำเร็จ:',
+    achievementDesc: 'สูงสุด 100 EXP (Perfect Score)',
+    firstOfDayLabel: 'โบนัสวันแรก:',
+    firstOfDayDesc: '50 EXP (เล่นครั้งแรกของวัน)',
+    streakLabel: 'โบนัสต่อเนื่อง:',
+    streakDesc: '10-100 EXP (เล่นทุกวัน)',
+    penaltyLabel: 'หักคะแนน:',
+    penaltyDesc: '-50% ถ้าเล่น Level เดิมเกิน 3 ครั้ง',
+    spendExpTitle: 'ใช้ EXP แลกรางวัล',
+    spendExpDesc:
+      'นำ EXP ไปแลก Avatars พิเศษ, เครื่องประดับ, Title Badges, Boost Items หรือของรางวัลจริง!',
+    realPrizes: '📦 ของจริง',
+    gotIt: 'เข้าใจแล้ว',
+  },
+  en: {
+    tapToView: 'Tap!',
+    totalScore: 'Total score',
+    backHomeTitle: 'Back to home (learn / play)',
+    expSystem: 'EXP System',
+    expSubtitle: 'Experience Points',
+    yourCurrentExp: 'Your current EXP',
+    goToRewardShop: 'Go to Reward Shop',
+    playStreakDays: (days: number) => `${days}-day play streak!`,
+    streakBonusPerGame: (exp: number) => `Bonus ${exp} EXP per game`,
+    howToEarn: 'How to earn EXP:',
+    baseLabel: 'Base points:',
+    baseDesc: '10-20 EXP per correct answer (grows with Level)',
+    achievementLabel: 'Achievement bonus:',
+    achievementDesc: 'up to 100 EXP (Perfect Score)',
+    firstOfDayLabel: 'First game of the day:',
+    firstOfDayDesc: '50 EXP',
+    streakLabel: 'Streak bonus:',
+    streakDesc: '10-100 EXP (play every day)',
+    penaltyLabel: 'Penalty:',
+    penaltyDesc: '-50% after playing the same Level more than 3 times',
+    spendExpTitle: 'Spend EXP on rewards',
+    spendExpDesc:
+      'Trade your EXP for special Avatars, accessories, Title Badges, Boost Items, or real prizes!',
+    realPrizes: '📦 Real prizes',
+    gotIt: 'Got it!',
+  },
+} as const;
+
 // ✅ Move cache outside component to persist across re-renders
 const titleCache = new Map<string, { name: string; color: string }>();
 
 function GameHeader({ user, hideActions = false }: GameHeaderProps) {
   const router = useRouter();
+  const { lang, t } = useLanguage();
+  const L = STR[lang];
   const [showExpModal, setShowExpModal] = useState(false);
   const [titleData, setTitleData] = useState<{ name: string; color: string } | null>(null);
   const [isAvatarHovered, setIsAvatarHovered] = useState(false);
@@ -104,14 +183,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
 
   // Get grade display name
   const getGradeDisplayName = (grade: string): string => {
-    const gradeMap: Record<string, string> = {
-      K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
-      P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
-      P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
-      M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
-      M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
-    };
-    return gradeMap[grade] || grade;
+    return GRADE_NAMES[lang][grade] || grade;
   };
 
   return (
@@ -189,7 +261,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                     <div className="p-1.5 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full shadow-lg">
                       <ShoppingBag className="w-4 h-4 text-white" />
                     </div>
-                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full px-1">
+                    <div className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full px-1">
                       SHOP
                     </div>
                   </Link>
@@ -198,8 +270,8 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
 
                   <motion.button
                     onClick={() => router.push('/')}
-                    aria-label="กลับหน้าแรก"
-                    title="กลับหน้าแรก (เรียน / เล่นเกม)"
+                    aria-label={t.common.backHome}
+                    title={L.backHomeTitle}
                     className="p-1.5 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
@@ -234,7 +306,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                 whileHover={{ scale: 1.02 }}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-white/60">คะแนน</span>
+                  <span className="text-xs text-white/60">{t.common.score}</span>
                   <p className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
                     {user.totalScore.toLocaleString()}
                   </p>
@@ -247,7 +319,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                 onClick={() => !hideActions && setShowExpModal(true)}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-white/60">EXP</span>
+                  <span className="text-xs text-white/60">EXP</span>
                   <div className="flex items-center gap-1">
                     <p className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                       {user.experience.toLocaleString()}
@@ -258,8 +330,8 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                   </div>
                 </div>
                 {!hideActions && (
-                  <div className="absolute -top-0.5 -right-0.5 bg-yellow-400 text-metaverse-black rounded-full px-1 py-0.5 text-[8px] font-bold shadow-lg">
-                    กดดู
+                  <div className="absolute -top-0.5 -right-0.5 bg-yellow-400 text-metaverse-black rounded-full px-1 py-0.5 text-xs font-bold shadow-lg">
+                    {L.tapToView}
                   </div>
                 )}
               </motion.div>
@@ -340,7 +412,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                     <p className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
                       {user.totalScore.toLocaleString()}
                     </p>
-                    <p className="text-[10px] text-white/60">คะแนนรวม</p>
+                    <p className="text-xs text-white/60">{L.totalScore}</p>
                   </div>
                 </motion.div>
                 <motion.div 
@@ -357,7 +429,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                       <Info className="w-3.5 h-3.5 text-yellow-400" />
                     )}
                   </div>
-                  <p className="text-[10px] text-white/60">EXP</p>
+                  <p className="text-xs text-white/60">EXP</p>
                 </motion.div>
               </div>
 
@@ -372,7 +444,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                       <div className="p-2 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-full shadow-lg">
                         <ShoppingBag className="w-5 h-5 text-white" />
                       </div>
-                      <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold rounded-full px-2 py-0.5 shadow-md">
+                      <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5 shadow-md">
                         SHOP
                       </div>
                     </Link>
@@ -381,8 +453,8 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
 
                     <motion.button
                       onClick={() => router.push('/')}
-                      aria-label="กลับหน้าแรก"
-                      title="กลับหน้าแรก (เรียน / เล่นเกม)"
+                      aria-label={t.common.backHome}
+                      title={L.backHomeTitle}
                       className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.95 }}
@@ -439,8 +511,8 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                     <Zap className="w-8 h-8 text-yellow-400" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold text-white">ระบบ EXP</h3>
-                    <p className="text-sm text-white/60">Experience Points</p>
+                    <h3 className="text-2xl font-bold text-white">{L.expSystem}</h3>
+                    <p className="text-sm text-white/60">{L.expSubtitle}</p>
                   </div>
                 </div>
                 <button
@@ -455,7 +527,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
               <div className="glass bg-gradient-to-r from-metaverse-purple/10 to-metaverse-pink/10 rounded-xl p-4 mb-6 border border-metaverse-purple/30">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-white/60">EXP ปัจจุบันของคุณ</p>
+                    <p className="text-sm text-white/60">{L.yourCurrentExp}</p>
                     <p className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-pink">
                       {user.experience.toLocaleString()}
                     </p>
@@ -466,7 +538,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                   href="/rewards"
                   className="mt-3 block text-center py-2 metaverse-button rounded-lg text-white font-medium"
                 >
-                  ไปที่ Reward Shop
+                  {L.goToRewardShop}
                 </Link>
               </div>
 
@@ -477,10 +549,10 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                     <Crown className="w-6 h-6 text-yellow-400" />
                     <div>
                       <p className="text-white font-medium">
-                        เล่นต่อเนื่อง {user.playStreak} วัน!
+                        {L.playStreakDays(user.playStreak)}
                       </p>
                       <p className="text-sm text-white/60">
-                        รับโบนัส {Math.min(user.playStreak * 10, 100)} EXP ต่อเกม
+                        {L.streakBonusPerGame(Math.min(user.playStreak * 10, 100))}
                       </p>
                     </div>
                   </div>
@@ -489,36 +561,36 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
 
               {/* How to earn EXP */}
               <div className="space-y-3 mb-6">
-                <h4 className="text-lg font-semibold text-white mb-3">วิธีรับ EXP:</h4>
+                <h4 className="text-lg font-semibold text-white mb-3">{L.howToEarn}</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start gap-2">
                     <span className="text-metaverse-purple">•</span>
                     <p className="text-white/80">
-                      <span className="font-medium">คะแนนพื้นฐาน:</span> 10-20 EXP ต่อข้อที่ถูก (เพิ่มตาม Level)
+                      <span className="font-medium">{L.baseLabel}</span> {L.baseDesc}
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-metaverse-purple">•</span>
                     <p className="text-white/80">
-                      <span className="font-medium">โบนัสความสำเร็จ:</span> สูงสุด 100 EXP (Perfect Score)
+                      <span className="font-medium">{L.achievementLabel}</span> {L.achievementDesc}
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-metaverse-purple">•</span>
                     <p className="text-white/80">
-                      <span className="font-medium">โบนัสวันแรก:</span> 50 EXP (เล่นครั้งแรกของวัน)
+                      <span className="font-medium">{L.firstOfDayLabel}</span> {L.firstOfDayDesc}
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-metaverse-purple">•</span>
                     <p className="text-white/80">
-                      <span className="font-medium">โบนัสต่อเนื่อง:</span> 10-100 EXP (เล่นทุกวัน)
+                      <span className="font-medium">{L.streakLabel}</span> {L.streakDesc}
                     </p>
                   </div>
                   <div className="flex items-start gap-2">
                     <span className="text-red-400">•</span>
                     <p className="text-white/80">
-                      <span className="font-medium text-red-400">หักคะแนน:</span> -50% ถ้าเล่น Level เดิมเกิน 3 ครั้ง
+                      <span className="font-medium text-red-400">{L.penaltyLabel}</span> {L.penaltyDesc}
                     </p>
                   </div>
                 </div>
@@ -529,17 +601,16 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                 <div className="flex items-start gap-3">
                   <Gift className="w-6 h-6 text-metaverse-purple mt-0.5" />
                   <div>
-                    <p className="font-semibold text-white mb-1">ใช้ EXP แลกรางวัล</p>
+                    <p className="font-semibold text-white mb-1">{L.spendExpTitle}</p>
                     <p className="text-sm text-white/70 mb-2">
-                      นำ EXP ไปแลก Avatars พิเศษ, เครื่องประดับ, Title Badges, 
-                      Boost Items หรือของรางวัลจริง!
+                      {L.spendExpDesc}
                     </p>
                     <div className="flex flex-wrap gap-2 text-xs">
                       <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">🦸 Premium Avatars</span>
                       <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">👑 Accessories</span>
                       <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">🏆 Title Badges</span>
                       <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">⚡ EXP Boosts</span>
-                      <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">📦 ของจริง</span>
+                      <span className="px-2 py-1 bg-white/10 rounded-full text-white/80">{L.realPrizes}</span>
                     </div>
                   </div>
                 </div>
@@ -552,7 +623,7 @@ function GameHeader({ user, hideActions = false }: GameHeaderProps) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                เข้าใจแล้ว
+                {L.gotIt}
               </motion.button>
             </motion.div>
           </motion.div>

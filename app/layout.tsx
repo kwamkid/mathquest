@@ -3,6 +3,7 @@ import { IBM_Plex_Sans_Thai } from "next/font/google";
 import "./globals.css";
 // ลอง import ทั้งสองแบบ
 import { AuthProvider } from "@/lib/contexts/AuthContext";
+import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 // หรือใช้ default import
 // import AuthProvider from "@/lib/contexts/AuthContext";
 
@@ -33,7 +34,9 @@ export default function RootLayout({
     <html lang="th" suppressHydrationWarning>
       <body className={`${ibmPlexSansThai.className} antialiased`} suppressHydrationWarning>
         <AuthProvider>
-          {children}
+          <LanguageProvider>
+            {children}
+          </LanguageProvider>
         </AuthProvider>
       </body>
     </html>

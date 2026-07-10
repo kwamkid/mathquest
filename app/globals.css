@@ -378,7 +378,7 @@ select:-webkit-autofill:active {
   padding: 0.75rem;
   display: flex;
   gap: 0.5rem;
-  font-size: 0.875rem;
+  font-size: 1rem; /* global type rule: regular text = 16px, nothing < 14px */
 }
 
 /* Correct/incorrect feedback boxes */

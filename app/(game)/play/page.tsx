@@ -36,12 +36,93 @@ import {
   Edit3
 } from 'lucide-react';
 import Link from 'next/link';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+// Local bilingual grade display names (UI chrome)
+const GRADE_NAMES = {
+  th: {
+    K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
+    P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
+    P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
+    M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
+    M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
+  } as Record<string, string>,
+  en: {
+    K1: 'Kindergarten 1', K2: 'Kindergarten 2', K3: 'Kindergarten 3',
+    P1: 'Grade 1', P2: 'Grade 2', P3: 'Grade 3',
+    P4: 'Grade 4', P5: 'Grade 5', P6: 'Grade 6',
+    M1: 'Grade 7', M2: 'Grade 8', M3: 'Grade 9',
+    M4: 'Grade 10', M5: 'Grade 11', M6: 'Grade 12',
+  } as Record<string, string>,
+} as const;
+
+// Local bilingual UI strings for this page
+const STR = {
+  th: {
+    boostForGame: (multiplier: number) => `EXP x${multiplier} สำหรับเกมนี้`,
+    boostTimeLeft: (minutes: number) => `เหลือเวลา ${minutes} นาที`,
+    manageAvatar: 'จัดการ Avatar',
+    readyTitle: 'พร้อมเริ่มการผจญภัยหรือยัง?',
+    gradeLabel: 'ระดับชั้น:',
+    replayingLevel: (level: number, currentLevel: number) =>
+      `🔁 กำลังเล่น Level ${level} ซ้ำ (ปกติคุณอยู่ Level ${currentLevel})`,
+    questionCountLabel: 'จำนวน:',
+    questionCount: (n: number) => `${n} ข้อ`,
+    startNow: 'เริ่มเลย!',
+    rankingDesc: 'ดูอันดับคะแนนในระดับชั้นของคุณ',
+    viewRanking: 'ดูอันดับ',
+    playedLevels: (n: number) => `เล่นแล้ว ${n} Level`,
+    noHistory: 'ยังไม่มีประวัติ',
+    viewAll: 'ดูทั้งหมด',
+    avatarDesc: 'จัดการตัวละครและเครื่องประดับ',
+    manage: 'จัดการ',
+    redeemRewards: 'แลกรางวัล',
+    exitGame: 'ออกจากเกม',
+    loadingQuestion: 'กำลังโหลดคำถาม...',
+    calculating: 'กำลังคำนวณผล...',
+    exitConfirmTitle: 'ต้องการออกจากเกมจริงหรือไม่?',
+    exitWarning: '⚠️ คำเตือน: คะแนนที่ทำมาในเกมนี้จะถูกยกเลิกทั้งหมด',
+    exitProgress: (score: number, answered: number) =>
+      `คุณตอบถูกแล้ว ${score} ข้อ จากทั้งหมด ${answered} ข้อที่ทำ`,
+    keepPlaying: 'เล่นต่อ',
+  },
+  en: {
+    boostForGame: (multiplier: number) => `EXP x${multiplier} for this game`,
+    boostTimeLeft: (minutes: number) => `${minutes} min left`,
+    manageAvatar: 'Edit Avatar',
+    readyTitle: 'Ready to start the adventure?',
+    gradeLabel: 'Grade:',
+    replayingLevel: (level: number, currentLevel: number) =>
+      `🔁 Replaying Level ${level} (you are normally on Level ${currentLevel})`,
+    questionCountLabel: 'Questions:',
+    questionCount: (n: number) => `${n} questions`,
+    startNow: "Let's go!",
+    rankingDesc: 'See the top scores in your grade',
+    viewRanking: 'View ranking',
+    playedLevels: (n: number) => `${n} levels played`,
+    noHistory: 'No history yet',
+    viewAll: 'View all',
+    avatarDesc: 'Customize your character and accessories',
+    manage: 'Customize',
+    redeemRewards: 'Redeem rewards',
+    exitGame: 'Exit game',
+    loadingQuestion: 'Loading question...',
+    calculating: 'Calculating results...',
+    exitConfirmTitle: 'Do you really want to quit?',
+    exitWarning: '⚠️ Warning: all points from this game will be lost',
+    exitProgress: (score: number, answered: number) =>
+      `You got ${score} right out of ${answered} answered`,
+    keepPlaying: 'Keep playing',
+  },
+} as const;
 
 // ✅ Component หลักที่ใช้ useSearchParams
 function PlayPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, refreshUser } = useAuth();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [loading, setLoading] = useState(true);
   const [gameState, setGameState] = useState<'ready' | 'playing' | 'result' | 'processing'>('ready');
   const [showExitModal, setShowExitModal] = useState(false);
@@ -158,14 +239,7 @@ function PlayPageContent() {
 
   // Get grade display name
   const getGradeDisplayName = (grade: string): string => {
-    const gradeMap: Record<string, string> = {
-      K1: 'อนุบาล 1', K2: 'อนุบาล 2', K3: 'อนุบาล 3',
-      P1: 'ประถม 1', P2: 'ประถม 2', P3: 'ประถม 3',
-      P4: 'ประถม 4', P5: 'ประถม 5', P6: 'ประถม 6',
-      M1: 'มัธยม 1', M2: 'มัธยม 2', M3: 'มัธยม 3',
-      M4: 'มัธยม 4', M5: 'มัธยม 5', M6: 'มัธยม 6',
-    };
-    return gradeMap[grade] || grade;
+    return GRADE_NAMES[lang][grade] || grade;
   };
 
   // Get level description
@@ -454,13 +528,13 @@ function PlayPageContent() {
                       <div>
                         <p className="font-bold text-white">Boost Active!</p>
                         <p className="text-sm text-white/80">
-                          EXP x{currentBoostMultiplier} สำหรับเกมนี้
+                          {L.boostForGame(currentBoostMultiplier)}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-white/60">
                       <Clock className="w-4 h-4" />
-                      <span>เหลือเวลา {Math.floor((new Date(activeBoosts[0].expiresAt).getTime() - Date.now()) / 60000)} นาที</span>
+                      <span>{L.boostTimeLeft(Math.floor((new Date(activeBoosts[0].expiresAt).getTime() - Date.now()) / 60000))}</span>
                     </div>
                   </div>
                 </motion.div>
@@ -501,7 +575,7 @@ function PlayPageContent() {
                       <motion.div
                         className="pointer-events-none absolute -bottom-8 left-1/2 max-w-[calc(100vw-2rem)] -translate-x-1/2 whitespace-nowrap rounded-full bg-gradient-to-r from-metaverse-purple to-metaverse-pink px-4 py-1 text-sm font-bold text-white shadow-lg opacity-0 transition-opacity group-hover:opacity-100"
                       >
-                        จัดการ Avatar
+                        {L.manageAvatar}
                       </motion.div>
                       
                       <div className="absolute inset-0 bg-gradient-to-r from-metaverse-purple/20 to-metaverse-pink/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity scale-110" />
@@ -520,12 +594,12 @@ function PlayPageContent() {
                 </div>
                 
                 <h1 className="text-4xl font-bold text-white mb-4 text-center">
-                  พร้อมเริ่มการผจญภัยหรือยัง?
+                  {L.readyTitle}
                 </h1>
-                
+
                 <div className="mb-8 space-y-2 text-center">
                   <p className="text-xl text-white/80">
-                    <span className="font-medium">ระดับชั้น:</span>{' '}
+                    <span className="font-medium">{L.gradeLabel}</span>{' '}
                     <span className="text-metaverse-pink">{getGradeDisplayName(user?.grade || '')}</span>
                   </p>
                   <div className="space-y-1">
@@ -540,14 +614,14 @@ function PlayPageContent() {
                     {forceLevel && forceLevel !== user.level && (
                       <div className="glass bg-yellow-400/10 border border-yellow-400/30 rounded-lg px-4 py-2 inline-block">
                         <span className="text-yellow-400 font-medium">
-                          🔁 กำลังเล่น Level {forceLevel} ซ้ำ (ปกติคุณอยู่ Level {user.level})
+                          {L.replayingLevel(forceLevel, user.level)}
                         </span>
                       </div>
                     )}
                   </div>
                   <p className="text-xl text-white/80">
-                    <span className="font-medium">จำนวน:</span>{' '}
-                    <span className="text-metaverse-glow">{totalQuestions} ข้อ</span>
+                    <span className="font-medium">{L.questionCountLabel}</span>{' '}
+                    <span className="text-metaverse-glow">{L.questionCount(totalQuestions)}</span>
                   </p>
                 </div>
                 
@@ -565,7 +639,7 @@ function PlayPageContent() {
                   >
                     <span className="relative z-10 flex items-center gap-3">
                       <Rocket className="w-7 h-7" />
-                      เริ่มเลย!
+                      {L.startNow}
                     </span>
                   </motion.button>
                 </div>
@@ -592,9 +666,9 @@ function PlayPageContent() {
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-white mb-2">Level Ranking</h3>
-                      <p className="text-white/60 text-sm mb-3">ดูอันดับคะแนนในระดับชั้นของคุณ</p>
+                      <p className="text-white/60 text-sm mb-3">{L.rankingDesc}</p>
                       <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
-                        <span>ดูอันดับ</span>
+                        <span>{L.viewRanking}</span>
                         <ChevronRight className="w-4 h-4" />
                       </div>
                     </div>
@@ -621,13 +695,13 @@ function PlayPageContent() {
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-white mb-2">Our History</h3>
                       <p className="text-white/60 text-sm mb-3">
-                        {user?.levelScores && Object.keys(user.levelScores).length > 0 
-                          ? `เล่นแล้ว ${Object.keys(user.levelScores).length} Level`
-                          : 'ยังไม่มีประวัติ'
+                        {user?.levelScores && Object.keys(user.levelScores).length > 0
+                          ? L.playedLevels(Object.keys(user.levelScores).length)
+                          : L.noHistory
                         }
                       </p>
                       <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
-                        <span>ดูทั้งหมด</span>
+                        <span>{L.viewAll}</span>
                         <ChevronRight className="w-4 h-4" />
                       </div>
                     </div>
@@ -653,9 +727,9 @@ function PlayPageContent() {
                     </div>
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-white mb-2">My Avatar</h3>
-                      <p className="text-white/60 text-sm mb-3">จัดการตัวละครและเครื่องประดับ</p>
+                      <p className="text-white/60 text-sm mb-3">{L.avatarDesc}</p>
                       <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
-                        <span>จัดการ</span>
+                        <span>{L.manage}</span>
                         <ChevronRight className="w-4 h-4" />
                       </div>
                     </div>
@@ -685,7 +759,7 @@ function PlayPageContent() {
                         EXP: {user?.experience.toLocaleString()}
                       </p>
                       <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
-                        <span>แลกรางวัล</span>
+                        <span>{L.redeemRewards}</span>
                         <ChevronRight className="w-4 h-4" />
                       </div>
                     </div>
@@ -710,7 +784,7 @@ function PlayPageContent() {
                   className="p-2 glass rounded-full transition hover:bg-white/10 text-white/70 hover:text-white"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
-                  title="ออกจากเกม"
+                  title={L.exitGame}
                 >
                   <X className="w-6 h-6" />
                 </motion.button>
@@ -743,7 +817,7 @@ function PlayPageContent() {
                   >
                     <div className="w-16 h-16 border-4 border-metaverse-purple border-t-transparent rounded-full" />
                   </motion.div>
-                  <p className="text-xl text-white font-medium">กำลังโหลดคำถาม...</p>
+                  <p className="text-xl text-white font-medium">{L.loadingQuestion}</p>
                 </motion.div>
               )}
             </motion.div>
@@ -781,7 +855,7 @@ function PlayPageContent() {
                 className="text-center"
               >
                 <h2 className="text-3xl font-bold text-white mb-4">
-                  กำลังคำนวณผล...
+                  {L.calculating}
                 </h2>
                 <div className="flex justify-center gap-2">
                   {[0, 1, 2].map((i) => (
@@ -827,15 +901,15 @@ function PlayPageContent() {
             </motion.div>
             
             <h3 className="text-2xl font-bold text-white text-center mb-4">
-              ต้องการออกจากเกมจริงหรือไม่?
+              {L.exitConfirmTitle}
             </h3>
-            
+
             <div className="glass bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-6">
               <p className="text-orange-400 text-center">
-                ⚠️ คำเตือน: คะแนนที่ทำมาในเกมนี้จะถูกยกเลิกทั้งหมด
+                {L.exitWarning}
               </p>
               <p className="text-white/60 text-sm text-center mt-2">
-                คุณตอบถูกแล้ว {score} ข้อ จากทั้งหมด {questionNumber} ข้อที่ทำ
+                {L.exitProgress(score, questionNumber)}
               </p>
             </div>
             
@@ -849,7 +923,7 @@ function PlayPageContent() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                เล่นต่อ
+                {L.keepPlaying}
               </motion.button>
               
               <motion.button
@@ -874,7 +948,7 @@ function PlayPageContent() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                ออกจากเกม
+                {L.exitGame}
               </motion.button>
             </div>
           </motion.div>

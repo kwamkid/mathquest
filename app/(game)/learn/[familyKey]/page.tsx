@@ -14,12 +14,31 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import { getFamily } from '@/lib/curricula/families';
 import { getCurriculum } from '@/lib/curricula';
 import { getTopicProgress } from '@/lib/curricula/progress-helpers';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { Lock, CheckCircle2 } from 'lucide-react';
+
+// Page-specific bilingual UI strings (see lib/i18n/strings.ts conventions).
+const STR = {
+  th: {
+    familyNotFound: 'ไม่พบหลักสูตรนี้',
+    pickGrade: 'เลือกระดับชั้น',
+    done: 'เรียนจบ',
+    startNow: 'เริ่มเรียนเลย',
+  },
+  en: {
+    familyNotFound: 'Curriculum not found',
+    pickGrade: 'Pick a grade',
+    done: 'Completed',
+    startNow: 'Start learning now',
+  },
+} as const;
 
 export default function GradePickerPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { lang, t } = useLanguage();
+  const L = STR[lang];
   const familyKey = String(params.familyKey);
   const family = getFamily(familyKey);
 
@@ -38,7 +57,7 @@ export default function GradePickerPage() {
     return (
       <AuthGuard>
         <div className="learn-bg flex min-h-screen items-center justify-center p-6">
-          <p className="text-lg font-semibold text-white">ไม่พบหลักสูตรนี้</p>
+          <p className="text-lg font-semibold text-white">{L.familyNotFound}</p>
         </div>
       </AuthGuard>
     );
@@ -69,7 +88,12 @@ export default function GradePickerPage() {
         {user && <AppHeader user={user} />}
         <div className="mx-auto max-w-3xl space-y-6 px-4 pb-6 pt-8 sm:px-6 sm:pb-8 sm:pt-12">
           <LearnBreadcrumb
-            items={[{ label: family.thaiName ?? family.name }]}
+            items={[
+              {
+                label:
+                  lang === 'en' ? family.name : family.thaiName ?? family.name,
+              },
+            ]}
           />
 
           <header className="space-y-1">
@@ -78,11 +102,11 @@ export default function GradePickerPage() {
                 {family.flag ?? '📘'}
               </span>
               <h1 className="text-3xl font-bold text-white">
-                {family.thaiName ?? family.name}
+                {lang === 'en' ? family.name : family.thaiName ?? family.name}
               </h1>
             </div>
             <p className="text-base text-white/70">{family.description}</p>
-            <p className="text-sm font-semibold text-white/50">เลือกระดับชั้น</p>
+            <p className="text-sm font-semibold text-white/50">{L.pickGrade}</p>
           </header>
 
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -106,17 +130,19 @@ export default function GradePickerPage() {
                       <h2 className="text-lg font-bold text-white">{g.label}</h2>
                       {!playable && <Lock className="h-4 w-4 text-white/40" />}
                       {done && (
-                        <CheckCircle2 className="h-5 w-5 text-emerald-400" aria-label="เรียนจบ" />
+                        <CheckCircle2 className="h-5 w-5 text-emerald-400" aria-label={L.done} />
                       )}
                     </div>
                     <p className="mt-0.5 text-xs text-white/50">{g.ageRange}</p>
                   </div>
                   {!playable ? (
-                    <p className="mt-2 text-xs font-semibold text-amber-300">เร็วๆ นี้</p>
+                    <p className="mt-2 text-xs font-semibold text-amber-300">
+                      {t.curriculum.comingSoon}
+                    </p>
                   ) : summary.hasContent ? (
                     <div className="mt-3 space-y-1">
                       <p className="text-xs text-white/70">
-                        {summary.completed}/{summary.total} บทเรียน
+                        {t.curriculum.lessonsProgress(summary.completed, summary.total)}
                       </p>
                       {summary.completed > 0 && (
                         <div className="learn-progress-track h-1.5 w-full overflow-hidden rounded-full">
@@ -130,7 +156,7 @@ export default function GradePickerPage() {
                       )}
                     </div>
                   ) : (
-                    <p className="mt-2 text-xs text-white/60">เริ่มเรียนเลย</p>
+                    <p className="mt-2 text-xs text-white/60">{L.startNow}</p>
                   )}
                 </Link>
               );

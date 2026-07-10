@@ -26,10 +26,104 @@ import {
   Filter,
   Search
 } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    cancelSuccess: 'ยกเลิกและคืน EXP เรียบร้อยแล้ว',
+    cancelError: 'เกิดข้อผิดพลาดในการยกเลิก',
+    statusPending: 'รอดำเนินการ',
+    statusApproved: 'อนุมัติแล้ว',
+    statusProcessing: 'กำลังจัดเตรียม',
+    statusShipped: 'จัดส่งแล้ว',
+    statusDelivered: 'ส่งถึงแล้ว',
+    statusReceived: 'รับของแล้ว',
+    statusCancelled: 'ยกเลิกแล้ว',
+    statusRefunded: 'คืน EXP แล้ว',
+    pageTitle: 'ประวัติการแลกรางวัล',
+    pageSubtitle: 'ติดตามสถานะรางวัลที่แลกไป',
+    statusFilter: 'สถานะ:',
+    typeFilter: 'ประเภท:',
+    searchFilter: 'ค้นหา:',
+    all: 'ทั้งหมด',
+    physical: 'ของจริง',
+    searchPlaceholder: 'ชื่อรางวัล...',
+    copy: 'คัดลอก',
+    activeUntil: 'Active จนถึง',
+    expired: 'หมดอายุแล้ว',
+    details: 'รายละเอียด',
+    cancel: 'ยกเลิก',
+    confirmReceived: 'ยืนยันรับของ',
+    emptyHistory: 'ยังไม่มีประวัติการแลกรางวัล',
+    emptyFiltered: 'ไม่พบรางวัลที่ตรงกับการค้นหา',
+    goRedeem: 'ไปแลกรางวัล',
+    detailTitle: 'รายละเอียดการแลกรางวัล',
+    typeLabel: 'ประเภท:',
+    orderCreated: 'สร้างคำสั่งซื้อ',
+    lastUpdated: 'อัพเดทล่าสุด',
+    shippingAddress: 'ที่อยู่จัดส่ง',
+    adminNotes: 'หมายเหตุจากแอดมิน',
+    close: 'ปิด',
+    cancelModalTitle: 'ยืนยันการยกเลิก',
+    cancelModalQuestion: 'คุณต้องการยกเลิกการแลกรางวัลนี้ใช่หรือไม่?',
+    cancelReasonLabel: 'เหตุผลในการยกเลิก (ไม่บังคับ):',
+    cancelReasonPlaceholder: 'บอกเราว่าทำไมคุณถึงต้องการยกเลิก...',
+    keepIt: 'ไม่ยกเลิก',
+    cancelling: 'กำลังยกเลิก...',
+    confirmCancel: 'ยืนยันยกเลิก',
+    refundNote: '* EXP จะถูกคืนให้ทันทีหลังยกเลิก',
+  },
+  en: {
+    cancelSuccess: 'Cancelled and EXP refunded',
+    cancelError: 'Something went wrong while cancelling',
+    statusPending: 'Pending',
+    statusApproved: 'Approved',
+    statusProcessing: 'Preparing',
+    statusShipped: 'Shipped',
+    statusDelivered: 'Delivered',
+    statusReceived: 'Received',
+    statusCancelled: 'Cancelled',
+    statusRefunded: 'EXP refunded',
+    pageTitle: 'Redemption History',
+    pageSubtitle: 'Track the rewards you redeemed',
+    statusFilter: 'Status:',
+    typeFilter: 'Type:',
+    searchFilter: 'Search:',
+    all: 'All',
+    physical: 'Real prizes',
+    searchPlaceholder: 'Reward name...',
+    copy: 'Copy',
+    activeUntil: 'Active until',
+    expired: 'Expired',
+    details: 'Details',
+    cancel: 'Cancel',
+    confirmReceived: 'Confirm received',
+    emptyHistory: 'No redemptions yet',
+    emptyFiltered: 'No rewards match your search',
+    goRedeem: 'Go redeem rewards',
+    detailTitle: 'Redemption Details',
+    typeLabel: 'Type:',
+    orderCreated: 'Order created',
+    lastUpdated: 'Last updated',
+    shippingAddress: 'Shipping address',
+    adminNotes: 'Notes from admin',
+    close: 'Close',
+    cancelModalTitle: 'Confirm cancellation',
+    cancelModalQuestion: 'Do you want to cancel this redemption?',
+    cancelReasonLabel: 'Reason for cancelling (optional):',
+    cancelReasonPlaceholder: 'Tell us why you want to cancel...',
+    keepIt: 'Keep it',
+    cancelling: 'Cancelling...',
+    confirmCancel: 'Confirm cancel',
+    refundNote: '* Your EXP is refunded right after cancelling',
+  },
+} as const;
 
 export default function RedemptionHistoryPage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [redemptions, setRedemptions] = useState<Redemption[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedRedemption, setSelectedRedemption] = useState<Redemption | null>(null);
@@ -96,7 +190,7 @@ export default function RedemptionHistoryPage() {
             : r
         ));
         
-        successDialog.showDialog('ยกเลิกและคืน EXP เรียบร้อยแล้ว');
+        successDialog.showDialog(L.cancelSuccess);
         setShowCancelModal(false);
         setSelectedRedemption(null);
         setCancelReason('');
@@ -105,7 +199,7 @@ export default function RedemptionHistoryPage() {
       }
     } catch (error) {
       console.error('Cancel error:', error);
-      errorDialog.showDialog('เกิดข้อผิดพลาดในการยกเลิก');
+      errorDialog.showDialog(L.cancelError);
     } finally {
       setCancelling(false);
     }
@@ -131,49 +225,49 @@ export default function RedemptionHistoryPage() {
   const getStatusDisplay = (status: RedemptionStatus) => {
     const configs = {
       [RedemptionStatus.PENDING]: {
-        label: 'รอดำเนินการ',
+        label: L.statusPending,
         icon: <Clock className="w-4 h-4" />,
         color: 'text-yellow-400',
         bg: 'bg-yellow-400/10'
       },
       [RedemptionStatus.APPROVED]: {
-        label: 'อนุมัติแล้ว',
+        label: L.statusApproved,
         icon: <CheckCircle className="w-4 h-4" />,
         color: 'text-green-400',
         bg: 'bg-green-400/10'
       },
       [RedemptionStatus.PROCESSING]: {
-        label: 'กำลังจัดเตรียม',
+        label: L.statusProcessing,
         icon: <Package className="w-4 h-4" />,
         color: 'text-blue-400',
         bg: 'bg-blue-400/10'
       },
       [RedemptionStatus.SHIPPED]: {
-        label: 'จัดส่งแล้ว',
+        label: L.statusShipped,
         icon: <Truck className="w-4 h-4" />,
         color: 'text-purple-400',
         bg: 'bg-purple-400/10'
       },
       [RedemptionStatus.DELIVERED]: {
-        label: 'ส่งถึงแล้ว',
+        label: L.statusDelivered,
         icon: <CheckCircle className="w-4 h-4" />,
         color: 'text-green-400',
         bg: 'bg-green-400/10'
       },
       [RedemptionStatus.RECEIVED]: {
-        label: 'รับของแล้ว',
+        label: L.statusReceived,
         icon: <CheckCircle className="w-4 h-4" />,
         color: 'text-green-400',
         bg: 'bg-green-400/10'
       },
       [RedemptionStatus.CANCELLED]: {
-        label: 'ยกเลิกแล้ว',
+        label: L.statusCancelled,
         icon: <XCircle className="w-4 h-4" />,
         color: 'text-red-400',
         bg: 'bg-red-400/10'
       },
       [RedemptionStatus.REFUNDED]: {
-        label: 'คืน EXP แล้ว',
+        label: L.statusRefunded,
         icon: <RefreshCw className="w-4 h-4" />,
         color: 'text-orange-400',
         bg: 'bg-orange-400/10'
@@ -228,7 +322,7 @@ export default function RedemptionHistoryPage() {
   // Format date
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('th-TH', {
+    return date.toLocaleDateString(lang === 'en' ? 'en-GB' : 'th-TH', {
       day: 'numeric',
       month: 'short',
       year: 'numeric',
@@ -269,9 +363,9 @@ export default function RedemptionHistoryPage() {
               <div>
                 <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
                   <FileText className="w-6 h-6 md:w-8 md:h-8 text-metaverse-purple" />
-                  ประวัติการแลกรางวัล
+                  {L.pageTitle}
                 </h1>
-                <p className="text-white/60 text-xs md:text-sm">ติดตามสถานะรางวัลที่แลกไป</p>
+                <p className="text-white/60 text-xs md:text-sm">{L.pageSubtitle}</p>
               </div>
             </div>
             
@@ -298,50 +392,50 @@ export default function RedemptionHistoryPage() {
           <div className="flex flex-col lg:flex-row gap-3">
             {/* Status Filter */}
             <div className="flex-1">
-              <label className="text-xs text-white/60 mb-1 block">สถานะ:</label>
+              <label className="text-xs text-white/60 mb-1 block">{L.statusFilter}</label>
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
                 className="w-full px-3 py-1.5 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-lg focus:outline-none focus:border-metaverse-pink text-white text-sm"
               >
-                <option value="all">ทั้งหมด</option>
-                <option value={RedemptionStatus.PENDING}>รอดำเนินการ</option>
-                <option value={RedemptionStatus.APPROVED}>อนุมัติแล้ว</option>
-                <option value={RedemptionStatus.PROCESSING}>กำลังจัดเตรียม</option>
-                <option value={RedemptionStatus.SHIPPED}>จัดส่งแล้ว</option>
-                <option value={RedemptionStatus.DELIVERED}>ส่งถึงแล้ว</option>
-                <option value={RedemptionStatus.RECEIVED}>รับของแล้ว</option>
-                <option value={RedemptionStatus.CANCELLED}>ยกเลิกแล้ว</option>
+                <option value="all">{L.all}</option>
+                <option value={RedemptionStatus.PENDING}>{L.statusPending}</option>
+                <option value={RedemptionStatus.APPROVED}>{L.statusApproved}</option>
+                <option value={RedemptionStatus.PROCESSING}>{L.statusProcessing}</option>
+                <option value={RedemptionStatus.SHIPPED}>{L.statusShipped}</option>
+                <option value={RedemptionStatus.DELIVERED}>{L.statusDelivered}</option>
+                <option value={RedemptionStatus.RECEIVED}>{L.statusReceived}</option>
+                <option value={RedemptionStatus.CANCELLED}>{L.statusCancelled}</option>
               </select>
             </div>
             
             {/* Type Filter */}
             <div className="flex-1">
-              <label className="text-xs text-white/60 mb-1 block">ประเภท:</label>
+              <label className="text-xs text-white/60 mb-1 block">{L.typeFilter}</label>
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
                 className="w-full px-3 py-1.5 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-lg focus:outline-none focus:border-metaverse-pink text-white text-sm"
               >
-                <option value="all">ทั้งหมด</option>
+                <option value="all">{L.all}</option>
                 <option value={RewardType.AVATAR}>Avatar</option>
                 <option value={RewardType.ACCESSORY}>Accessories</option>
                 <option value={RewardType.TITLE_BADGE}>Title Badge</option>
                 <option value={RewardType.BOOST}>Boost</option>
-                <option value={RewardType.PHYSICAL}>ของจริง</option>
+                <option value={RewardType.PHYSICAL}>{L.physical}</option>
               </select>
             </div>
             
             {/* Search */}
             <div className="flex-1">
-              <label className="text-xs text-white/60 mb-1 block">ค้นหา:</label>
+              <label className="text-xs text-white/60 mb-1 block">{L.searchFilter}</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-4 h-4" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="ชื่อรางวัล..."
+                  placeholder={L.searchPlaceholder}
                   className="w-full pl-9 pr-3 py-1.5 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-lg focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 text-sm"
                 />
               </div>
@@ -383,7 +477,7 @@ export default function RedemptionHistoryPage() {
                             <Calendar className="w-3 h-3" />
                             <span className="hidden sm:inline">{formatDate(redemption.createdAt)}</span>
                             <span className="sm:hidden">
-                              {new Date(redemption.createdAt).toLocaleDateString('th-TH', { 
+                              {new Date(redemption.createdAt).toLocaleDateString(lang === 'en' ? 'en-GB' : 'th-TH', {
                                 day: 'numeric', 
                                 month: 'short' 
                               })}
@@ -421,7 +515,7 @@ export default function RedemptionHistoryPage() {
                             <button
                               onClick={() => navigator.clipboard.writeText(redemption.trackingNumber!)}
                               className="text-white/60 hover:text-white transition"
-                              title="คัดลอก"
+                              title={L.copy}
                             >
                               <Copy className="w-3 h-3" />
                             </button>
@@ -434,10 +528,10 @@ export default function RedemptionHistoryPage() {
                         <div className="text-xs text-white/60">
                           {new Date(redemption.expiresAt) > new Date() ? (
                             <span className="text-green-400">
-                              Active จนถึง {new Date(redemption.expiresAt).toLocaleDateString('th-TH')}
+                              {L.activeUntil} {new Date(redemption.expiresAt).toLocaleDateString(lang === 'en' ? 'en-GB' : 'th-TH')}
                             </span>
                           ) : (
-                            <span className="text-red-400">หมดอายุแล้ว</span>
+                            <span className="text-red-400">{L.expired}</span>
                           )}
                         </div>
                       )}
@@ -451,7 +545,7 @@ export default function RedemptionHistoryPage() {
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          รายละเอียด
+                          {L.details}
                         </motion.button>
                         
                         {/* Cancel Button */}
@@ -465,7 +559,7 @@ export default function RedemptionHistoryPage() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                           >
-                            ยกเลิก
+                            {L.cancel}
                           </motion.button>
                         )}
                         
@@ -476,7 +570,7 @@ export default function RedemptionHistoryPage() {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                           >
-                            ยืนยันรับของ
+                            {L.confirmReceived}
                           </motion.button>
                         )}
                       </div>
@@ -498,9 +592,9 @@ export default function RedemptionHistoryPage() {
             <div className="text-center py-8">
               <Gift className="w-12 h-12 md:w-16 md:h-16 text-white/20 mx-auto mb-3" />
               <p className="text-lg md:text-xl text-white/40">
-                {redemptions.length === 0 
-                  ? 'ยังไม่มีประวัติการแลกรางวัล'
-                  : 'ไม่พบรางวัลที่ตรงกับการค้นหา'
+                {redemptions.length === 0
+                  ? L.emptyHistory
+                  : L.emptyFiltered
                 }
               </p>
               {redemptions.length === 0 && (
@@ -510,7 +604,7 @@ export default function RedemptionHistoryPage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  ไปแลกรางวัล
+                  {L.goRedeem}
                 </motion.button>
               )}
             </div>
@@ -536,7 +630,7 @@ export default function RedemptionHistoryPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-xl font-bold text-white mb-4">
-                รายละเอียดการแลกรางวัล
+                {L.detailTitle}
               </h3>
               
               {/* Order ID */}
@@ -566,7 +660,7 @@ export default function RedemptionHistoryPage() {
                       {selectedRedemption.rewardName}
                     </h4>
                     <p className="text-white/60 text-sm">
-                      ประเภท: {selectedRedemption.rewardType}
+                      {L.typeLabel} {selectedRedemption.rewardType}
                     </p>
                     <p className="text-yellow-400 font-medium text-sm mt-1">
                       {selectedRedemption.expCost} EXP
@@ -582,7 +676,7 @@ export default function RedemptionHistoryPage() {
                   <div className="flex items-start gap-2">
                     <div className="w-1.5 h-1.5 bg-green-400 rounded-full mt-1.5"></div>
                     <div>
-                      <p className="text-white text-sm">สร้างคำสั่งซื้อ</p>
+                      <p className="text-white text-sm">{L.orderCreated}</p>
                       <p className="text-xs text-white/60">{formatDate(selectedRedemption.createdAt)}</p>
                     </div>
                   </div>
@@ -591,7 +685,7 @@ export default function RedemptionHistoryPage() {
                     <div className="flex items-start gap-2">
                       <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-1.5"></div>
                       <div>
-                        <p className="text-white text-sm">อัพเดทล่าสุด</p>
+                        <p className="text-white text-sm">{L.lastUpdated}</p>
                         <p className="text-xs text-white/60">{formatDate(selectedRedemption.updatedAt)}</p>
                       </div>
                     </div>
@@ -602,7 +696,7 @@ export default function RedemptionHistoryPage() {
               {/* Shipping Address */}
               {selectedRedemption.shippingAddress && (
                 <div className="mb-4">
-                  <h4 className="text-base font-bold text-white mb-3">ที่อยู่จัดส่ง</h4>
+                  <h4 className="text-base font-bold text-white mb-3">{L.shippingAddress}</h4>
                   <div className="glass rounded-lg p-3 text-white/80 text-sm">
                     <p>{selectedRedemption.shippingAddress.fullName}</p>
                     <p>{selectedRedemption.shippingAddress.phone}</p>
@@ -623,7 +717,7 @@ export default function RedemptionHistoryPage() {
               {/* Admin Notes */}
               {selectedRedemption.adminNotes && (
                 <div className="mb-4">
-                  <h4 className="text-base font-bold text-white mb-3">หมายเหตุจากแอดมิน</h4>
+                  <h4 className="text-base font-bold text-white mb-3">{L.adminNotes}</h4>
                   <div className="glass rounded-lg p-3 text-white/80 text-sm">
                     {selectedRedemption.adminNotes}
                   </div>
@@ -638,7 +732,7 @@ export default function RedemptionHistoryPage() {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  ปิด
+                  {L.close}
                 </motion.button>
               </div>
             </motion.div>
@@ -668,10 +762,10 @@ export default function RedemptionHistoryPage() {
                   <AlertCircle className="w-7 h-7 text-red-400" />
                 </div>
                 <h3 className="text-xl font-bold text-white mb-1">
-                  ยืนยันการยกเลิก
+                  {L.cancelModalTitle}
                 </h3>
                 <p className="text-white/60 text-sm">
-                  คุณต้องการยกเลิกการแลกรางวัลนี้ใช่หรือไม่?
+                  {L.cancelModalQuestion}
                 </p>
               </div>
               
@@ -701,12 +795,12 @@ export default function RedemptionHistoryPage() {
               {/* Cancel Reason */}
               <div className="mb-4">
                 <label className="text-xs text-white/60 mb-1 block">
-                  เหตุผลในการยกเลิก (ไม่บังคับ):
+                  {L.cancelReasonLabel}
                 </label>
                 <textarea
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="บอกเราว่าทำไมคุณถึงต้องการยกเลิก..."
+                  placeholder={L.cancelReasonPlaceholder}
                   className="w-full px-3 py-2 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-lg focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 resize-none text-sm"
                   rows={2}
                 />
@@ -720,7 +814,7 @@ export default function RedemptionHistoryPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  ไม่ยกเลิก
+                  {L.keepIt}
                 </motion.button>
                 
                 <motion.button
@@ -739,19 +833,19 @@ export default function RedemptionHistoryPage() {
                       >
                         ⏳
                       </motion.span>
-                      กำลังยกเลิก...
+                      {L.cancelling}
                     </>
                   ) : (
                     <>
                       <XCircle className="w-4 h-4" />
-                      ยืนยันยกเลิก
+                      {L.confirmCancel}
                     </>
                   )}
                 </motion.button>
               </div>
               
               <p className="text-xs text-white/40 text-center mt-3">
-                * EXP จะถูกคืนให้ทันทีหลังยกเลิก
+                {L.refundNote}
               </p>
             </motion.div>
           </motion.div>

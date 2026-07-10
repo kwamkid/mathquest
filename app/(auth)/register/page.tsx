@@ -7,28 +7,104 @@ import Link from 'next/link';
 import AvatarSelection from '@/components/AvatarSelection';
 import { signUp, checkUsernameAvailability } from '@/lib/firebase/auth';
 import { User, Lock, Eye, EyeOff, School, GraduationCap, Ticket, Check, X, ArrowRight, ArrowLeft } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
-// Grade options
+// Grade options (bilingual labels)
 const grades = [
-  { value: 'K1', label: 'อนุบาล 1' },
-  { value: 'K2', label: 'อนุบาล 2' },
-  { value: 'K3', label: 'อนุบาล 3' },
-  { value: 'P1', label: 'ประถม 1' },
-  { value: 'P2', label: 'ประถม 2' },
-  { value: 'P3', label: 'ประถม 3' },
-  { value: 'P4', label: 'ประถม 4' },
-  { value: 'P5', label: 'ประถม 5' },
-  { value: 'P6', label: 'ประถม 6' },
-  { value: 'M1', label: 'มัธยม 1' },
-  { value: 'M2', label: 'มัธยม 2' },
-  { value: 'M3', label: 'มัธยม 3' },
-  { value: 'M4', label: 'มัธยม 4' },
-  { value: 'M5', label: 'มัธยม 5' },
-  { value: 'M6', label: 'มัธยม 6' },
+  { value: 'K1', th: 'อนุบาล 1', en: 'Kindergarten 1' },
+  { value: 'K2', th: 'อนุบาล 2', en: 'Kindergarten 2' },
+  { value: 'K3', th: 'อนุบาล 3', en: 'Kindergarten 3' },
+  { value: 'P1', th: 'ประถม 1', en: 'Primary 1' },
+  { value: 'P2', th: 'ประถม 2', en: 'Primary 2' },
+  { value: 'P3', th: 'ประถม 3', en: 'Primary 3' },
+  { value: 'P4', th: 'ประถม 4', en: 'Primary 4' },
+  { value: 'P5', th: 'ประถม 5', en: 'Primary 5' },
+  { value: 'P6', th: 'ประถม 6', en: 'Primary 6' },
+  { value: 'M1', th: 'มัธยม 1', en: 'Secondary 1' },
+  { value: 'M2', th: 'มัธยม 2', en: 'Secondary 2' },
+  { value: 'M3', th: 'มัธยม 3', en: 'Secondary 3' },
+  { value: 'M4', th: 'มัธยม 4', en: 'Secondary 4' },
+  { value: 'M5', th: 'มัธยม 5', en: 'Secondary 5' },
+  { value: 'M6', th: 'มัธยม 6', en: 'Secondary 6' },
 ];
+
+const STR = {
+  th: {
+    title: 'สมัครสมาชิก',
+    subtitle: 'เริ่มต้นการผจญภัยในโลกแห่งตัวเลข',
+    avatarRequired: 'กรุณาเลือกตัวละคร',
+    usernameRequired: 'กรุณากรอก Username',
+    usernameTaken: 'Username นี้มีผู้ใช้แล้ว',
+    usernameAvailable: 'Username นี้ใช้ได้',
+    usernamePlaceholder: 'ชื่อผู้ใช้สำหรับเข้าสู่ระบบ',
+    displayNameLabel: 'ชื่อที่แสดง (ไม่บังคับ)',
+    displayNamePlaceholder: 'ชื่อที่จะแสดงใน Ranking',
+    passwordLabel: 'รหัสผ่าน',
+    passwordRequired: 'กรุณากรอกรหัสผ่าน',
+    passwordTooShort: 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร',
+    passwordPlaceholder: 'อย่างน้อย 6 ตัวอักษร',
+    confirmPasswordLabel: 'ยืนยันรหัสผ่าน',
+    confirmPasswordRequired: 'กรุณายืนยันรหัสผ่าน',
+    passwordMismatch: 'รหัสผ่านไม่ตรงกัน',
+    confirmPasswordPlaceholder: 'กรอกรหัสผ่านอีกครั้ง',
+    schoolLabel: 'โรงเรียน',
+    schoolRequired: 'กรุณากรอกชื่อโรงเรียน',
+    schoolPlaceholder: 'ชื่อโรงเรียน',
+    gradeLabel: 'ระดับชั้น',
+    gradeRequired: 'กรุณาเลือกระดับชั้น',
+    gradePlaceholder: 'เลือกระดับชั้น',
+    codeLabel: 'Registration Code',
+    codeRequired: 'กรุณากรอก Registration Code',
+    codePlaceholder: 'รหัสที่ได้รับจากครู/ผู้ดูแล',
+    genericError: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+    back: 'ย้อนกลับ',
+    next: 'ถัดไป',
+    submitting: 'กำลังสมัคร...',
+    submit: 'สมัครสมาชิก',
+    hasAccount: 'มีบัญชีอยู่แล้ว?',
+    login: 'เข้าสู่ระบบ',
+  },
+  en: {
+    title: 'Sign Up',
+    subtitle: 'Start your adventure in the world of numbers',
+    avatarRequired: 'Please pick a character',
+    usernameRequired: 'Please enter a username',
+    usernameTaken: 'This username is already taken',
+    usernameAvailable: 'This username is available',
+    usernamePlaceholder: 'Username for logging in',
+    displayNameLabel: 'Display name (optional)',
+    displayNamePlaceholder: 'Name shown in the Ranking',
+    passwordLabel: 'Password',
+    passwordRequired: 'Please enter a password',
+    passwordTooShort: 'Password must be at least 6 characters',
+    passwordPlaceholder: 'At least 6 characters',
+    confirmPasswordLabel: 'Confirm password',
+    confirmPasswordRequired: 'Please confirm your password',
+    passwordMismatch: 'Passwords do not match',
+    confirmPasswordPlaceholder: 'Enter the password again',
+    schoolLabel: 'School',
+    schoolRequired: 'Please enter your school name',
+    schoolPlaceholder: 'School name',
+    gradeLabel: 'Grade',
+    gradeRequired: 'Please select a grade',
+    gradePlaceholder: 'Select a grade',
+    codeLabel: 'Registration Code',
+    codeRequired: 'Please enter your Registration Code',
+    codePlaceholder: 'Code from your teacher/admin',
+    genericError: 'Something went wrong. Please try again.',
+    back: 'Back',
+    next: 'Next',
+    submitting: 'Signing up...',
+    submit: 'Sign up',
+    hasAccount: 'Already have an account?',
+    login: 'Log in',
+  },
+} as const;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [step, setStep] = useState(1);
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -61,11 +137,14 @@ export default function RegisterPage() {
         setUsernameAvailable(available);
         
         if (!available) {
-          setErrors(prev => ({ ...prev, username: 'Username นี้มีผู้ใช้แล้ว' }));
+          setErrors(prev => ({ ...prev, username: L.usernameTaken }));
         } else {
           setErrors(prev => {
             const newErrors = { ...prev };
-            if (newErrors.username === 'Username นี้มีผู้ใช้แล้ว') {
+            if (
+              newErrors.username === STR.th.usernameTaken ||
+              newErrors.username === STR.en.usernameTaken
+            ) {
               delete newErrors.username;
             }
             return newErrors;
@@ -80,7 +159,7 @@ export default function RegisterPage() {
 
     const timeoutId = setTimeout(checkUsername, 500); // Debounce
     return () => clearTimeout(timeoutId);
-  }, [formData.username]);
+  }, [formData.username, L]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -95,7 +174,7 @@ export default function RegisterPage() {
     const newErrors: Record<string, string> = {};
     
     if (!selectedAvatar) {
-      newErrors.avatar = 'กรุณาเลือกตัวละคร';
+      newErrors.avatar = L.avatarRequired;
     }
     
     setErrors(newErrors);
@@ -106,33 +185,33 @@ export default function RegisterPage() {
     const newErrors: Record<string, string> = {};
     
     if (!formData.username.trim()) {
-      newErrors.username = 'กรุณากรอก Username';
+      newErrors.username = L.usernameRequired;
     } else if (usernameAvailable === false) {
-      newErrors.username = 'Username นี้มีผู้ใช้แล้ว';
+      newErrors.username = L.usernameTaken;
     }
-    
+
     if (!formData.password) {
-      newErrors.password = 'กรุณากรอกรหัสผ่าน';
+      newErrors.password = L.passwordRequired;
     } else if (formData.password.length < 6) {
-      newErrors.password = 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร';
+      newErrors.password = L.passwordTooShort;
     }
-    
+
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'กรุณายืนยันรหัสผ่าน';
+      newErrors.confirmPassword = L.confirmPasswordRequired;
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'รหัสผ่านไม่ตรงกัน';
+      newErrors.confirmPassword = L.passwordMismatch;
     }
-    
+
     if (!formData.school.trim()) {
-      newErrors.school = 'กรุณากรอกชื่อโรงเรียน';
+      newErrors.school = L.schoolRequired;
     }
-    
+
     if (!formData.grade) {
-      newErrors.grade = 'กรุณาเลือกระดับชั้น';
+      newErrors.grade = L.gradeRequired;
     }
-    
+
     if (!formData.registrationCode.trim()) {
-      newErrors.registrationCode = 'กรุณากรอก Registration Code';
+      newErrors.registrationCode = L.codeRequired;
     }
     
     setErrors(newErrors);
@@ -150,7 +229,7 @@ export default function RegisterPage() {
     
     // Double check username availability
     if (usernameAvailable === false) {
-      setErrors({ submit: 'Username นี้มีผู้ใช้แล้ว' });
+      setErrors({ submit: L.usernameTaken });
       return;
     }
     
@@ -174,7 +253,7 @@ export default function RegisterPage() {
       router.push('/login?registered=true');
     } catch (error) {
       console.error('Registration error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+      const errorMessage = error instanceof Error ? error.message : L.genericError;
       setErrors({ submit: errorMessage });
     } finally {
       setIsLoading(false);
@@ -196,8 +275,8 @@ export default function RegisterPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-8"
         >
-          <h1 className="text-4xl font-bold text-white mb-2">สมัครสมาชิก</h1>
-          <p className="text-white/60">เริ่มต้นการผจญภัยในโลกแห่งตัวเลข</p>
+          <h1 className="text-4xl font-bold text-white mb-2">{L.title}</h1>
+          <p className="text-white/60">{L.subtitle}</p>
         </motion.div>
 
         {/* Progress Steps */}
@@ -249,14 +328,14 @@ export default function RegisterPage() {
                   className="px-6 py-3 text-white/60 hover:text-white transition flex items-center gap-2"
                 >
                   <ArrowLeft className="w-5 h-5" />
-                  ย้อนกลับ
+                  {L.back}
                 </button>
                 <button
                   type="button"
                   onClick={handleNext}
                   className="px-8 py-3 metaverse-button text-white font-bold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition flex items-center gap-2"
                 >
-                  ถัดไป
+                  {L.next}
                   <ArrowRight className="w-5 h-5" />
                 </button>
               </div>
@@ -283,7 +362,7 @@ export default function RegisterPage() {
                           usernameAvailable === true ? 'border-2 border-green-500' :
                           'border border-metaverse-purple/30 focus:border-metaverse-pink'
                         } text-white placeholder-white/40`}
-                        placeholder="ชื่อผู้ใช้สำหรับเข้าสู่ระบบ"
+                        placeholder={L.usernamePlaceholder}
                       />
                       {/* Username status indicator */}
                       <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -307,14 +386,14 @@ export default function RegisterPage() {
                     )}
                     {usernameAvailable === true && formData.username && (
                       <p className="text-green-400 text-sm mt-1 flex items-center gap-1">
-                        <Check className="w-4 h-4" /> Username นี้ใช้ได้
+                        <Check className="w-4 h-4" /> {L.usernameAvailable}
                       </p>
                     )}
                   </div>
                   
                   <div>
                     <label className="block text-white/80 font-medium mb-2">
-                      ชื่อที่แสดง (ไม่บังคับ)
+                      {L.displayNameLabel}
                     </label>
                     <input
                       type="text"
@@ -322,7 +401,7 @@ export default function RegisterPage() {
                       value={formData.displayName}
                       onChange={handleInputChange}
                       className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink transition text-white placeholder-white/40"
-                      placeholder="ชื่อที่จะแสดงใน Ranking"
+                      placeholder={L.displayNamePlaceholder}
                     />
                   </div>
                 </div>
@@ -331,7 +410,7 @@ export default function RegisterPage() {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-white/80 font-medium mb-2">
-                      รหัสผ่าน <span className="text-red-400">*</span>
+                      {L.passwordLabel} <span className="text-red-400">*</span>
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
@@ -343,7 +422,7 @@ export default function RegisterPage() {
                         className={`w-full pl-10 pr-12 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition ${
                           errors.password ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
                         } text-white placeholder-white/40`}
-                        placeholder="อย่างน้อย 6 ตัวอักษร"
+                        placeholder={L.passwordPlaceholder}
                       />
                       <button
                         type="button"
@@ -360,7 +439,7 @@ export default function RegisterPage() {
                   
                   <div>
                     <label className="block text-white/80 font-medium mb-2">
-                      ยืนยันรหัสผ่าน <span className="text-red-400">*</span>
+                      {L.confirmPasswordLabel} <span className="text-red-400">*</span>
                     </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
@@ -372,7 +451,7 @@ export default function RegisterPage() {
                         className={`w-full pl-10 pr-12 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition ${
                           errors.confirmPassword ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
                         } text-white placeholder-white/40`}
-                        placeholder="กรอกรหัสผ่านอีกครั้ง"
+                        placeholder={L.confirmPasswordPlaceholder}
                       />
                       <button
                         type="button"
@@ -392,7 +471,7 @@ export default function RegisterPage() {
                 <div className="grid md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-white/80 font-medium mb-2">
-                      โรงเรียน <span className="text-red-400">*</span>
+                      {L.schoolLabel} <span className="text-red-400">*</span>
                     </label>
                     <div className="relative">
                       <School className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
@@ -404,7 +483,7 @@ export default function RegisterPage() {
                         className={`w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition ${
                           errors.school ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
                         } text-white placeholder-white/40`}
-                        placeholder="ชื่อโรงเรียน"
+                        placeholder={L.schoolPlaceholder}
                       />
                     </div>
                     {errors.school && (
@@ -414,7 +493,7 @@ export default function RegisterPage() {
                   
                   <div>
                     <label className="block text-white/80 font-medium mb-2">
-                      ระดับชั้น <span className="text-red-400">*</span>
+                      {L.gradeLabel} <span className="text-red-400">*</span>
                     </label>
                     <div className="relative">
                       <GraduationCap className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
@@ -426,10 +505,10 @@ export default function RegisterPage() {
                           errors.grade ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
                         } text-white`}
                       >
-                        <option value="" className="bg-metaverse-black">เลือกระดับชั้น</option>
+                        <option value="" className="bg-metaverse-black">{L.gradePlaceholder}</option>
                         {grades.map(grade => (
                           <option key={grade.value} value={grade.value} className="bg-metaverse-black">
-                            {grade.label}
+                            {grade[lang]}
                           </option>
                         ))}
                       </select>
@@ -443,7 +522,7 @@ export default function RegisterPage() {
                 {/* Registration Code */}
                 <div>
                   <label className="block text-white/80 font-medium mb-2">
-                    Registration Code <span className="text-red-400">*</span>
+                    {L.codeLabel} <span className="text-red-400">*</span>
                   </label>
                   <div className="relative">
                     <Ticket className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
@@ -455,7 +534,7 @@ export default function RegisterPage() {
                       className={`w-full pl-10 pr-4 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition ${
                         errors.registrationCode ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
                       } text-white placeholder-white/40`}
-                      placeholder="รหัสที่ได้รับจากครู/ผู้ดูแล"
+                      placeholder={L.codePlaceholder}
                     />
                   </div>
                   {errors.registrationCode && (
@@ -478,14 +557,14 @@ export default function RegisterPage() {
                   disabled={isLoading}
                 >
                   <ArrowLeft className="w-5 h-5" />
-                  ย้อนกลับ
+                  {L.back}
                 </button>
                 <button
                   type="submit"
                   disabled={isLoading}
                   className="px-8 py-3 metaverse-button text-white font-bold rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  {isLoading ? 'กำลังสมัคร...' : 'สมัครสมาชิก'}
+                  {isLoading ? L.submitting : L.submit}
                   {!isLoading && <ArrowRight className="w-5 h-5" />}
                 </button>
               </div>
@@ -496,9 +575,9 @@ export default function RegisterPage() {
         {/* Login Link */}
         <div className="text-center mt-6">
           <p className="text-white/60">
-            มีบัญชีอยู่แล้ว?{' '}
+            {L.hasAccount}{' '}
             <Link href="/login" className="text-metaverse-pink hover:text-metaverse-glow font-medium transition">
-              เข้าสู่ระบบ
+              {L.login}
             </Link>
           </p>
         </div>

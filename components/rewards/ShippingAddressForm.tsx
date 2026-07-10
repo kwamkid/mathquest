@@ -13,6 +13,72 @@ import {
   Loader2
 } from 'lucide-react';
 import { ShippingAddress } from '@/types/avatar';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    title: 'ที่อยู่จัดส่ง',
+    subtitle: 'กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง',
+    fullNameLabel: 'ชื่อ-นามสกุล (ผู้รับ)',
+    fullNamePlaceholder: 'ชื่อ-นามสกุล',
+    fullNameRequired: 'กรุณากรอกชื่อ-นามสกุล',
+    phoneLabel: 'เบอร์โทรศัพท์',
+    phoneRequired: 'กรุณากรอกเบอร์โทรศัพท์',
+    phoneInvalid: 'เบอร์โทรศัพท์ไม่ถูกต้อง (ตัวอย่าง: 081-234-5678)',
+    phoneHint: 'กรอกเฉพาะตัวเลข 10 หลัก',
+    addressLabel: 'ที่อยู่',
+    addressRequired: 'กรุณากรอกที่อยู่',
+    addressPlaceholder: 'บ้านเลขที่ หมู่ ซอย ถนน',
+    address2Label: 'รายละเอียดเพิ่มเติม (ไม่บังคับ)',
+    address2Placeholder: 'อาคาร ชั้น ห้อง หรือจุดสังเกต',
+    subDistrictLabel: 'ตำบล/แขวง',
+    subDistrictRequired: 'กรุณากรอกตำบล/แขวง',
+    subDistrictPlaceholder: 'ตำบล หรือ แขวง',
+    districtLabel: 'อำเภอ/เขต',
+    districtRequired: 'กรุณากรอกอำเภอ/เขต',
+    districtPlaceholder: 'อำเภอ หรือ เขต',
+    provinceLabel: 'จังหวัด',
+    provinceRequired: 'กรุณากรอกจังหวัด',
+    provincePlaceholder: 'จังหวัด',
+    postalLabel: 'รหัสไปรษณีย์',
+    postalRequired: 'กรุณากรอกรหัสไปรษณีย์',
+    postalInvalid: 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก',
+    cancel: 'ยกเลิก',
+    saving: 'กำลังบันทึก...',
+    confirm: 'ยืนยันที่อยู่',
+  },
+  en: {
+    title: 'Shipping Address',
+    subtitle: 'Please fill in every field correctly',
+    fullNameLabel: 'Full name (recipient)',
+    fullNamePlaceholder: 'Full name',
+    fullNameRequired: 'Please enter the full name',
+    phoneLabel: 'Phone number',
+    phoneRequired: 'Please enter a phone number',
+    phoneInvalid: 'Invalid phone number (example: 081-234-5678)',
+    phoneHint: 'Numbers only, 10 digits',
+    addressLabel: 'Address',
+    addressRequired: 'Please enter the address',
+    addressPlaceholder: 'House no., moo, soi, road',
+    address2Label: 'Extra details (optional)',
+    address2Placeholder: 'Building, floor, room, or landmark',
+    subDistrictLabel: 'Sub-district',
+    subDistrictRequired: 'Please enter the sub-district',
+    subDistrictPlaceholder: 'Sub-district (tambon/khwaeng)',
+    districtLabel: 'District',
+    districtRequired: 'Please enter the district',
+    districtPlaceholder: 'District (amphoe/khet)',
+    provinceLabel: 'Province',
+    provinceRequired: 'Please enter the province',
+    provincePlaceholder: 'Province',
+    postalLabel: 'Postal code',
+    postalRequired: 'Please enter the postal code',
+    postalInvalid: 'Postal code must be 5 digits',
+    cancel: 'Cancel',
+    saving: 'Saving...',
+    confirm: 'Confirm address',
+  },
+} as const;
 
 interface ShippingAddressFormProps {
   onSubmit: (address: ShippingAddress) => void;
@@ -27,6 +93,8 @@ export default function ShippingAddressForm({
   loading = false,
   savedAddress = null
 }: ShippingAddressFormProps) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   // Form fields
   const [fullName, setFullName] = useState(savedAddress?.fullName || '');
   const [phone, setPhone] = useState(savedAddress?.phone || '');
@@ -72,35 +140,35 @@ export default function ShippingAddressForm({
     const newErrors: Record<string, string> = {};
     
     if (!fullName.trim()) {
-      newErrors.fullName = 'กรุณากรอกชื่อ-นามสกุล';
+      newErrors.fullName = L.fullNameRequired;
     }
-    
+
     if (!phone) {
-      newErrors.phone = 'กรุณากรอกเบอร์โทรศัพท์';
+      newErrors.phone = L.phoneRequired;
     } else if (!validateThaiPhone(phone)) {
-      newErrors.phone = 'เบอร์โทรศัพท์ไม่ถูกต้อง (ตัวอย่าง: 081-234-5678)';
+      newErrors.phone = L.phoneInvalid;
     }
-    
+
     if (!addressLine1.trim()) {
-      newErrors.addressLine1 = 'กรุณากรอกที่อยู่';
+      newErrors.addressLine1 = L.addressRequired;
     }
-    
+
     if (!subDistrict.trim()) {
-      newErrors.subDistrict = 'กรุณากรอกตำบล/แขวง';
+      newErrors.subDistrict = L.subDistrictRequired;
     }
-    
+
     if (!district.trim()) {
-      newErrors.district = 'กรุณากรอกอำเภอ/เขต';
+      newErrors.district = L.districtRequired;
     }
-    
+
     if (!province.trim()) {
-      newErrors.province = 'กรุณากรอกจังหวัด';
+      newErrors.province = L.provinceRequired;
     }
-    
+
     if (!postalCode) {
-      newErrors.postalCode = 'กรุณากรอกรหัสไปรษณีย์';
+      newErrors.postalCode = L.postalRequired;
     } else if (!/^\d{5}$/.test(postalCode)) {
-      newErrors.postalCode = 'รหัสไปรษณีย์ต้องเป็นตัวเลข 5 หลัก';
+      newErrors.postalCode = L.postalInvalid;
     }
     
     setErrors(newErrors);
@@ -138,15 +206,15 @@ export default function ShippingAddressForm({
         <div className="inline-flex items-center justify-center w-16 h-16 bg-metaverse-purple/20 rounded-full mb-4">
           <MapPin className="w-8 h-8 text-metaverse-purple" />
         </div>
-        <h3 className="text-2xl font-bold text-white mb-2">ที่อยู่จัดส่ง</h3>
-        <p className="text-white/60">กรุณากรอกข้อมูลให้ครบถ้วนและถูกต้อง</p>
+        <h3 className="text-2xl font-bold text-white mb-2">{L.title}</h3>
+        <p className="text-white/60">{L.subtitle}</p>
       </div>
       
       {/* Full Name */}
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2">
           <User className="w-4 h-4 inline mr-1" />
-          ชื่อ-นามสกุล (ผู้รับ) <span className="text-red-400">*</span>
+          {L.fullNameLabel} <span className="text-red-400">*</span>
         </label>
         <input
           type="text"
@@ -155,7 +223,7 @@ export default function ShippingAddressForm({
           className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
             errors.fullName ? 'border-red-400' : 'border-metaverse-purple/30'
           }`}
-          placeholder="ชื่อ-นามสกุล"
+          placeholder={L.fullNamePlaceholder}
         />
         {errors.fullName && (
           <p className="mt-1 text-sm text-red-400 flex items-center">
@@ -169,7 +237,7 @@ export default function ShippingAddressForm({
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2">
           <Phone className="w-4 h-4 inline mr-1" />
-          เบอร์โทรศัพท์ <span className="text-red-400">*</span>
+          {L.phoneLabel} <span className="text-red-400">*</span>
         </label>
         <input
           type="tel"
@@ -181,7 +249,7 @@ export default function ShippingAddressForm({
           placeholder="081234xxxx"
           maxLength={10}
         />
-        <p className="mt-1 text-xs text-white/40">กรอกเฉพาะตัวเลข 10 หลัก</p>
+        <p className="mt-1 text-xs text-white/40">{L.phoneHint}</p>
         {errors.phone && (
           <p className="mt-1 text-sm text-red-400 flex items-center">
             <AlertCircle className="w-4 h-4 mr-1" />
@@ -194,7 +262,7 @@ export default function ShippingAddressForm({
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2">
           <Home className="w-4 h-4 inline mr-1" />
-          ที่อยู่ <span className="text-red-400">*</span>
+          {L.addressLabel} <span className="text-red-400">*</span>
         </label>
         <input
           type="text"
@@ -203,7 +271,7 @@ export default function ShippingAddressForm({
           className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
             errors.addressLine1 ? 'border-red-400' : 'border-metaverse-purple/30'
           }`}
-          placeholder="บ้านเลขที่ หมู่ ซอย ถนน"
+          placeholder={L.addressPlaceholder}
         />
         {errors.addressLine1 && (
           <p className="mt-1 text-sm text-red-400 flex items-center">
@@ -216,14 +284,14 @@ export default function ShippingAddressForm({
       {/* Address Line 2 (Optional) */}
       <div>
         <label className="block text-sm font-medium text-white/80 mb-2">
-          รายละเอียดเพิ่มเติม (ไม่บังคับ)
+          {L.address2Label}
         </label>
         <input
           type="text"
           value={addressLine2}
           onChange={(e) => setAddressLine2(e.target.value)}
           className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40"
-          placeholder="อาคาร ชั้น ห้อง หรือจุดสังเกต"
+          placeholder={L.address2Placeholder}
         />
       </div>
       
@@ -232,7 +300,7 @@ export default function ShippingAddressForm({
         {/* Sub-district */}
         <div>
           <label className="block text-sm font-medium text-white/80 mb-2">
-            ตำบล/แขวง <span className="text-red-400">*</span>
+            {L.subDistrictLabel} <span className="text-red-400">*</span>
           </label>
           <input
             type="text"
@@ -241,7 +309,7 @@ export default function ShippingAddressForm({
             className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
               errors.subDistrict ? 'border-red-400' : 'border-metaverse-purple/30'
             }`}
-            placeholder="ตำบล หรือ แขวง"
+            placeholder={L.subDistrictPlaceholder}
           />
           {errors.subDistrict && (
             <p className="mt-1 text-sm text-red-400 flex items-center">
@@ -254,7 +322,7 @@ export default function ShippingAddressForm({
         {/* District */}
         <div>
           <label className="block text-sm font-medium text-white/80 mb-2">
-            อำเภอ/เขต <span className="text-red-400">*</span>
+            {L.districtLabel} <span className="text-red-400">*</span>
           </label>
           <input
             type="text"
@@ -263,7 +331,7 @@ export default function ShippingAddressForm({
             className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
               errors.district ? 'border-red-400' : 'border-metaverse-purple/30'
             }`}
-            placeholder="อำเภอ หรือ เขต"
+            placeholder={L.districtPlaceholder}
           />
           {errors.district && (
             <p className="mt-1 text-sm text-red-400 flex items-center">
@@ -279,7 +347,7 @@ export default function ShippingAddressForm({
         {/* Province */}
         <div>
           <label className="block text-sm font-medium text-white/80 mb-2">
-            จังหวัด <span className="text-red-400">*</span>
+            {L.provinceLabel} <span className="text-red-400">*</span>
           </label>
           <input
             type="text"
@@ -288,7 +356,7 @@ export default function ShippingAddressForm({
             className={`w-full px-4 py-3 bg-white/10 backdrop-blur-md border rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40 ${
               errors.province ? 'border-red-400' : 'border-metaverse-purple/30'
             }`}
-            placeholder="จังหวัด"
+            placeholder={L.provincePlaceholder}
           />
           {errors.province && (
             <p className="mt-1 text-sm text-red-400 flex items-center">
@@ -301,7 +369,7 @@ export default function ShippingAddressForm({
         {/* Postal Code */}
         <div>
           <label className="block text-sm font-medium text-white/80 mb-2">
-            รหัสไปรษณีย์ <span className="text-red-400">*</span>
+            {L.postalLabel} <span className="text-red-400">*</span>
           </label>
           <input
             type="text"
@@ -332,7 +400,7 @@ export default function ShippingAddressForm({
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
-          ยกเลิก
+          {L.cancel}
         </motion.button>
         
         <motion.button
@@ -345,12 +413,12 @@ export default function ShippingAddressForm({
           {loading ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              กำลังบันทึก...
+              {L.saving}
             </>
           ) : (
             <>
               <Check className="w-5 h-5" />
-              ยืนยันที่อยู่
+              {L.confirm}
             </>
           )}
         </motion.button>

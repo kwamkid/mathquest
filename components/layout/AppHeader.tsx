@@ -18,8 +18,10 @@ import { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Pi } from 'lucide-react';
+import LanguageToggle from './LanguageToggle';
 import SoundToggles from './SoundToggles';
 import UserMenu from './UserMenu';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import type { User } from '@/types';
 
 interface AppHeaderProps {
@@ -48,6 +50,7 @@ export default function AppHeader({
   hideActions = false,
 }: AppHeaderProps) {
   const router = useRouter();
+  const { t } = useLanguage();
 
   return (
     <header className="glass-dark sticky top-0 z-40 border-b border-metaverse-purple/30">
@@ -55,8 +58,8 @@ export default function AppHeader({
         {/* Logo — far left, one-tap home. */}
         <Link
           href="/"
-          aria-label="กลับหน้าแรก"
-          title="MathQuest — หน้าแรก"
+          aria-label={t.common.backHome}
+          title="MathQuest"
           className="group flex shrink-0 items-center rounded-lg p-1 transition hover:bg-white/5"
         >
           <Pi
@@ -70,7 +73,7 @@ export default function AppHeader({
           <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <button
               onClick={() => (backHref ? router.push(backHref) : router.back())}
-              aria-label="ย้อนกลับ"
+              aria-label={t.common.back}
               className="glass flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -81,7 +84,7 @@ export default function AppHeader({
                 <span className="truncate">{title}</span>
               </h1>
               {subtitle && (
-                <p className="hidden truncate text-[11px] text-white/60 sm:block">
+                <p className="hidden truncate text-xs text-white/60 sm:block">
                   {subtitle}
                 </p>
               )}
@@ -101,20 +104,22 @@ export default function AppHeader({
 
             {/* Score + EXP — compact on phones; labels drop on mobile. */}
             <div className="glass-dark flex items-center gap-1 rounded-full border border-metaverse-purple/30 px-1.5 py-0.5 sm:gap-2 sm:px-3 sm:py-1">
-              <span className="hidden text-[10px] uppercase tracking-wide text-white/50 sm:inline">
-                คะแนน
+              <span className="hidden text-xs uppercase tracking-wide text-white/50 sm:inline">
+                {t.common.score}
               </span>
-              <span className="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-[11px] font-bold text-transparent sm:text-sm">
+              <span className="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-xs font-bold text-transparent sm:text-sm">
                 {user.totalScore.toLocaleString()}
               </span>
               <span className="h-3 w-px bg-white/20" aria-hidden />
-              <span className="hidden text-[10px] uppercase tracking-wide text-white/50 sm:inline">
+              <span className="hidden text-xs uppercase tracking-wide text-white/50 sm:inline">
                 EXP
               </span>
-              <span className="bg-gradient-to-r from-metaverse-purple to-metaverse-pink bg-clip-text text-[11px] font-bold text-transparent sm:text-sm">
+              <span className="bg-gradient-to-r from-metaverse-purple to-metaverse-pink bg-clip-text text-xs font-bold text-transparent sm:text-sm">
                 {user.experience.toLocaleString()}
               </span>
             </div>
+
+            <LanguageToggle />
 
             <SoundToggles />
 

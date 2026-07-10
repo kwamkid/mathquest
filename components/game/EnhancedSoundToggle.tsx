@@ -6,11 +6,40 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Music, Zap, X } from 'lucide-react';
 import { useSound } from '@/lib/game/soundManager';
 import { useBackgroundMusic } from '@/lib/game/backgroundMusicManager';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+// Local bilingual UI strings for this component
+const STR = {
+  th: {
+    soundSettings: 'ตั้งค่าเสียง',
+    bgMusic: 'เพลงประกอบ',
+    playing: '♪ กำลังเล่น',
+    on: 'เปิดแล้ว',
+    off: 'ปิดอยู่',
+    soundEffects: 'เสียงเอฟเฟค',
+    soundEffectsDesc: 'คลิก, ถูก-ผิด, เลื่อนระดับ',
+    closeTip: '💡 คลิกข้างนอกหรือกด ESC เพื่อปิด',
+    close: 'ปิด',
+  },
+  en: {
+    soundSettings: 'Sound settings',
+    bgMusic: 'Background music',
+    playing: '♪ Playing',
+    on: 'On',
+    off: 'Off',
+    soundEffects: 'Sound effects',
+    soundEffectsDesc: 'Clicks, right/wrong, level up',
+    closeTip: '💡 Click outside or press ESC to close',
+    close: 'Close',
+  },
+} as const;
 
 export default function EnhancedSoundToggle() {
   const [showDialog, setShowDialog] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const { lang } = useLanguage();
+  const L = STR[lang];
   
   const { isEnabled: soundEnabled, toggleSound } = useSound();
   const { 
@@ -93,7 +122,7 @@ export default function EnhancedSoundToggle() {
         className="p-1.5 md:p-2 glass rounded-full transition hover:bg-white/10 group relative"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
-        title="ตั้งค่าเสียง"
+        title={L.soundSettings}
       >
         {hasAnySound ? (
           <Volume2 className={`w-4 h-4 md:w-5 md:h-5 ${
@@ -109,7 +138,7 @@ export default function EnhancedSoundToggle() {
         
         {/* Desktop tooltip */}
         <span className="hidden md:block absolute -bottom-8 left-1/2 transform -translate-x-1/2 text-xs text-white/0 group-hover:text-white/80 transition whitespace-nowrap">
-          ตั้งค่าเสียง
+          {L.soundSettings}
         </span>
       </motion.button>
 
@@ -135,7 +164,7 @@ export default function EnhancedSoundToggle() {
             >
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-lg font-bold text-white">ตั้งค่าเสียง</h3>
+                <h3 className="text-lg font-bold text-white">{L.soundSettings}</h3>
                 <motion.button
                   onClick={() => setShowDialog(false)}
                   className="p-1.5 glass rounded-full hover:bg-white/10 transition"
@@ -169,13 +198,13 @@ export default function EnhancedSoundToggle() {
                       <Music className="w-5 h-5 text-blue-400" />
                     </motion.div>
                     <div>
-                      <h4 className="font-medium text-white">เพลงประกอบ</h4>
+                      <h4 className="font-medium text-white">{L.bgMusic}</h4>
                       <p className="text-xs text-white/60">
-                        {musicEnabled 
-                          ? musicPlaying 
-                            ? '♪ กำลังเล่น' 
-                            : 'เปิดแล้ว' 
-                          : 'ปิดอยู่'
+                        {musicEnabled
+                          ? musicPlaying
+                            ? L.playing
+                            : L.on
+                          : L.off
                         }
                       </p>
                     </div>
@@ -217,9 +246,9 @@ export default function EnhancedSoundToggle() {
                       <Zap className="w-5 h-5 text-orange-400" />
                     </motion.div>
                     <div>
-                      <h4 className="font-medium text-white">เสียงเอฟเฟค</h4>
+                      <h4 className="font-medium text-white">{L.soundEffects}</h4>
                       <p className="text-xs text-white/60">
-                        คลิก, ถูก-ผิด, เลื่อนระดับ
+                        {L.soundEffectsDesc}
                       </p>
                     </div>
                   </div>
@@ -250,7 +279,7 @@ export default function EnhancedSoundToggle() {
               {/* Tips */}
               <div className="mt-6 p-3 bg-white/5 rounded-lg border border-white/10">
                 <p className="text-xs text-white/50 text-center">
-                  💡 คลิกข้างนอกหรือกด ESC เพื่อปิด
+                  {L.closeTip}
                 </p>
               </div>
 
@@ -261,7 +290,7 @@ export default function EnhancedSoundToggle() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                ปิด
+                {L.close}
               </motion.button>
             </motion.div>
           </motion.div>

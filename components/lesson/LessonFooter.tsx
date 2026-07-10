@@ -2,7 +2,13 @@
 'use client';
 
 import { Check, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import type { StepFeedback } from './LessonPlayer';
+
+const STR = {
+  th: { next: 'ถัดไป', correct: 'ถูกต้อง', incorrect: 'ยังไม่ใช่' },
+  en: { next: 'Next', correct: 'Correct', incorrect: 'Not quite' },
+} as const;
 
 interface Props {
   onPrev?: () => void;
@@ -20,10 +26,12 @@ export default function LessonFooter({
   onNext,
   prevDisabled,
   nextDisabled,
-  nextLabel = 'ถัดไป',
+  nextLabel,
   showPrev = true,
   feedback,
 }: Props) {
+  const { lang, t } = useLanguage();
+  const L = STR[lang];
   return (
     <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0a0a0a]/85 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-6">
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
@@ -34,7 +42,7 @@ export default function LessonFooter({
             className="flex h-12 items-center gap-1 rounded-2xl px-4 text-base font-semibold text-white/80 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
           >
             <ChevronLeft className="h-5 w-5" />
-            ย้อนกลับ
+            {t.common.back}
           </button>
         ) : (
           <div />
@@ -49,7 +57,7 @@ export default function LessonFooter({
                 : 'bg-rose-500/20 text-rose-400'
             }`}
             role="status"
-            aria-label={feedback.correct ? 'ถูกต้อง' : 'ยังไม่ใช่'}
+            aria-label={feedback.correct ? L.correct : L.incorrect}
           >
             {feedback.correct ? (
               <Check className="h-6 w-6" strokeWidth={3} />
@@ -64,7 +72,7 @@ export default function LessonFooter({
           disabled={nextDisabled}
           className="learn-accent-pill flex h-12 items-center gap-1 rounded-2xl px-6 text-base font-bold shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
         >
-          {nextLabel}
+          {nextLabel ?? L.next}
           <ChevronRight className="h-5 w-5" />
         </button>
       </div>

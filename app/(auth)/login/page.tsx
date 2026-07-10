@@ -8,11 +8,61 @@ import { signIn } from '@/lib/firebase/auth';
 import { Pi, User, Lock, Eye, EyeOff, LogIn, Volume2, VolumeX } from 'lucide-react';
 import { suppressConsoleError } from '@/lib/utils/suppressConsoleError';
 import { useBackgroundMusic } from '@/lib/game/backgroundMusicManager';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    subtitle: 'เข้าสู่ระบบเพื่อเริ่มการผจญภัย',
+    musicOff: 'ปิดเพลง',
+    musicOn: 'เปิดเพลง',
+    bgMusic: '♪ เพลงพื้นหลัง',
+    registerSuccess: '✅ สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ',
+    usernameLabel: 'Username',
+    usernameRequired: 'กรุณากรอก Username',
+    usernamePlaceholder: 'ชื่อผู้ใช้ของคุณ',
+    passwordLabel: 'รหัสผ่าน',
+    passwordRequired: 'กรุณากรอกรหัสผ่าน',
+    passwordPlaceholder: 'รหัสผ่านของคุณ',
+    rememberMe: 'จดจำฉัน',
+    forgotPassword: 'ลืมรหัสผ่าน?',
+    genericError: 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+    loggingIn: 'กำลังเข้าสู่ระบบ...',
+    login: 'เข้าสู่ระบบ',
+    or: 'หรือ',
+    noAccount: 'ยังไม่มีบัญชี?',
+    register: 'สมัครสมาชิก',
+    backHome: '← กลับหน้าหลัก',
+  },
+  en: {
+    subtitle: 'Log in to start your adventure',
+    musicOff: 'Turn music off',
+    musicOn: 'Turn music on',
+    bgMusic: '♪ Background music',
+    registerSuccess: '✅ Account created! Please log in',
+    usernameLabel: 'Username',
+    usernameRequired: 'Please enter your username',
+    usernamePlaceholder: 'Your username',
+    passwordLabel: 'Password',
+    passwordRequired: 'Please enter your password',
+    passwordPlaceholder: 'Your password',
+    rememberMe: 'Remember me',
+    forgotPassword: 'Forgot password?',
+    genericError: 'Something went wrong. Please try again.',
+    loggingIn: 'Logging in...',
+    login: 'Log in',
+    or: 'or',
+    noAccount: "Don't have an account?",
+    register: 'Sign up',
+    backHome: '← Back to home',
+  },
+} as const;
 
 // Login form component wrapped with search params
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const { fadeIn, toggleMusic, isEnabled: musicEnabled, isPlaying } = useBackgroundMusic();
   
   const [formData, setFormData] = useState({
@@ -57,11 +107,11 @@ function LoginForm() {
     const newErrors: Record<string, string> = {};
     
     if (!formData.username.trim()) {
-      newErrors.username = 'กรุณากรอก Username';
+      newErrors.username = L.usernameRequired;
     }
-    
+
     if (!formData.password) {
-      newErrors.password = 'กรุณากรอกรหัสผ่าน';
+      newErrors.password = L.passwordRequired;
     }
     
     setErrors(newErrors);
@@ -88,7 +138,7 @@ function LoginForm() {
       router.push('/');
     } catch (error: unknown) {
         // Get error message
-        let errorMessage = 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+        let errorMessage: string = L.genericError;
         
         if (error && typeof error === 'object' && 'message' in error) {
             errorMessage = (error as Error).message;
@@ -148,7 +198,7 @@ function LoginForm() {
         className="fixed top-4 right-4 z-50 p-3 glass-dark rounded-full border border-metaverse-purple/30 hover:border-metaverse-purple/60 transition-all group"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
-        title={musicEnabled ? 'ปิดเพลง' : 'เปิดเพลง'}
+        title={musicEnabled ? L.musicOff : L.musicOn}
       >
         {musicEnabled ? (
           <Volume2 className={`w-5 h-5 ${isPlaying ? 'text-green-400' : 'text-white'} group-hover:text-metaverse-purple transition`} />
@@ -189,7 +239,7 @@ function LoginForm() {
               Math<span className="text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-red">Quest</span>
             </h1>
             <p className="text-white/70 mt-2">
-              เข้าสู่ระบบเพื่อเริ่มการผจญภัย
+              {L.subtitle}
             </p>
 
             {/* Music Status */}
@@ -205,7 +255,7 @@ function LoginForm() {
                 >
                   <Volume2 className="w-4 h-4 text-green-400" />
                 </motion.div>
-                <span className="text-xs text-green-400 font-medium">♪ เพลงพื้นหลัง</span>
+                <span className="text-xs text-green-400 font-medium">{L.bgMusic}</span>
               </motion.div>
             )}
           </motion.div>
@@ -219,14 +269,14 @@ function LoginForm() {
                 animate={{ opacity: 1, y: 0 }}
                 className="glass border border-green-500/50 text-green-400 px-4 py-3 rounded-xl flex items-center gap-2"
               >
-                ✅ สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ
+                {L.registerSuccess}
               </motion.div>
             )}
 
             {/* Username */}
             <div>
               <label className="block text-white/80 font-medium mb-2">
-                Username
+                {L.usernameLabel}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -241,7 +291,7 @@ function LoginForm() {
                   className={`w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition-all ${
                     errors.username ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-purple'
                   } text-white placeholder-white/50`}
-                  placeholder="ชื่อผู้ใช้ของคุณ"
+                  placeholder={L.usernamePlaceholder}
                   disabled={isLoading}
                 />
               </div>
@@ -259,7 +309,7 @@ function LoginForm() {
             {/* Password */}
             <div>
               <label className="block text-white/80 font-medium mb-2">
-                รหัสผ่าน
+                {L.passwordLabel}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -274,7 +324,7 @@ function LoginForm() {
                   className={`w-full pl-12 pr-12 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition-all ${
                     errors.password ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-purple'
                   } text-white placeholder-white/50`}
-                  placeholder="รหัสผ่านของคุณ"
+                  placeholder={L.passwordPlaceholder}
                   disabled={isLoading}
                 />
                 <button
@@ -311,14 +361,14 @@ function LoginForm() {
                   }}
                   className="w-4 h-4 bg-white/10 border-metaverse-purple/50 rounded focus:ring-metaverse-purple accent-metaverse-purple"
                 />
-                <span className="ml-2 text-sm text-white/70">จดจำฉัน</span>
+                <span className="ml-2 text-sm text-white/70">{L.rememberMe}</span>
               </label>
               <Link 
                 href="#" 
                 className="text-sm text-metaverse-purple hover:text-metaverse-pink transition"
                 onClick={startMusicOnInteraction}
               >
-                ลืมรหัสผ่าน?
+                {L.forgotPassword}
               </Link>
             </div>
 
@@ -351,12 +401,12 @@ function LoginForm() {
                   >
                     ⏳
                   </motion.span>
-                  กำลังเข้าสู่ระบบ...
+                  {L.loggingIn}
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
                   <LogIn className="w-5 h-5" />
-                  เข้าสู่ระบบ
+                  {L.login}
                 </span>
               )}
             </motion.button>
@@ -368,20 +418,20 @@ function LoginForm() {
               <div className="w-full border-t border-metaverse-purple/30"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-metaverse-black/50 backdrop-blur-sm text-white/50">หรือ</span>
+              <span className="px-4 bg-metaverse-black/50 backdrop-blur-sm text-white/50">{L.or}</span>
             </div>
           </div>
 
           {/* Register Link */}
           <div className="text-center">
             <p className="text-white/70">
-              ยังไม่มีบัญชี?{' '}
-              <Link 
-                href="/register" 
+              {L.noAccount}{' '}
+              <Link
+                href="/register"
                 className="text-metaverse-purple hover:text-metaverse-pink font-medium transition"
                 onClick={startMusicOnInteraction}
               >
-                สมัครสมาชิก
+                {L.register}
               </Link>
             </p>
           </div>
@@ -394,7 +444,7 @@ function LoginForm() {
             className="text-white/60 hover:text-white transition inline-flex items-center gap-2"
             onClick={startMusicOnInteraction}
           >
-            ← กลับหน้าหลัก
+            {L.backHome}
           </Link>
         </div>
       </motion.div>

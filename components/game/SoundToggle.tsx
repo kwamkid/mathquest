@@ -5,10 +5,19 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Volume2, VolumeX } from 'lucide-react';
 import { useSound } from '@/lib/game/soundManager';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+// Local bilingual UI strings for this component
+const STR = {
+  th: { mute: 'ปิดเสียง', unmute: 'เปิดเสียง' },
+  en: { mute: 'Mute', unmute: 'Unmute' },
+} as const;
 
 export default function SoundToggle() {
   const { isEnabled, toggleSound, playSound } = useSound();
   const [enabled, setEnabled] = useState(isEnabled);
+  const { lang } = useLanguage();
+  const L = STR[lang];
 
   const handleToggle = () => {
     const newState = toggleSound();
@@ -28,7 +37,7 @@ export default function SoundToggle() {
       }`}
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
-      title={enabled ? 'ปิดเสียง' : 'เปิดเสียง'}
+      title={enabled ? L.mute : L.unmute}
     >
       {enabled ? (
         <Volume2 className="w-5 h-5" />

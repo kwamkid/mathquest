@@ -11,28 +11,130 @@ import { User as UserIcon, School, GraduationCap, Save, ArrowLeft, AlertCircle, 
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import LevelProgressDisplay from '@/components/game/LevelProgressDisplay';
 import AppHeader from '@/components/layout/AppHeader';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 const grades = [
-  { value: 'K1', label: 'อนุบาล 1' },
-  { value: 'K2', label: 'อนุบาล 2' },
-  { value: 'K3', label: 'อนุบาล 3' },
-  { value: 'P1', label: 'ประถม 1' },
-  { value: 'P2', label: 'ประถม 2' },
-  { value: 'P3', label: 'ประถม 3' },
-  { value: 'P4', label: 'ประถม 4' },
-  { value: 'P5', label: 'ประถม 5' },
-  { value: 'P6', label: 'ประถม 6' },
-  { value: 'M1', label: 'มัธยม 1' },
-  { value: 'M2', label: 'มัธยม 2' },
-  { value: 'M3', label: 'มัธยม 3' },
-  { value: 'M4', label: 'มัธยม 4' },
-  { value: 'M5', label: 'มัธยม 5' },
-  { value: 'M6', label: 'มัธยม 6' },
+  { value: 'K1', th: 'อนุบาล 1', en: 'Kindergarten 1' },
+  { value: 'K2', th: 'อนุบาล 2', en: 'Kindergarten 2' },
+  { value: 'K3', th: 'อนุบาล 3', en: 'Kindergarten 3' },
+  { value: 'P1', th: 'ประถม 1', en: 'Primary 1' },
+  { value: 'P2', th: 'ประถม 2', en: 'Primary 2' },
+  { value: 'P3', th: 'ประถม 3', en: 'Primary 3' },
+  { value: 'P4', th: 'ประถม 4', en: 'Primary 4' },
+  { value: 'P5', th: 'ประถม 5', en: 'Primary 5' },
+  { value: 'P6', th: 'ประถม 6', en: 'Primary 6' },
+  { value: 'M1', th: 'มัธยม 1', en: 'Secondary 1' },
+  { value: 'M2', th: 'มัธยม 2', en: 'Secondary 2' },
+  { value: 'M3', th: 'มัธยม 3', en: 'Secondary 3' },
+  { value: 'M4', th: 'มัธยม 4', en: 'Secondary 4' },
+  { value: 'M5', th: 'มัธยม 5', en: 'Secondary 5' },
+  { value: 'M6', th: 'มัธยม 6', en: 'Secondary 6' },
 ];
+
+const STR = {
+  th: {
+    pageTitle: 'ข้อมูลส่วนตัว',
+    joinedOn: 'สมัครเมื่อ',
+    score: 'คะแนน',
+    streakDays: 'วันต่อเนื่อง',
+    manageAvatar: 'จัดการ Avatar',
+    manageAvatarShort: 'Avatar',
+    rewardShop: 'Reward Shop',
+    rewardShopShort: 'Shop',
+    highscores: 'คะแนนสูงสุด',
+    highscoresShort: 'คะแนน',
+    tabEdit: 'แก้ไขข้อมูล',
+    tabProgress: 'ความก้าวหน้า',
+    saveSuccess: 'บันทึกข้อมูลสำเร็จ!',
+    saveError: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล',
+    displayNameLabel: 'ชื่อที่แสดง (ไม่บังคับ)',
+    displayNamePlaceholder: 'ชื่อที่จะแสดงใน Ranking',
+    displayNameHint: 'หากไม่กรอก จะแสดง username แทน',
+    schoolLabel: 'โรงเรียน',
+    schoolRequired: 'กรุณากรอกชื่อโรงเรียน',
+    schoolPlaceholder: 'ชื่อโรงเรียน',
+    gradeLabel: 'ระดับชั้น',
+    gradeRequired: 'กรุณาเลือกระดับชั้น',
+    gradePlaceholder: 'เลือกระดับชั้น',
+    gradeWarnTitle: '⚠️ การเปลี่ยนระดับชั้นจะรีเซ็ต:',
+    gradeWarnLevel: 'Level กลับเป็น 1',
+    gradeWarnExp: 'EXP กลับเป็น 0',
+    gradeWarnHistory: 'ประวัติการเล่นของระดับชั้นเดิมจะถูกล้าง',
+    gradeWarnScoreKept: '(คะแนนรวมจะยังคงอยู่)',
+    saving: 'กำลังบันทึก...',
+    save: 'บันทึกข้อมูล',
+    cancel: 'ยกเลิก',
+    noteLabel: 'หมายเหตุ:',
+    noteText: 'Username ไม่สามารถเปลี่ยนได้ หากต้องการเปลี่ยน Username จะต้องสร้างบัญชีใหม่',
+    modalTitle: '⚠️ คำเตือน: ยืนยันการเปลี่ยนระดับชั้น',
+    modalEffects: 'การเปลี่ยนระดับชั้นจะส่งผลให้:',
+    modalLevelResetPrefix: 'Level กลับไปเป็น',
+    modalExpReset: 'EXP ทั้งหมดจะถูกรีเซ็ตเป็น 0',
+    modalExpFrom: (exp: string) => `(จาก ${exp} EXP → 0 EXP)`,
+    modalHistoryCleared: 'ประวัติการเล่นของระดับชั้นเดิมจะถูกล้าง',
+    modalScoreKept: 'คะแนนรวมยังคงเหมือนเดิม',
+    modalTypePrefix: 'พิมพ์',
+    modalTypeSuffix: 'เพื่อยืนยันการเปลี่ยนระดับชั้น',
+    modalInputPlaceholder: 'พิมพ์ CONFIRM',
+    modalCancel: 'ยกเลิก',
+    modalConfirm: 'ยืนยันเปลี่ยนระดับชั้น',
+    modalIrreversible: '* การกระทำนี้ไม่สามารถย้อนกลับได้',
+  },
+  en: {
+    pageTitle: 'My Profile',
+    joinedOn: 'Joined',
+    score: 'Score',
+    streakDays: 'Day streak',
+    manageAvatar: 'Manage Avatar',
+    manageAvatarShort: 'Avatar',
+    rewardShop: 'Reward Shop',
+    rewardShopShort: 'Shop',
+    highscores: 'High Scores',
+    highscoresShort: 'Scores',
+    tabEdit: 'Edit Info',
+    tabProgress: 'Progress',
+    saveSuccess: 'Saved successfully!',
+    saveError: 'Something went wrong while saving',
+    displayNameLabel: 'Display name (optional)',
+    displayNamePlaceholder: 'Name shown in the Ranking',
+    displayNameHint: 'If left empty, your username is shown instead',
+    schoolLabel: 'School',
+    schoolRequired: 'Please enter your school name',
+    schoolPlaceholder: 'School name',
+    gradeLabel: 'Grade',
+    gradeRequired: 'Please select a grade',
+    gradePlaceholder: 'Select a grade',
+    gradeWarnTitle: '⚠️ Changing your grade will reset:',
+    gradeWarnLevel: 'Level goes back to 1',
+    gradeWarnExp: 'EXP goes back to 0',
+    gradeWarnHistory: 'Play history for your old grade will be cleared',
+    gradeWarnScoreKept: '(Your total score is kept)',
+    saving: 'Saving...',
+    save: 'Save',
+    cancel: 'Cancel',
+    noteLabel: 'Note:',
+    noteText: 'Your username cannot be changed. To change it you would need to create a new account.',
+    modalTitle: '⚠️ Warning: Confirm grade change',
+    modalEffects: 'Changing your grade will:',
+    modalLevelResetPrefix: 'Reset Level back to',
+    modalExpReset: 'Reset ALL your EXP to 0',
+    modalExpFrom: (exp: string) => `(from ${exp} EXP → 0 EXP)`,
+    modalHistoryCleared: 'Clear the play history of your old grade',
+    modalScoreKept: 'Your total score stays the same',
+    modalTypePrefix: 'Type',
+    modalTypeSuffix: 'to confirm the grade change',
+    modalInputPlaceholder: 'Type CONFIRM',
+    modalCancel: 'Cancel',
+    modalConfirm: 'Confirm grade change',
+    modalIrreversible: '* This action cannot be undone',
+  },
+} as const;
 
 export default function ProfilePage() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [saving, setSaving] = useState(false);
   const [showGradeWarning, setShowGradeWarning] = useState(false);
   const [activeTab, setActiveTab] = useState<'profile' | 'progress'>('profile');
@@ -104,11 +206,11 @@ export default function ProfilePage() {
     const newErrors: Record<string, string> = {};
     
     if (!formData.school.trim()) {
-      newErrors.school = 'กรุณากรอกชื่อโรงเรียน';
+      newErrors.school = L.schoolRequired;
     }
-    
+
     if (!formData.grade) {
-      newErrors.grade = 'กรุณาเลือกระดับชั้น';
+      newErrors.grade = L.gradeRequired;
     }
     
     setErrors(newErrors);
@@ -143,7 +245,7 @@ export default function ProfilePage() {
       
       await updateUserProfile(user.id, updateData);
       
-      setSuccessMessage('บันทึกข้อมูลสำเร็จ!');
+      setSuccessMessage(L.saveSuccess);
       setShowGradeWarning(false);
       
       // Refresh user data in context
@@ -153,7 +255,7 @@ export default function ProfilePage() {
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error updating profile:', error);
-      setErrors({ submit: 'เกิดข้อผิดพลาดในการบันทึกข้อมูล' });
+      setErrors({ submit: L.saveError });
     } finally {
       setSaving(false);
     }
@@ -161,7 +263,7 @@ export default function ProfilePage() {
 
   const getGradeLabel = (gradeValue: string) => {
     const grade = grades.find(g => g.value === gradeValue);
-    return grade ? grade.label : gradeValue;
+    return grade ? grade[lang] : gradeValue;
   };
 
   if (!user) return null;
@@ -179,7 +281,7 @@ export default function ProfilePage() {
         <AppHeader
           user={user}
           variant="sub"
-          title="ข้อมูลส่วนตัว"
+          title={L.pageTitle}
           titleIcon={<UserIcon className="h-4 w-4 text-metaverse-purple" />}
           backHref="/"
         />
@@ -225,9 +327,9 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <div className="text-right hidden md:block">
-                  <p className="text-xs text-white/60">สมัครเมื่อ</p>
+                  <p className="text-xs text-white/60">{L.joinedOn}</p>
                   <p className="text-sm font-medium text-white">
-                    {new Date(user.createdAt).toLocaleDateString('th-TH', {
+                    {new Date(user.createdAt).toLocaleDateString(lang === 'en' ? 'en-GB' : 'th-TH', {
                       year: 'numeric',
                       month: 'short',
                       day: 'numeric'
@@ -250,7 +352,7 @@ export default function ProfilePage() {
                   whileHover={{ scale: 1.05 }}
                 >
                   <p className="text-xl md:text-2xl font-bold text-metaverse-pink">{user.totalScore.toLocaleString()}</p>
-                  <p className="text-xs text-white/60">คะแนน</p>
+                  <p className="text-xs text-white/60">{L.score}</p>
                 </motion.div>
                 <motion.div 
                   className="glass rounded-xl p-3 text-center border border-metaverse-purple/20"
@@ -264,7 +366,7 @@ export default function ProfilePage() {
                   whileHover={{ scale: 1.05 }}
                 >
                   <p className="text-xl md:text-2xl font-bold text-orange-400">{user.playStreak || 0}</p>
-                  <p className="text-xs text-white/60">วันต่อเนื่อง</p>
+                  <p className="text-xs text-white/60">{L.streakDays}</p>
                 </motion.div>
               </div>
 
@@ -275,24 +377,24 @@ export default function ProfilePage() {
                   className="glass rounded-xl p-3 hover:bg-white/10 transition border border-metaverse-purple/30 flex items-center justify-center gap-2 text-white/80 hover:text-white"
                 >
                   <Sparkles className="w-5 h-5" />
-                  <span className="hidden md:inline">จัดการ Avatar</span>
-                  <span className="md:hidden">Avatar</span>
+                  <span className="hidden md:inline">{L.manageAvatar}</span>
+                  <span className="md:hidden">{L.manageAvatarShort}</span>
                 </Link>
                 <Link
                   href="/rewards"
                   className="glass rounded-xl p-3 hover:bg-white/10 transition border border-metaverse-purple/30 flex items-center justify-center gap-2 text-white/80 hover:text-white"
                 >
                   <Gift className="w-5 h-5" />
-                  <span className="hidden md:inline">Reward Shop</span>
-                  <span className="md:hidden">Shop</span>
+                  <span className="hidden md:inline">{L.rewardShop}</span>
+                  <span className="md:hidden">{L.rewardShopShort}</span>
                 </Link>
                 <Link
                   href="/highscores"
                   className="glass rounded-xl p-3 hover:bg-white/10 transition border border-metaverse-purple/30 flex items-center justify-center gap-2 text-white/80 hover:text-white"
                 >
                   <Trophy className="w-5 h-5" />
-                  <span className="hidden md:inline">คะแนนสูงสุด</span>
-                  <span className="md:hidden">คะแนน</span>
+                  <span className="hidden md:inline">{L.highscores}</span>
+                  <span className="md:hidden">{L.highscoresShort}</span>
                 </Link>
               </div>
             </div>
@@ -309,7 +411,7 @@ export default function ProfilePage() {
               >
                 <span className="flex items-center justify-center gap-2">
                   <Edit className="w-5 h-5" />
-                  แก้ไขข้อมูล
+                  {L.tabEdit}
                 </span>
                 {activeTab === 'profile' && (
                   <motion.div
@@ -328,7 +430,7 @@ export default function ProfilePage() {
               >
                 <span className="flex items-center justify-center gap-2">
                   <TrendingUp className="w-5 h-5" />
-                  ความก้าวหน้า
+                  {L.tabProgress}
                 </span>
                 {activeTab === 'progress' && (
                   <motion.div
@@ -366,7 +468,7 @@ export default function ProfilePage() {
                       {/* Display Name */}
                       <div>
                         <label className="block text-white/80 font-medium mb-2">
-                          ชื่อที่แสดง (ไม่บังคับ)
+                          {L.displayNameLabel}
                         </label>
                         <div className="relative">
                           <UserIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
@@ -376,18 +478,18 @@ export default function ProfilePage() {
                             value={formData.displayName}
                             onChange={handleInputChange}
                             className="w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-md border border-metaverse-purple/30 rounded-xl focus:outline-none focus:border-metaverse-pink text-white placeholder-white/40"
-                            placeholder="ชื่อที่จะแสดงใน Ranking"
+                            placeholder={L.displayNamePlaceholder}
                           />
                         </div>
                         <p className="text-sm text-white/50 mt-1">
-                          หากไม่กรอก จะแสดง username แทน
+                          {L.displayNameHint}
                         </p>
                       </div>
 
                       {/* School */}
                       <div>
                         <label className="block text-white/80 font-medium mb-2">
-                          โรงเรียน <span className="text-red-400">*</span>
+                          {L.schoolLabel} <span className="text-red-400">*</span>
                         </label>
                         <div className="relative">
                           <School className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
@@ -399,7 +501,7 @@ export default function ProfilePage() {
                             className={`w-full pl-12 pr-4 py-3 bg-white/10 backdrop-blur-md rounded-xl focus:outline-none transition ${
                               errors.school ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
                             } text-white placeholder-white/40`}
-                            placeholder="ชื่อโรงเรียน"
+                            placeholder={L.schoolPlaceholder}
                           />
                         </div>
                         {errors.school && (
@@ -410,7 +512,7 @@ export default function ProfilePage() {
                       {/* Grade */}
                       <div>
                         <label className="block text-white/80 font-medium mb-2">
-                          ระดับชั้น <span className="text-red-400">*</span>
+                          {L.gradeLabel} <span className="text-red-400">*</span>
                         </label>
                         <div className="relative">
                           <GraduationCap className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
@@ -422,10 +524,10 @@ export default function ProfilePage() {
                               errors.grade ? 'border-2 border-red-500' : 'border border-metaverse-purple/30 focus:border-metaverse-pink'
                             } text-white`}
                           >
-                            <option value="" className="bg-metaverse-black">เลือกระดับชั้น</option>
+                            <option value="" className="bg-metaverse-black">{L.gradePlaceholder}</option>
                             {grades.map(grade => (
                               <option key={grade.value} value={grade.value} className="bg-metaverse-black">
-                                {grade.label}
+                                {grade[lang]}
                               </option>
                             ))}
                           </select>
@@ -445,15 +547,15 @@ export default function ProfilePage() {
                               <AlertCircle className="w-5 h-5 text-orange-400 flex-shrink-0 mt-0.5" />
                               <div>
                                 <p className="text-orange-400 font-medium mb-2">
-                                  ⚠️ การเปลี่ยนระดับชั้นจะรีเซ็ต:
+                                  {L.gradeWarnTitle}
                                 </p>
                                 <ul className="text-orange-400/80 space-y-1 list-disc list-inside">
-                                  <li>Level กลับเป็น 1</li>
-                                  <li><strong className="text-red-400">EXP กลับเป็น 0</strong></li>
-                                  <li>ประวัติการเล่นของระดับชั้นเดิมจะถูกล้าง</li>
+                                  <li>{L.gradeWarnLevel}</li>
+                                  <li><strong className="text-red-400">{L.gradeWarnExp}</strong></li>
+                                  <li>{L.gradeWarnHistory}</li>
                                 </ul>
                                 <p className="text-sm text-orange-400/60 mt-2">
-                                  (คะแนนรวมจะยังคงอยู่)
+                                  {L.gradeWarnScoreKept}
                                 </p>
                               </div>
                             </div>
@@ -489,12 +591,12 @@ export default function ProfilePage() {
                               >
                                 ⏳
                               </motion.span>
-                              กำลังบันทึก...
+                              {L.saving}
                             </>
                           ) : (
                             <>
                               <Save className="w-5 h-5" />
-                              บันทึกข้อมูล
+                              {L.save}
                             </>
                           )}
                         </motion.button>
@@ -504,7 +606,7 @@ export default function ProfilePage() {
                           onClick={() => router.push('/')}
                           className="px-8 py-3 glass border border-metaverse-purple/50 text-white font-bold rounded-xl shadow-lg hover:bg-white/10 transition"
                         >
-                          ยกเลิก
+                          {L.cancel}
                         </button>
                       </div>
                     </div>
@@ -532,8 +634,7 @@ export default function ProfilePage() {
             className="mt-6 glass-dark p-4 rounded-xl text-sm border border-metaverse-purple/20"
           >
             <p className="text-white/60">
-              <span className="font-semibold">หมายเหตุ:</span> Username ไม่สามารถเปลี่ยนได้ 
-              หากต้องการเปลี่ยน Username จะต้องสร้างบัญชีใหม่
+              <span className="font-semibold">{L.noteLabel}</span> {L.noteText}
             </p>
           </motion.div>
         </div>
@@ -568,7 +669,7 @@ export default function ProfilePage() {
 
               {/* Title */}
               <h3 className="text-2xl font-bold text-white text-center mb-4">
-                ⚠️ คำเตือน: ยืนยันการเปลี่ยนระดับชั้น
+                {L.modalTitle}
               </h3>
 
               {/* Current to New Grade */}
@@ -584,30 +685,30 @@ export default function ProfilePage() {
               <div className="space-y-4 mb-6">
                 <div className="glass bg-orange-500/10 rounded-xl p-4 border border-orange-500/30">
                   <p className="text-orange-400 font-semibold mb-2">
-                    การเปลี่ยนระดับชั้นจะส่งผลให้:
+                    {L.modalEffects}
                   </p>
                   <ul className="space-y-2 text-sm">
                     <li className="flex items-start gap-2">
                       <span className="text-orange-400 mt-0.5">•</span>
-                      <span className="text-white/80">Level กลับไปเป็น <strong className="text-yellow-400">1</strong></span>
+                      <span className="text-white/80">{L.modalLevelResetPrefix} <strong className="text-yellow-400">1</strong></span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-red-400 mt-0.5">•</span>
                       <span className="text-white/80">
-                        <strong className="text-red-400">EXP ทั้งหมดจะถูกรีเซ็ตเป็น 0</strong>
+                        <strong className="text-red-400">{L.modalExpReset}</strong>
                         <br />
                         <span className="text-white/60 text-xs">
-                          (จาก {user.experience.toLocaleString()} EXP → 0 EXP)
+                          {L.modalExpFrom(user.experience.toLocaleString())}
                         </span>
                       </span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-orange-400 mt-0.5">•</span>
-                      <span className="text-white/80">ประวัติการเล่นของระดับชั้นเดิมจะถูกล้าง</span>
+                      <span className="text-white/80">{L.modalHistoryCleared}</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <span className="text-green-400 mt-0.5">✓</span>
-                      <span className="text-white/80">คะแนนรวมยังคงเหมือนเดิม</span>
+                      <span className="text-white/80">{L.modalScoreKept}</span>
                     </li>
                   </ul>
                 </div>
@@ -616,13 +717,13 @@ export default function ProfilePage() {
               {/* Confirm Input */}
               <div className="mb-6">
                 <p className="text-white/80 text-center mb-3">
-                  พิมพ์ <strong className="text-red-400">&quot;CONFIRM&quot;</strong> เพื่อยืนยันการเปลี่ยนระดับชั้น
+                  {L.modalTypePrefix} <strong className="text-red-400">&quot;CONFIRM&quot;</strong> {L.modalTypeSuffix}
                 </p>
                 <input
                   type="text"
                   value={confirmText}
                   onChange={(e) => setConfirmText(e.target.value)}
-                  placeholder="พิมพ์ CONFIRM"
+                  placeholder={L.modalInputPlaceholder}
                   className="w-full px-4 py-3 bg-white/10 backdrop-blur-md border border-red-500/50 rounded-xl focus:outline-none focus:border-red-400 text-white placeholder-white/40 text-center text-lg font-bold"
                   autoFocus
                 />
@@ -637,7 +738,7 @@ export default function ProfilePage() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <X className="w-5 h-5 inline mr-2" />
-                  ยกเลิก
+                  {L.modalCancel}
                 </motion.button>
                 
                 <motion.button
@@ -652,13 +753,13 @@ export default function ProfilePage() {
                   whileTap={confirmText.toUpperCase() === 'CONFIRM' ? { scale: 0.98 } : {}}
                 >
                   <AlertTriangle className="w-5 h-5 inline mr-2" />
-                  ยืนยันเปลี่ยนระดับชั้น
+                  {L.modalConfirm}
                 </motion.button>
               </div>
 
               {/* Additional Warning */}
               <p className="text-xs text-red-400/60 text-center mt-4">
-                * การกระทำนี้ไม่สามารถย้อนกลับได้
+                {L.modalIrreversible}
               </p>
             </motion.div>
           </motion.div>

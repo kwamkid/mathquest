@@ -8,6 +8,16 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Global type scale — readability-first for kids (user rule: regular
+      // text is 16px, nothing below 14px anywhere). text-sm IS the regular
+      // size; base/lg step up for body/lead copy. 2xl+ keep Tailwind defaults.
+      fontSize: {
+        xs: ['0.875rem', { lineHeight: '1.3rem' }],   // 14px — smallest allowed (badges/meta)
+        sm: ['1rem', { lineHeight: '1.5rem' }],       // 16px — regular
+        base: ['1.125rem', { lineHeight: '1.75rem' }], // 18px — body/lead
+        lg: ['1.25rem', { lineHeight: '1.85rem' }],   // 20px
+        xl: ['1.375rem', { lineHeight: '1.95rem' }],  // 22px
+      },
       colors: {
         metaverse: {
           black: '#0A0A0A',

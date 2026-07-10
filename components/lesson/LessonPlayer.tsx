@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Lesson, LessonStep, Question } from '@/types/curriculum';
 import { useSound } from '@/lib/game/soundManager';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import LessonHeader from './LessonHeader';
 import LessonFooter from './LessonFooter';
 import LessonComplete from './LessonComplete';
@@ -65,6 +66,28 @@ interface Props {
   onStepChange?: (stepIndex: number) => void;
 }
 
+// Page-specific bilingual UI strings (see lib/i18n/strings.ts conventions).
+const STR = {
+  th: {
+    seeStep: (n: number) => `ดูขั้นที่ ${n}`,
+    finishLesson: 'จบบทเรียน',
+    next: 'ถัดไป',
+    exitTitle: 'ออกจากบทเรียน?',
+    exitMessage: 'ความคืบหน้าของคุณจะถูกบันทึกไว้',
+    exitConfirm: 'ออกจากบทเรียน',
+    exitCancel: 'เรียนต่อ',
+  },
+  en: {
+    seeStep: (n: number) => `Show step ${n}`,
+    finishLesson: 'Finish lesson',
+    next: 'Next',
+    exitTitle: 'Leave this lesson?',
+    exitMessage: 'Your progress will be saved',
+    exitConfirm: 'Leave lesson',
+    exitCancel: 'Keep learning',
+  },
+} as const;
+
 // Extracts the canonical "correct" answer for a question (for mistake records).
 const stringifyCorrectAnswer = (q: Question): string => {
   if (q.format === 'text-input') return String(q.expectedAnswer);
@@ -85,6 +108,8 @@ export default function LessonPlayer({
   onStepChange,
 }: Props) {
   const { playSound } = useSound();
+  const { lang } = useLanguage();
+  const L = STR[lang];
   // Start at the saved position, clamped within the lesson. The last step
   // of a lesson is often the reward / reflection — if the learner had already
   // reached the very end on a previous run, resume one step before so they
@@ -263,10 +288,10 @@ export default function LessonPlayer({
   const isWorkedExampleRevealing =
     step?.type === 'worked-example' && revealed < step.steps.length;
   const defaultNextLabel = isWorkedExampleRevealing
-    ? `ดูขั้นที่ ${revealed + 1}`
+    ? L.seeStep(revealed + 1)
     : isLast
-      ? 'จบบทเรียน'
-      : 'ถัดไป';
+      ? L.finishLesson
+      : L.next;
 
   const footer = useMemo<FooterAction>(
     () =>
@@ -417,10 +442,10 @@ export default function LessonPlayer({
       <Dialog
         isOpen={closeIntent !== null}
         type="confirm"
-        title="ออกจากบทเรียน?"
-        message="ความคืบหน้าของคุณจะถูกบันทึกไว้"
-        confirmLabel="ออกจากบทเรียน"
-        cancelLabel="เรียนต่อ"
+        title={L.exitTitle}
+        message={L.exitMessage}
+        confirmLabel={L.exitConfirm}
+        cancelLabel={L.exitCancel}
         onClose={cancelClose}
         onConfirm={confirmClose}
       />

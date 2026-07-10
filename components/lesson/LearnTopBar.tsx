@@ -12,6 +12,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Home, LogOut, Settings, Star } from 'lucide-react';
 import { signOut } from '@/lib/firebase/auth';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import EnhancedSoundToggle from '@/components/game/EnhancedSoundToggle';
 import type { User } from '@/types';
@@ -19,6 +20,17 @@ import type { User } from '@/types';
 interface Props {
   user: User;
 }
+
+const STR = {
+  th: {
+    homeTitle: 'กลับหน้าแรก (เรียน / เล่นเกม)',
+    settings: 'ตั้งค่า',
+  },
+  en: {
+    homeTitle: 'Back to home (Learn / Play)',
+    settings: 'Settings',
+  },
+} as const;
 
 // Sum stars earned across every curriculum the user has touched.
 const totalStarsAcrossCurricula = (user: User): number => {
@@ -31,6 +43,8 @@ const totalStarsAcrossCurricula = (user: User): number => {
 
 export default function LearnTopBar({ user }: Props) {
   const router = useRouter();
+  const { lang, t } = useLanguage();
+  const L = STR[lang];
   const stars = totalStarsAcrossCurricula(user);
 
   const handleSignOut = async () => {
@@ -79,8 +93,8 @@ export default function LearnTopBar({ user }: Props) {
 
           <motion.button
             onClick={() => router.push('/')}
-            aria-label="กลับหน้าแรก"
-            title="กลับหน้าแรก (เรียน / เล่นเกม)"
+            aria-label={t.common.backHome}
+            title={L.homeTitle}
             className="glass flex h-7 w-7 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
@@ -90,7 +104,7 @@ export default function LearnTopBar({ user }: Props) {
 
           <motion.button
             onClick={() => router.push('/profile')}
-            aria-label="ตั้งค่า"
+            aria-label={L.settings}
             className="glass flex h-7 w-7 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
@@ -100,7 +114,7 @@ export default function LearnTopBar({ user }: Props) {
 
           <motion.button
             onClick={handleSignOut}
-            aria-label="ออกจากระบบ"
+            aria-label={t.common.logout}
             className="glass flex h-7 w-7 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}

@@ -2,7 +2,13 @@
 'use client';
 
 import { X } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import LessonProgress from './LessonProgress';
+
+const STR = {
+  th: { closeLesson: 'ออกจากบทเรียน' },
+  en: { closeLesson: 'Leave lesson' },
+} as const;
 
 interface Props {
   lessonTitle: string;
@@ -19,13 +25,15 @@ export default function LessonHeader({
   totalSteps,
   onClose,
 }: Props) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   return (
     <header className="sticky top-0 z-10 border-b border-white/10 bg-[#0a0a0a]/80 px-4 pb-3 pt-5 backdrop-blur-md sm:px-6 sm:pt-7">
       {/* Close button pinned to the actual screen edge (outside the
         * centred max-w-3xl column) so it lands top-right on every screen. */}
       <button
         onClick={onClose}
-        aria-label="ออกจากบทเรียน"
+        aria-label={L.closeLesson}
         className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white sm:right-4 sm:top-4"
       >
         <X className="h-6 w-6" />

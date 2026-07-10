@@ -12,8 +12,30 @@ import { motion } from 'framer-motion';
 import { Music, Volume2, VolumeX } from 'lucide-react';
 import { useSound } from '@/lib/game/soundManager';
 import { useBackgroundMusic } from '@/lib/game/backgroundMusicManager';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    soundOff: 'ปิดเสียงเอฟเฟกต์',
+    soundOn: 'เปิดเสียงเอฟเฟกต์',
+    soundTitle: 'เสียงเอฟเฟกต์',
+    musicOff: 'ปิดเพลงประกอบ',
+    musicOn: 'เปิดเพลงประกอบ',
+    musicTitle: 'เพลงประกอบ',
+  },
+  en: {
+    soundOff: 'Turn sound effects off',
+    soundOn: 'Turn sound effects on',
+    soundTitle: 'Sound effects',
+    musicOff: 'Turn music off',
+    musicOn: 'Turn music on',
+    musicTitle: 'Background music',
+  },
+} as const;
 
 export default function SoundToggles() {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const { toggleSound, isEnabled: soundInitial } = useSound();
   const {
     isEnabled: musicEnabled,
@@ -49,9 +71,9 @@ export default function SoundToggles() {
         onClick={handleSound}
         whileTap={{ scale: 0.9 }}
         className={btn}
-        aria-label={soundOn ? 'ปิดเสียงเอฟเฟกต์' : 'เปิดเสียงเอฟเฟกต์'}
+        aria-label={soundOn ? L.soundOff : L.soundOn}
         aria-pressed={soundOn}
-        title="เสียงเอฟเฟกต์"
+        title={L.soundTitle}
       >
         {soundOn ? (
           <Volume2 className="h-4 w-4 text-green-400" />
@@ -64,9 +86,9 @@ export default function SoundToggles() {
         onClick={handleMusic}
         whileTap={{ scale: 0.9 }}
         className={btn}
-        aria-label={musicEnabled ? 'ปิดเพลงประกอบ' : 'เปิดเพลงประกอบ'}
+        aria-label={musicEnabled ? L.musicOff : L.musicOn}
         aria-pressed={musicEnabled}
-        title="เพลงประกอบ"
+        title={L.musicTitle}
       >
         <Music
           className={`h-4 w-4 ${musicEnabled ? 'text-green-400' : 'text-white/40'}`}

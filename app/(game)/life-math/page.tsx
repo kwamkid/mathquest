@@ -12,6 +12,7 @@ import AuthGuard from '@/components/auth/AuthGuard';
 import AppHeader from '@/components/layout/AppHeader';
 import CurriculumTimeline from '@/components/curriculum/CurriculumTimeline';
 import { useAuth } from '@/lib/contexts/AuthContext';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { getCurriculum } from '@/lib/curricula';
 import { findContinueLesson } from '@/lib/curricula/progress-helpers';
 
@@ -20,13 +21,14 @@ const CURRICULUM_ID = 'life-math-beginner';
 export default function LifeMathHomePage() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useLanguage();
   const curriculum = getCurriculum(CURRICULUM_ID);
 
   if (!curriculum) {
     return (
       <AuthGuard>
         <div className="learn-bg flex min-h-screen items-center justify-center p-6">
-          <p className="text-lg font-semibold text-white">ยังไม่พร้อมใช้งาน</p>
+          <p className="text-lg font-semibold text-white">{t.common.notReady}</p>
         </div>
       </AuthGuard>
     );
@@ -56,14 +58,14 @@ export default function LifeMathHomePage() {
                 <h1 className="text-3xl font-bold text-white">Life Math</h1>
               </div>
               <p className="mt-1 text-base text-white/70">
-                คณิตศาสตร์ที่ใช้ในชีวิตจริง — เปอร์เซ็นต์ บัญญัติไตรยางศ์ ลดราคา ของคุ้มราคา
+                {t.curriculum.lifeMathSubtitle}
               </p>
             </header>
 
             <CurriculumTimeline
               curriculum={curriculum}
               progress={progress}
-              heading="Life Math · ทักษะคำนวณในชีวิตประจำวัน"
+              heading={t.curriculum.lifeMathHeading}
               continueLessonId={continueLesson?.lesson.id ?? null}
               onContinue={() => {
                 if (!continueLesson) return;

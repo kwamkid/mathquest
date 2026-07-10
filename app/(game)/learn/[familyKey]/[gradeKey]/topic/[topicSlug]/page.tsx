@@ -18,12 +18,33 @@ import {
   getSubTopicProgress,
   isSubTopicUnlocked,
 } from '@/lib/curricula/progress-helpers';
+import { localizeTitle, useLanguage } from '@/lib/i18n/LanguageContext';
 import { ChevronRight, CheckCircle2, Lock } from 'lucide-react';
+
+// Page-specific bilingual UI strings (see lib/i18n/strings.ts conventions).
+const STR = {
+  th: {
+    topicNotFound: 'ไม่พบหัวข้อนี้',
+    chapterN: (n: number) => `บทที่ ${n}`,
+    doneOf: (done: number, total: number) => `${done}/${total} เรียนแล้ว`,
+    passed: 'ผ่าน',
+    done: 'เรียนจบ',
+  },
+  en: {
+    topicNotFound: 'Topic not found',
+    chapterN: (n: number) => `Chapter ${n}`,
+    doneOf: (done: number, total: number) => `${done}/${total} done`,
+    passed: 'Passed',
+    done: 'Completed',
+  },
+} as const;
 
 export default function TopicPage() {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
+  const { lang, t } = useLanguage();
+  const L = STR[lang];
   const familyKey = String(params.familyKey);
   const gradeKey = String(params.gradeKey);
   const topicSlug = String(params.topicSlug);
@@ -53,7 +74,7 @@ export default function TopicPage() {
     return (
       <AuthGuard>
         <div className="learn-bg flex min-h-screen items-center justify-center p-6">
-          <p className="text-lg font-semibold text-white">ไม่พบหัวข้อนี้</p>
+          <p className="text-lg font-semibold text-white">{L.topicNotFound}</p>
         </div>
       </AuthGuard>
     );
@@ -65,6 +86,7 @@ export default function TopicPage() {
   }
 
   const { family, grade } = resolved;
+  const famName = lang === 'en' ? family.name : family.thaiName ?? family.name;
   const progress = user?.curriculumProgress?.[curriculum.id];
   const sorted = [...topic.subTopics].sort((a, b) => a.order - b.order);
   const hideGrade = !!family.skipGradePicker;
@@ -77,7 +99,7 @@ export default function TopicPage() {
           <LearnBreadcrumb
             items={[
               {
-                label: family.thaiName ?? family.name,
+                label: famName,
                 href: `/learn/${family.key}/${grade.key}`,
               },
               ...(hideGrade
@@ -88,12 +110,12 @@ export default function TopicPage() {
                       href: `/learn/${family.key}/${grade.key}`,
                     },
                   ]),
-              { label: topic.thaiTitle ?? topic.title },
+              { label: localizeTitle(lang, topic) },
             ]}
           />
           <header className="space-y-1">
             <p className="text-sm font-semibold uppercase tracking-wide text-pink-300">
-              {hideGrade ? (family.thaiName ?? family.name) : grade.label}
+              {hideGrade ? famName : grade.label}
             </p>
             <h1 className="flex items-center gap-3 text-3xl font-bold text-white">
               <TopicIcon
@@ -101,7 +123,7 @@ export default function TopicPage() {
                 className="h-9 w-9 text-pink-300"
                 emojiClassName="text-3xl leading-none"
               />
-              <span>{topic.thaiTitle ?? topic.title}</span>
+              <span>{localizeTitle(lang, topic)}</span>
             </h1>
             <p className="text-base text-white/70">{topic.description}</p>
           </header>
@@ -140,21 +162,21 @@ export default function TopicPage() {
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-white/50">
-                        บทที่ {i + 1}
+                        {L.chapterN(i + 1)}
                       </p>
                       <h2 className="mt-0.5 text-lg font-bold text-white">
-                        {st.thaiTitle ?? st.title}
+                        {localizeTitle(lang, st)}
                       </h2>
                       <p className="mt-1 text-sm text-white/70">{st.description}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/60">
-                        <span>⏱ {st.estimatedTotalMinutes} นาที</span>
-                        <span>{st.lessons.length} บทเรียน</span>
+                        <span>{t.curriculum.estMinutes(st.estimatedTotalMinutes)}</span>
+                        <span>{st.lessons.length} {t.common.lessons}</span>
                         {sp.completed > 0 && (
-                          <span>{sp.completed}/{sp.total} เรียนแล้ว</span>
+                          <span>{L.doneOf(sp.completed, sp.total)}</span>
                         )}
                         {isDone && (
                           <span className="inline-flex items-center gap-1 text-emerald-300">
-                            <CheckCircle2 className="h-4 w-4" /> ผ่าน
+                            <CheckCircle2 className="h-4 w-4" /> {L.passed}
                           </span>
                         )}
                       </div>
@@ -171,7 +193,7 @@ export default function TopicPage() {
                   {!unlocked ? (
                     <Lock className="h-5 w-5 shrink-0 text-white/40" />
                   ) : isDone ? (
-                    <CheckCircle2 className="h-10 w-10 shrink-0 text-emerald-400" aria-label="เรียนจบ" />
+                    <CheckCircle2 className="h-10 w-10 shrink-0 text-emerald-400" aria-label={L.done} />
                   ) : (
                     <ChevronRight className="h-5 w-5 shrink-0 text-white/60" />
                   )}

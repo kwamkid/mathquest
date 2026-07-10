@@ -3,6 +3,7 @@
 
 import { motion } from 'framer-motion';
 import { Star, Trophy } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 interface Props {
   lessonTitle: string;
@@ -11,12 +12,27 @@ interface Props {
   onBackToDay: () => void;
 }
 
+const STR = {
+  th: {
+    excellent: 'ยอดเยี่ยม!',
+    badgeEarned: (badge: string) => `🏅 ได้ตรา “${badge}”`,
+    backToNext: 'กลับไปเรียนบทถัดไป',
+  },
+  en: {
+    excellent: 'Awesome!',
+    badgeEarned: (badge: string) => `🏅 Badge earned: “${badge}”`,
+    backToNext: 'Back to the next lesson',
+  },
+} as const;
+
 export default function LessonComplete({
   lessonTitle,
   starsAwarded,
   badge,
   onBackToDay,
 }: Props) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center">
       <motion.div
@@ -29,7 +45,7 @@ export default function LessonComplete({
           strokeWidth={1.5}
         />
       </motion.div>
-      <h2 className="mt-4 text-3xl font-bold text-white">ยอดเยี่ยม!</h2>
+      <h2 className="mt-4 text-3xl font-bold text-white">{L.excellent}</h2>
       <p className="mt-1 text-base text-white/70">{lessonTitle}</p>
 
       {starsAwarded > 0 && (
@@ -48,11 +64,11 @@ export default function LessonComplete({
       )}
 
       {badge && (
-        <p className="mt-3 text-base font-semibold text-amber-300">🏅 ได้ตรา “{badge}”</p>
+        <p className="mt-3 text-base font-semibold text-amber-300">{L.badgeEarned(badge)}</p>
       )}
 
       <button onClick={onBackToDay} className="learn-btn-primary mt-8 w-auto px-8">
-        กลับไปเรียนบทถัดไป
+        {L.backToNext}
       </button>
     </div>
   );

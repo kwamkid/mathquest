@@ -11,6 +11,18 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SetClockQuestion } from '@/types/curriculum';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    clockAria: (time: string) => `นาฬิกาแบบโต้ตอบ ปัจจุบัน ${time}`,
+    dragHands: 'ลากเข็มเพื่อตั้งเวลา',
+  },
+  en: {
+    clockAria: (time: string) => `Interactive clock, currently ${time}`,
+    dragHands: 'Drag the hands to set the time',
+  },
+} as const;
 
 interface Props {
   question: SetClockQuestion;
@@ -51,6 +63,8 @@ export default function SetClockQuestionView({
   onDraftValidityChange,
   submitSignal,
 }: Props) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   // Start at 12:00 so the learner sees an obvious "untouched" state.
   const [hours, setHours] = useState(12);
   const [minutes, setMinutes] = useState(0);
@@ -209,7 +223,7 @@ export default function SetClockQuestionView({
           style={{ touchAction: 'none', cursor: disabled ? 'not-allowed' : 'grab' }}
           className="select-none"
           role="img"
-          aria-label={`นาฬิกาแบบโต้ตอบ ปัจจุบัน ${formatTime(hours, minutes)}`}
+          aria-label={L.clockAria(formatTime(hours, minutes))}
         >
           <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="#FFFCF4" stroke="#3a2f5f" strokeWidth={3} />
 
@@ -273,7 +287,7 @@ export default function SetClockQuestionView({
           <span className="rounded-full bg-white/10 px-3 py-1 font-mono text-lg font-bold text-white">
             {formatTime(hours, minutes)}
           </span>
-          <span className="text-sm text-white/60">ลากเข็มเพื่อตั้งเวลา</span>
+          <span className="text-sm text-white/60">{L.dragHands}</span>
         </div>
       </div>
     </div>

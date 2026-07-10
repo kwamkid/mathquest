@@ -4,6 +4,20 @@
 import { useEffect, useRef, useState } from 'react';
 import type { TextInputQuestion } from '@/types/curriculum';
 import ConceptBlockRenderer from '@/components/visuals/ConceptBlockRenderer';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    fractionPlaceholder: 'เช่น 3/5',
+    answerPlaceholder: 'พิมพ์คำตอบ',
+    answerAria: 'พิมพ์คำตอบของคุณ',
+  },
+  en: {
+    fractionPlaceholder: 'e.g. 3/5',
+    answerPlaceholder: 'Type your answer',
+    answerAria: 'Type your answer',
+  },
+} as const;
 
 interface Props {
   question: TextInputQuestion;
@@ -48,6 +62,8 @@ export default function TextInputQuestionView({
   onDraftValidityChange,
   submitSignal,
 }: Props) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [value, setValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   // Track the last value so submitSignal-triggered submit reads it fresh.
@@ -100,10 +116,12 @@ export default function TextInputQuestionView({
           }}
           disabled={disabled}
           placeholder={
-            question.answerType === 'fraction' ? 'เช่น 3/5' : 'พิมพ์คำตอบ'
+            question.answerType === 'fraction'
+              ? L.fractionPlaceholder
+              : L.answerPlaceholder
           }
           className="learn-input flex-1"
-          aria-label="พิมพ์คำตอบของคุณ"
+          aria-label={L.answerAria}
         />
         {question.unit && (
           <span className="text-lg font-semibold text-white/80">{question.unit}</span>

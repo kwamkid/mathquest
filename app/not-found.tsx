@@ -3,11 +3,34 @@
 // Custom 404. Triggered by Next when no route matches — also when a page
 // calls notFound() explicitly. Keeps the brand look so the page doesn't
 // feel like an internal-server crash.
+//
+// Client component so it can read the active language — it renders no
+// server-only data, just static links.
+
+'use client';
 
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Gamepad2, Home, Lightbulb, Pi } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    pageNotFound: 'ไม่พบหน้านี้',
+    pageNotFoundDesc: 'URL ที่คุณเข้ามาอาจถูกย้าย เปลี่ยนชื่อ หรือยังไม่มีอยู่ในระบบ',
+    home: 'หน้าแรก',
+    orPlay: 'หรือไปเล่นเกมเลย',
+  },
+  en: {
+    pageNotFound: 'Page not found',
+    pageNotFoundDesc: 'The page you were looking for may have moved, been renamed, or never existed',
+    home: 'Home',
+    orPlay: 'or go play a game',
+  },
+} as const;
 
 export default function NotFound() {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   return (
     <div className="learn-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 py-12 text-center">
       {/* Quiet floating π in the background — keeps the page on-brand
@@ -23,10 +46,10 @@ export default function NotFound() {
             404
           </span>
           <h1 className="text-2xl font-bold text-white sm:text-3xl">
-            ไม่พบหน้านี้
+            {L.pageNotFound}
           </h1>
           <p className="text-base text-white/70">
-            URL ที่คุณเข้ามาอาจถูกย้าย เปลี่ยนชื่อ หรือยังไม่มีอยู่ในระบบ
+            {L.pageNotFoundDesc}
           </p>
         </div>
 
@@ -38,7 +61,7 @@ export default function NotFound() {
             className="learn-card flex flex-col items-center gap-2 rounded-2xl p-4 text-white transition hover:border-pink-400/50"
           >
             <Home className="h-7 w-7 text-pink-300" />
-            <span className="text-sm font-bold">หน้าแรก</span>
+            <span className="text-sm font-bold">{L.home}</span>
           </Link>
           <Link
             href="/learn"
@@ -61,7 +84,7 @@ export default function NotFound() {
           className="inline-flex items-center gap-2 text-sm text-white/60 transition hover:text-white"
         >
           <Gamepad2 className="h-4 w-4" />
-          หรือไปเล่นเกมเลย
+          {L.orPlay}
           <ArrowLeft className="h-3 w-3 rotate-180" />
         </Link>
       </div>

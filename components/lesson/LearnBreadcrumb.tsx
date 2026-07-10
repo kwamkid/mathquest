@@ -8,6 +8,12 @@
 
 import Link from 'next/link';
 import { ChevronRight, Home } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: { learn: 'เรียน' },
+  en: { learn: 'Learn' },
+} as const;
 
 export interface BreadcrumbItem {
   label: string;
@@ -19,6 +25,8 @@ interface Props {
 }
 
 export default function LearnBreadcrumb({ items }: Props) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   return (
     <nav aria-label="Breadcrumb" className="-mx-1 mb-3 text-sm">
       <ol className="flex flex-wrap items-center gap-x-1 gap-y-1 text-white/60">
@@ -28,7 +36,7 @@ export default function LearnBreadcrumb({ items }: Props) {
             className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 hover:bg-white/10 hover:text-white"
           >
             <Home className="h-3.5 w-3.5" />
-            <span>เรียน</span>
+            <span>{L.learn}</span>
           </Link>
         </li>
         {items.map((item, idx) => {

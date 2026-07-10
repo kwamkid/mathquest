@@ -4,12 +4,26 @@
 import { motion } from 'framer-motion';
 import { Award, Shield } from 'lucide-react';
 import { Badge } from '@/types/avatar';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+
+const STR = {
+  th: {
+    empty: 'ยังไม่มี Badge',
+    emptyHint: 'ทำภารกิจต่างๆ เพื่อรับ Badge!',
+  },
+  en: {
+    empty: 'No Badges yet',
+    emptyHint: 'Complete missions to earn Badges!',
+  },
+} as const;
 
 interface BadgesTabProps {
   badges: Badge[];
 }
 
 export default function BadgesTab({ badges }: BadgesTabProps) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   return (
     <motion.div
       initial={{ opacity: 0, x: 20 }}
@@ -47,8 +61,8 @@ export default function BadgesTab({ badges }: BadgesTabProps) {
       {badges.length === 0 && (
         <div className="text-center py-8">
           <Award className="w-12 h-12 text-white/20 mx-auto mb-3" />
-          <p className="text-white/40">ยังไม่มี Badge</p>
-          <p className="text-xs text-white/30 mt-1">ทำภารกิจต่างๆ เพื่อรับ Badge!</p>
+          <p className="text-white/40">{L.empty}</p>
+          <p className="text-xs text-white/30 mt-1">{L.emptyHint}</p>
         </div>
       )}
     </motion.div>

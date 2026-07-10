@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/contexts/AuthContext';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import { getGradeDisplayName } from '@/lib/game/gradeProgression';
 import AppHeader from '@/components/layout/AppHeader';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import confetti from 'canvas-confetti';
 import { 
   Trophy, 
@@ -30,6 +31,89 @@ interface ExpBreakdown {
   value: number;
   description: string;
 }
+
+// English grade display names (Thai names come from getGradeDisplayName)
+const GRADE_NAMES_EN: Record<string, string> = {
+  K1: 'Kindergarten 1', K2: 'Kindergarten 2', K3: 'Kindergarten 3',
+  P1: 'Grade 1', P2: 'Grade 2', P3: 'Grade 3',
+  P4: 'Grade 4', P5: 'Grade 5', P6: 'Grade 6',
+  M1: 'Grade 7', M2: 'Grade 8', M3: 'Grade 9',
+  M4: 'Grade 10', M5: 'Grade 11', M6: 'Grade 12',
+};
+
+// Local bilingual UI strings for this page
+const STR = {
+  th: {
+    pageTitle: 'ผลการเล่น',
+    viewRanking: 'ดูอันดับ',
+    gradeUpTitle: '🎉 ยินดีด้วย! เลื่อนชั้นแล้ว!',
+    restartAtLevel1: 'เริ่มต้นใหม่ที่ Level 1',
+    summaryTitle: 'สรุปผลการเล่น',
+    perfPerfect: 'Perfect! ยอดเยี่ยมมาก!',
+    perfExcellent: 'Excellent! เก่งมาก!',
+    perfVeryGood: 'Very Good! ดีมาก!',
+    perfGood: 'Good! ดี!',
+    perfKeepGoing: 'ทำได้ดี พยายามต่อไป!',
+    perfAlmost: 'พยายามอีกนิด!',
+    perfTryAgain: 'อย่าท้อ ลองใหม่นะ!',
+    percentCorrect: (pct: number) => `${pct}% ถูกต้อง`,
+    newHighScore: (diff: number) => `New High Score! (+${diff} คะแนน)`,
+    gradeUp: '🎉 เลื่อนชั้น!',
+    levelUp: 'Level Up!',
+    levelDown: 'Level Down',
+    levelSame: 'Level คงเดิม',
+    gradeAndLevel: 'ระดับชั้น & Level',
+    levelLabel: 'Level',
+    timeUsed: 'เวลาที่ใช้',
+    avgPerQuestion: (sec: number) => `เฉลี่ย ${sec} วิ/ข้อ`,
+    expEarned: 'EXP ที่ได้รับ',
+    total: 'รวมทั้งหมด',
+    streakDays: (days: number) => `เล่นต่อเนื่อง ${days} วัน!`,
+    firstTodayBonus: ' (+50 EXP โบนัสวันแรก)',
+    replayLevel: (level: number) => `เล่น Level ${level} อีกครั้ง`,
+    startGrade: (grade: string) => `เริ่มต้น ${grade}`,
+    enterLevel: (level: number) => `เข้าสู่ Level ${level}`,
+    playNext: 'เล่นต่อ',
+    home: 'หน้าหลัก',
+    ranking: 'อันดับ',
+    totalExp: 'EXP ทั้งหมด:',
+  },
+  en: {
+    pageTitle: 'Results',
+    viewRanking: 'View ranking',
+    gradeUpTitle: '🎉 Congratulations! You moved up a grade!',
+    restartAtLevel1: 'Starting fresh at Level 1',
+    summaryTitle: 'Game Summary',
+    perfPerfect: 'Perfect! Amazing!',
+    perfExcellent: 'Excellent!',
+    perfVeryGood: 'Very good!',
+    perfGood: 'Good job!',
+    perfKeepGoing: 'Nice work — keep it up!',
+    perfAlmost: 'Almost there — keep trying!',
+    perfTryAgain: "Don't give up — try again!",
+    percentCorrect: (pct: number) => `${pct}% correct`,
+    newHighScore: (diff: number) => `New High Score! (+${diff} points)`,
+    gradeUp: '🎉 Grade up!',
+    levelUp: 'Level Up!',
+    levelDown: 'Level Down',
+    levelSame: 'Level unchanged',
+    gradeAndLevel: 'Grade & Level',
+    levelLabel: 'Level',
+    timeUsed: 'Time',
+    avgPerQuestion: (sec: number) => `Avg ${sec} sec/question`,
+    expEarned: 'EXP earned',
+    total: 'Total',
+    streakDays: (days: number) => `${days}-day play streak!`,
+    firstTodayBonus: ' (+50 EXP first game today)',
+    replayLevel: (level: number) => `Replay Level ${level}`,
+    startGrade: (grade: string) => `Start ${grade}`,
+    enterLevel: (level: number) => `Go to Level ${level}`,
+    playNext: 'Keep playing',
+    home: 'Home',
+    ranking: 'Ranking',
+    totalExp: 'Total EXP:',
+  },
+} as const;
 
 // Confetti functions
 const fireConfetti = () => {
@@ -138,7 +222,13 @@ function SummaryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  
+  const { lang } = useLanguage();
+  const L = STR[lang];
+
+  // Localized grade display name
+  const gradeName = (grade: string): string =>
+    lang === 'en' ? (GRADE_NAMES_EN[grade] || grade) : getGradeDisplayName(grade);
+
   // Get params from URL
   const score = parseInt(searchParams.get('score') || '0');
   const total = parseInt(searchParams.get('total') || '0');
@@ -206,13 +296,13 @@ function SummaryContent() {
 
   // Get performance message
   const getPerformanceMessage = () => {
-    if (percentage === 100) return { text: 'Perfect! ยอดเยี่ยมมาก!', color: 'text-yellow-400' };
-    if (percentage >= 95) return { text: 'Excellent! เก่งมาก!', color: 'text-green-400' };
-    if (percentage >= 90) return { text: 'Very Good! ดีมาก!', color: 'text-green-400' };
-    if (percentage >= 85) return { text: 'Good! ดี!', color: 'text-blue-400' };
-    if (percentage >= 70) return { text: 'ทำได้ดี พยายามต่อไป!', color: 'text-blue-400' };
-    if (percentage >= 50) return { text: 'พยายามอีกนิด!', color: 'text-orange-400' };
-    return { text: 'อย่าท้อ ลองใหม่นะ!', color: 'text-red-400' };
+    if (percentage === 100) return { text: L.perfPerfect, color: 'text-yellow-400' };
+    if (percentage >= 95) return { text: L.perfExcellent, color: 'text-green-400' };
+    if (percentage >= 90) return { text: L.perfVeryGood, color: 'text-green-400' };
+    if (percentage >= 85) return { text: L.perfGood, color: 'text-blue-400' };
+    if (percentage >= 70) return { text: L.perfKeepGoing, color: 'text-blue-400' };
+    if (percentage >= 50) return { text: L.perfAlmost, color: 'text-orange-400' };
+    return { text: L.perfTryAgain, color: 'text-red-400' };
   };
 
   const performance = getPerformanceMessage();
@@ -223,7 +313,7 @@ function SummaryContent() {
     if (gradeChanged && newGrade !== oldGrade) {
       return {
         icon: <Crown className="w-6 h-6 md:w-8 md:h-8" />,
-        text: '🎉 เลื่อนชั้น!',
+        text: L.gradeUp,
         color: 'text-yellow-400',
         bgColor: 'bg-gradient-to-r from-yellow-500/20 to-orange-500/20',
         borderColor: 'border-yellow-500/50'
@@ -235,7 +325,7 @@ function SummaryContent() {
       case 'increase':
         return {
           icon: <TrendingUp className="w-6 h-6 md:w-8 md:h-8" />,
-          text: 'Level Up!',
+          text: L.levelUp,
           color: 'text-green-400',
           bgColor: 'bg-green-500/20',
           borderColor: 'border-green-500/30'
@@ -243,7 +333,7 @@ function SummaryContent() {
       case 'decrease':
         return {
           icon: <TrendingDown className="w-6 h-6 md:w-8 md:h-8" />,
-          text: 'Level Down',
+          text: L.levelDown,
           color: 'text-red-400',
           bgColor: 'bg-red-500/20',
           borderColor: 'border-red-500/30'
@@ -251,7 +341,7 @@ function SummaryContent() {
       default:
         return {
           icon: <Award className="w-6 h-6 md:w-8 md:h-8" />,
-          text: 'Level คงเดิม',
+          text: L.levelSame,
           color: 'text-orange-400',
           bgColor: 'bg-orange-500/20',
           borderColor: 'border-orange-500/30'
@@ -286,7 +376,7 @@ function SummaryContent() {
       <AppHeader
         user={user}
         variant="sub"
-        title="ผลการเล่น"
+        title={L.pageTitle}
         titleIcon={<Trophy className="h-4 w-4 text-yellow-400" />}
         backHref="/play"
         extras={
@@ -295,7 +385,7 @@ function SummaryContent() {
             className="p-1.5 glass rounded-full hover:bg-white/10 transition"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            title="ดูอันดับ"
+            title={L.viewRanking}
           >
             <BarChart3 className="w-4 h-4 text-white/70" />
           </motion.button>
@@ -333,10 +423,10 @@ function SummaryContent() {
                   <Crown className="w-16 h-16 text-yellow-400 mx-auto mb-3 filter drop-shadow-[0_0_10px_rgba(251,191,36,0.5)]" />
                 </motion.div>
                 <h2 className="text-3xl md:text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-400 to-yellow-400 mb-2">
-                  🎉 ยินดีด้วย! เลื่อนชั้นแล้ว!
+                  {L.gradeUpTitle}
                 </h2>
                 <div className="flex items-center justify-center gap-3 text-xl md:text-2xl text-white/90 mt-3">
-                  <span className="font-medium">{getGradeDisplayName(oldGrade)}</span>
+                  <span className="font-medium">{gradeName(oldGrade)}</span>
                   <motion.span
                     animate={{ x: [0, 10, 0] }}
                     transition={{ duration: 1, repeat: Infinity }}
@@ -345,16 +435,16 @@ function SummaryContent() {
                     →
                   </motion.span>
                   <span className="font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400">
-                    {getGradeDisplayName(newGrade)}
+                    {gradeName(newGrade)}
                   </span>
                 </div>
                 <p className="text-sm text-white/60 mt-2">
-                  เริ่มต้นใหม่ที่ Level 1
+                  {L.restartAtLevel1}
                 </p>
               </motion.div>
             )}
             
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">สรุปผลการเล่น</h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{L.summaryTitle}</h1>
             <p className={`text-xl md:text-2xl font-medium ${performance.color}`}>
               {performance.text}
             </p>
@@ -416,7 +506,7 @@ function SummaryContent() {
               </motion.div>
               
               <p className="text-3xl font-bold text-white">
-                {percentage}% ถูกต้อง
+                {L.percentCorrect(percentage)}
               </p>
             </div>
 
@@ -431,7 +521,7 @@ function SummaryContent() {
                 <div className="flex items-center gap-3">
                   <Trophy className="w-6 h-6 text-yellow-400" />
                   <span className="text-lg font-bold text-yellow-400">
-                    New High Score! (+{scoreDiff} คะแนน)
+                    {L.newHighScore(scoreDiff)}
                   </span>
                 </div>
               </motion.div>
@@ -450,12 +540,12 @@ function SummaryContent() {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-sm text-white/60 mb-2">
-                    {gradeChanged ? 'ระดับชั้น & Level' : 'Level'}
+                    {gradeChanged ? L.gradeAndLevel : L.levelLabel}
                   </p>
                   {gradeChanged ? (
                     <>
                       <div className="text-white/80 text-xs md:text-sm mb-1">
-                        {getGradeDisplayName(oldGrade)} → {getGradeDisplayName(newGrade)}
+                        {gradeName(oldGrade)} → {gradeName(newGrade)}
                       </div>
                       <div className="text-base md:text-lg font-bold text-white">
                         Level {oldLevel} → <span className={levelInfo.color}>Level {newLevel}</span>
@@ -491,12 +581,12 @@ function SummaryContent() {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-white/60 mb-2">เวลาที่ใช้</p>
+                  <p className="text-sm text-white/60 mb-2">{L.timeUsed}</p>
                   <p className="text-2xl md:text-3xl font-bold text-white">
                     {formatTime(timeSpent)}
                   </p>
                   <p className="text-sm text-white/60 mt-1">
-                    เฉลี่ย {Math.round(timeSpent / total)} วิ/ข้อ
+                    {L.avgPerQuestion(Math.round(timeSpent / total))}
                   </p>
                 </div>
                 <Clock className="w-6 h-6 md:w-8 md:h-8 text-metaverse-purple" />
@@ -514,7 +604,7 @@ function SummaryContent() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
                 <Zap className="w-6 h-6 text-yellow-400" />
-                EXP ที่ได้รับ
+                {L.expEarned}
               </h3>
               {boostMultiplier > 1 && (
                 <span className="px-3 py-1 bg-yellow-400/20 text-yellow-400 rounded-full text-sm font-medium">
@@ -551,7 +641,7 @@ function SummaryContent() {
             {/* Total EXP */}
             <div className="pt-4 border-t border-white/10">
               <div className="flex items-center justify-between">
-                <span className="text-lg font-medium text-white">รวมทั้งหมด</span>
+                <span className="text-lg font-medium text-white">{L.total}</span>
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
@@ -574,8 +664,8 @@ function SummaryContent() {
                 <div className="flex items-center gap-2">
                   <Crown className="w-5 h-5 text-yellow-400" />
                   <span className="text-sm text-yellow-400">
-                    เล่นต่อเนื่อง {playStreak} วัน!
-                    {isFirstToday && ' (+50 EXP โบนัสวันแรก)'}
+                    {L.streakDays(playStreak)}
+                    {isFirstToday && L.firstTodayBonus}
                   </span>
                 </div>
               </motion.div>
@@ -597,7 +687,7 @@ function SummaryContent() {
                 whileTap={{ scale: 0.98 }}
               >
                 <RotateCcw className="w-5 h-5" />
-                <span>เล่น Level {oldLevel} อีกครั้ง</span>
+                <span>{L.replayLevel(oldLevel)}</span>
               </motion.button>
 
               {/* เล่นต่อ */}
@@ -621,17 +711,17 @@ function SummaryContent() {
                 {gradeChanged ? (
                   <>
                     <Crown className="w-5 h-5" />
-                    <span>เริ่มต้น {getGradeDisplayName(newGrade)}</span>
+                    <span>{L.startGrade(gradeName(newGrade))}</span>
                   </>
                 ) : levelChange === 'increase' ? (
                   <>
                     <Rocket className="w-5 h-5" />
-                    <span>เข้าสู่ Level {newLevel}</span>
+                    <span>{L.enterLevel(newLevel)}</span>
                   </>
                 ) : (
                   <>
                     <RefreshCw className="w-5 h-5" />
-                    <span>เล่นต่อ</span>
+                    <span>{L.playNext}</span>
                   </>
                 )}
               </motion.button>
@@ -649,7 +739,7 @@ function SummaryContent() {
                 whileTap={{ scale: 0.98 }}
               >
                 <Home className="w-5 h-5" />
-                <span>หน้าหลัก</span>
+                <span>{L.home}</span>
               </motion.button>
               
               <motion.button
@@ -662,7 +752,7 @@ function SummaryContent() {
                 whileTap={{ scale: 0.98 }}
               >
                 <BarChart3 className="w-5 h-5" />
-                <span>อันดับ</span>
+                <span>{L.ranking}</span>
               </motion.button>
             </div>
 
@@ -674,7 +764,7 @@ function SummaryContent() {
               className="text-center"
             >
               <p className="text-lg text-white/60">
-                EXP ทั้งหมด: <span className="text-yellow-400 font-medium">{user?.experience.toLocaleString()}</span>
+                {L.totalExp} <span className="text-yellow-400 font-medium">{user?.experience.toLocaleString()}</span>
               </p>
             </motion.div>
           </div>

@@ -8,9 +8,11 @@
 import { useParams } from 'next/navigation';
 import AuthGuard from '@/components/auth/AuthGuard';
 import TimetableRoundPlayer from '@/components/timetable/TimetableRoundPlayer';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import { ROUNDS_PER_TABLE, TABLE_ORDER } from '@/lib/timetable/config';
 
 export default function TimetableRoundPage() {
+  const { t } = useLanguage();
   const params = useParams();
   const table = Number(params.table);
   const round = Number(params.round);
@@ -25,7 +27,9 @@ export default function TimetableRoundPage() {
     return (
       <AuthGuard>
         <div className="learn-bg flex min-h-screen items-center justify-center p-6">
-          <p className="text-lg font-semibold text-white">ไม่พบรอบฝึกนี้</p>
+          <p className="text-lg font-semibold text-white">
+            {t.timetable.roundNotFound}
+          </p>
         </div>
       </AuthGuard>
     );
@@ -34,7 +38,10 @@ export default function TimetableRoundPage() {
   return (
     <AuthGuard>
       {/* key forces a fresh generation on each table/round. */}
-      <TimetableRoundPlayer key={`${table}-${round}`} table={table} round={round} />
+      <TimetableRoundPlayer
+        key={`${table}-${round}`}
+        variant={{ kind: 'table', table, round }}
+      />
     </AuthGuard>
   );
 }

@@ -6,6 +6,7 @@ import { useRef, useState } from 'react';
 import { UserAvatarData, AvatarAccessory, PremiumAvatar } from '@/types/avatar';
 import EnhancedAvatarDisplay from '../EnhancedAvatarDisplay';
 import { basicAvatars } from '@/lib/data/avatars';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
 import {
   CheckCircle,
   GripVertical,
@@ -21,6 +22,33 @@ type AccessoryOffsets = NonNullable<
   UserAvatarData['currentAvatar']['accessoryOffsets']
 >;
 type OffsetKey = keyof AccessoryOffsets;
+
+const STR = {
+  th: {
+    preview: 'ตัวอย่าง Avatar',
+    movingPrefix: '↕ กำลังขยับ:',
+    layerTitle: 'ลำดับชั้น (Layer)',
+    layerHint: 'แตะเพื่อเลือก · ลาก ⠿ เพื่อสลับชั้น (บนสุด = หน้าสุด)',
+    selectingPrefix: 'กำลังเลือก',
+    selectingSuffix: '— ลากบนรูปเพื่อขยับ',
+    tapToSelect: 'แตะชิ้นในลำดับชั้นเพื่อเลือก แล้วลากบนรูปเพื่อขยับตำแหน่ง',
+    basicFree: 'Basic Avatars (ฟรี)',
+    none: 'ไม่ใส่',
+    dragToReorder: 'ลากเพื่อสลับชั้น',
+  },
+  en: {
+    preview: 'Avatar Preview',
+    movingPrefix: '↕ Moving:',
+    layerTitle: 'Layers',
+    layerHint: 'Tap to select · drag ⠿ to reorder (top = front)',
+    selectingPrefix: 'Selected',
+    selectingSuffix: '— drag on the picture to move it',
+    tapToSelect: 'Tap an item in the layer list, then drag on the picture to move it',
+    basicFree: 'Basic Avatars (free)',
+    none: 'None',
+    dragToReorder: 'Drag to reorder',
+  },
+} as const;
 
 interface AvatarCustomizationTabProps {
   avatarData: UserAvatarData;
@@ -45,6 +73,8 @@ export default function AvatarCustomizationTab({
   onOffsetsChange,
   onLayerOrderChange,
 }: AvatarCustomizationTabProps) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const [activeSubTab, setActiveSubTab] = useState<'avatars' | 'accessories'>('avatars');
 
   // ----- Accessory position state -----
@@ -138,7 +168,7 @@ export default function AvatarCustomizationTab({
     <div className="space-y-4">
       {/* Avatar Preview Card - Fixed Height */}
       <div className="glass-dark rounded-2xl p-4 md:p-6 border border-metaverse-purple/30">
-        <h3 className="text-center text-lg md:text-xl font-bold text-white mb-4">ตัวอย่าง Avatar</h3>
+        <h3 className="text-center text-lg md:text-xl font-bold text-white mb-4">{L.preview}</h3>
         
         {/* Preview + layer list sit side-by-side on desktop. */}
         <div className="md:grid md:grid-cols-[1fr_auto] md:items-center md:gap-6">
@@ -158,8 +188,8 @@ export default function AvatarCustomizationTab({
 
           {/* "you're moving X" hint while an accessory is selected. */}
           {activeType && (
-            <div className="pointer-events-none absolute left-1/2 top-2 z-20 -translate-x-1/2 rounded-full bg-metaverse-purple/80 px-3 py-1 text-[11px] font-bold text-white shadow-lg">
-              ↕ กำลังขยับ: <span className="capitalize">{activeType}</span>
+            <div className="pointer-events-none absolute left-1/2 top-2 z-20 -translate-x-1/2 rounded-full bg-metaverse-purple/80 px-3 py-1 text-xs font-bold text-white shadow-lg">
+              {L.movingPrefix} <span className="capitalize">{activeType}</span>
             </div>
           )}
           
@@ -197,10 +227,10 @@ export default function AvatarCustomizationTab({
           <div className="mt-4 rounded-xl border border-metaverse-purple/30 bg-white/5 p-3 md:mt-0 md:w-60">
             <div className="mb-1 flex items-center gap-2 text-sm font-bold text-white">
               <Layers className="h-4 w-4 text-metaverse-purple" />
-              ลำดับชั้น (Layer)
+              {L.layerTitle}
             </div>
             <p className="mb-3 text-xs text-white/50">
-              แตะเพื่อเลือก · ลาก ⠿ เพื่อสลับชั้น (บนสุด = หน้าสุด)
+              {L.layerHint}
             </p>
             <Reorder.Group
               axis="y"
@@ -232,10 +262,10 @@ export default function AvatarCustomizationTab({
           <p className="mt-3 text-center text-xs text-white/50">
             {activeType ? (
               <>
-                กำลังเลือก <span className="font-semibold capitalize text-white/80">{activeType}</span> — ลากบนรูปเพื่อขยับ
+                {L.selectingPrefix} <span className="font-semibold capitalize text-white/80">{activeType}</span> {L.selectingSuffix}
               </>
             ) : (
-              'แตะชิ้นในลำดับชั้นเพื่อเลือก แล้วลากบนรูปเพื่อขยับตำแหน่ง'
+              L.tapToSelect
             )}
           </p>
         )}
@@ -307,7 +337,7 @@ export default function AvatarCustomizationTab({
             <div className="glass-dark rounded-xl p-4 border border-metaverse-purple/30">
               <h4 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-green-400" />
-                Basic Avatars (ฟรี)
+                {L.basicFree}
               </h4>
               <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 gap-2">
                 {basicAvatars.map(avatar => (
@@ -431,7 +461,7 @@ export default function AvatarCustomizationTab({
                       <div className="text-xl mb-1">
                         <X className="w-6 h-6 mx-auto text-red-400" />
                       </div>
-                      <p className="text-[10px] text-white/70">ไม่ใส่</p>
+                      <p className="text-xs text-white/70">{L.none}</p>
                     </div>
                   </motion.button>
                   
@@ -470,7 +500,7 @@ export default function AvatarCustomizationTab({
                         </div>
                         
                         {/* Name */}
-                        <p className="text-[10px] text-white/70 truncate">{accessory.name}</p>
+                        <p className="text-xs text-white/70 truncate">{accessory.name}</p>
                         
                         {/* Status */}
                         {owned ? (
@@ -485,7 +515,7 @@ export default function AvatarCustomizationTab({
                               <Lock className={`w-3 h-3 ${canAfford ? 'text-yellow-400' : 'text-red-400'}`} />
                             </div>
                             <div className="absolute bottom-0.5 left-0.5 right-0.5">
-                              <div className={`text-[10px] font-bold ${canAfford ? 'text-yellow-400' : 'text-red-400'}`}>
+                              <div className={`text-xs font-bold ${canAfford ? 'text-yellow-400' : 'text-red-400'}`}>
                                 {accessory.price}
                               </div>
                             </div>
@@ -520,6 +550,8 @@ function LayerRow({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const { lang } = useLanguage();
+  const L = STR[lang];
   const controls = useDragControls();
   return (
     <Reorder.Item
@@ -539,20 +571,20 @@ function LayerRow({
         onClick={onSelect}
         className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2 text-left focus:outline-none"
       >
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-metaverse-purple/30 text-[11px] font-bold text-white">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-metaverse-purple/30 text-xs font-bold text-white">
           {index + 1}
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-white">{name}</p>
-          <p className="text-[10px] capitalize text-white/40">{type}</p>
+          <p className="text-xs capitalize text-white/40">{type}</p>
         </div>
       </button>
       {/* Drag handle — starts the reorder drag. */}
       <div
         onPointerDown={(e) => controls.start(e)}
         className="-mr-1 flex shrink-0 cursor-grab select-none touch-none items-center rounded-lg bg-white/5 p-1.5 text-white/60 transition hover:bg-white/10 hover:text-white active:cursor-grabbing"
-        aria-label="ลากเพื่อสลับชั้น"
-        title="ลากเพื่อสลับชั้น"
+        aria-label={L.dragToReorder}
+        title={L.dragToReorder}
       >
         <GripVertical className="h-4 w-4" />
       </div>

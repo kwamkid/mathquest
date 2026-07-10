@@ -4,6 +4,8 @@
 import { motion } from 'framer-motion';
 import { getLevelConfig } from '@/lib/game/config';
 import { Info, Target, BookOpen } from 'lucide-react';
+import { useLanguage } from '@/lib/i18n/LanguageContext';
+import type { Lang } from '@/lib/i18n/strings';
 
 interface LevelInfoProps {
   grade: string;
@@ -11,8 +13,9 @@ interface LevelInfoProps {
 }
 
 export default function LevelInfo({ grade, level }: LevelInfoProps) {
+  const { lang } = useLanguage();
   const config = getLevelConfig(grade, level);
-  
+
   if (!config) return null;
   
   return (
@@ -42,7 +45,7 @@ export default function LevelInfo({ grade, level }: LevelInfoProps) {
                     key={index}
                     className="text-xs px-2 py-1 bg-metaverse-purple/10 text-metaverse-pink rounded-full"
                   >
-                    {getFeatureLabel(feature)}
+                    {getFeatureLabel(feature, lang)}
                   </span>
                 ))}
               </div>
@@ -54,9 +57,9 @@ export default function LevelInfo({ grade, level }: LevelInfoProps) {
   );
 }
 
-// แปลง feature เป็นภาษาไทย
-function getFeatureLabel(feature: string): string {
-  const featureLabels: Record<string, string> = {
+// แปลง feature เป็นภาษาไทย / English label
+const FEATURE_LABELS: Record<Lang, Record<string, string>> = {
+  th: {
     'countingObjects': 'นับจำนวน',
     'visualAids': 'รูปภาพประกอบ',
     'noCarrying': 'ไม่มีการทด',
@@ -86,7 +89,40 @@ function getFeatureLabel(feature: string): string {
     'linearEquations': 'สมการเชิงเส้น',
     'ratios': 'อัตราส่วน',
     'proportions': 'สัดส่วน',
-  };
-  
-  return featureLabels[feature] || feature;
+  },
+  en: {
+    'countingObjects': 'Counting',
+    'visualAids': 'Picture aids',
+    'noCarrying': 'No carrying',
+    'carrying': 'Carrying',
+    'borrowing': 'Borrowing',
+    'multiplicationTables': 'Times tables',
+    'tables_2_5_10': 'Tables 2, 5, 10',
+    'tables_3_4': 'Tables 3, 4',
+    'tables_2_to_5': 'Tables 2-5',
+    'tables_6_to_9': 'Tables 6-9',
+    'basicDivision': 'Basic division',
+    'simpleWordProblems': 'Simple word problems',
+    'parentheses': 'Parentheses',
+    'orderOfOperations': 'Order of operations',
+    'fractions': 'Fractions',
+    'simpleFractions': 'Simple fractions',
+    'decimals': 'Decimals',
+    'basicDecimals': 'Basic decimals',
+    'percentages': 'Percentages',
+    'basicPercentages': 'Basic percentages',
+    'multiStepProblems': 'Multi-step problems',
+    'realWorldProblems': 'Real-world problems',
+    'integers': 'Integers',
+    'negativeNumbers': 'Negative numbers',
+    'exponents': 'Exponents',
+    'algebra': 'Algebra',
+    'linearEquations': 'Linear equations',
+    'ratios': 'Ratios',
+    'proportions': 'Proportions',
+  },
+};
+
+function getFeatureLabel(feature: string, lang: Lang): string {
+  return FEATURE_LABELS[lang][feature] || feature;
 }

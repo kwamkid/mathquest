@@ -115,8 +115,28 @@ export function generateRound(
   roundNumber: number,
 ): MultipleChoiceTextQuestion[] {
   const def = ROUNDS.find((r) => r.round === roundNumber) ?? ROUNDS[0];
-  const pool = buildFacts(table, def.mode);
+  return questionsFromPool(buildFacts(table, def.mode), `tt-${table}-r${roundNumber}`);
+}
 
+// Generate a mix-challenge round: facts drawn evenly across every unlocked
+// table, both orientations. `tables` must be non-empty.
+export function generateMixRound(
+  tables: number[],
+): MultipleChoiceTextQuestion[] {
+  const pool: Fact[] = tables.flatMap((t) =>
+    Array.from({ length: 4 }, () => {
+      const n = randInt(MULTIPLICAND_MIN, MULTIPLICAND_MAX);
+      return Math.random() < 0.5 ? { a: t, b: n } : { a: n, b: t };
+    }),
+  );
+  return questionsFromPool(pool, 'tt-mix');
+}
+
+// Turn a fact pool into QUESTIONS_PER_ROUND MCQs with plausible distractors.
+function questionsFromPool(
+  pool: Fact[],
+  idPrefix: string,
+): MultipleChoiceTextQuestion[] {
   const questions: MultipleChoiceTextQuestion[] = [];
   for (let i = 0; i < QUESTIONS_PER_ROUND; i++) {
     const fact = pick(pool);
@@ -137,7 +157,7 @@ export function generateRound(
 
     questions.push(
       mcqText({
-        id: `tt-${table}-r${roundNumber}-q${i}-${fact.a}x${fact.b}`,
+        id: `${idPrefix}-q${i}-${fact.a}x${fact.b}`,
         prompt: `${fact.a} × ${fact.b} = ?`,
         choices,
         correctChoiceId: `c${correct}`,
