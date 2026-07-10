@@ -34,11 +34,13 @@ import {
 import { Check, ChevronRight, Rocket, Star, X } from 'lucide-react';
 import AppHeader from '@/components/layout/AppHeader';
 import LessonHeader from '@/components/lesson/LessonHeader';
+import HandsGuide from '@/components/typing/HandsGuide';
 import VirtualKeyboard from '@/components/typing/VirtualKeyboard';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import { useSound } from '@/lib/game/soundManager';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { fingerForChar, LAYOUTS } from '@/lib/typing/layouts';
 import { generateStageRocks, type Rock } from '@/lib/typing/content';
 import {
   findNextStage,
@@ -108,6 +110,9 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
   const [reward, setReward] = useState<{ exp: number; firstClear: boolean } | null>(null);
   const [nextAfter, setNextAfter] = useState<{ unit: number; stage: number } | null>(null);
   const [compactViewport, setCompactViewport] = useState(false);
+  // True while the OS keyboard is emitting Thai characters (forgot to switch
+  // input language) — shows a how-to-switch banner instead of counting errors.
+  const [wrongLang, setWrongLang] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const lastWrongRef = useRef<{ char: string; time: number } | null>(null);
@@ -180,6 +185,14 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     (raw: string) => {
       if (!isPlaying || paused || !rock) return;
       const ch = raw.toLowerCase(); // defeats residual iOS auto-capitalization
+      // Thai character = the OS keyboard is still in Thai. Warn, don't punish
+      // (not the kid's typing skill) — clears on the first Latin keystroke.
+      if (/[\u0E00-\u0E7F]/.test(ch)) {
+        setWrongLang(true);
+        playSound('incorrect');
+        return;
+      }
+      if (/[a-z ]/.test(ch)) setWrongLang(false);
       const expected = rock.text[charIndex];
       if (!expected) return;
 
@@ -245,14 +258,28 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     }
   };
 
-  // Escape exits (window-level; the hidden input swallows most keys).
+  // Window-level keys: Escape exits; on desktop (hands already on the
+  // keyboard) SPACE/Enter starts from the intro and any key resumes from
+  // pause — no need to reach for the mouse. iOS still uses the tap (its
+  // software keyboard isn't even open at the intro).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') router.push(exitHref);
+      if (e.key === 'Escape') {
+        router.push(exitHref);
+        return;
+      }
+      if (phase === 'intro' && (e.key === ' ' || e.key === 'Enter')) {
+        e.preventDefault(); // space would scroll the page
+        startGame();
+      } else if (isPlaying && !focused && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        inputRef.current?.focus({ preventScroll: true });
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [router, exitHref]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, exitHref, phase, isPlaying, focused]);
 
   // iPad OS keyboard shrinks the visual viewport → compact keyboard guide.
   useEffect(() => {
@@ -279,7 +306,13 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     inputRef.current?.focus({ preventScroll: true });
   };
 
-  const refocus = () => {
+  // Refocus MUST preventDefault on pointerdown: the browser's default action
+  // for pointerdown/mousedown is to move focus to the pressed element (or
+  // body), which would instantly blur the input we just focused — that's
+  // exactly the "tap to resume does nothing" loop. Cancelling the default
+  // keeps our programmatic focus in place; the gesture still counts for iOS.
+  const refocus = (e?: { preventDefault: () => void }) => {
+    e?.preventDefault();
     if (isPlaying) inputRef.current?.focus({ preventScroll: true });
   };
 
@@ -353,7 +386,7 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     return (
       <div className="learn-bg min-h-screen">
         {user && <AppHeader user={user} />}
-        <div className="mx-auto max-w-lg px-4 py-12 text-center">
+        <div className="mx-auto max-w-lg select-none px-4 py-12 text-center">
           <div
             className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ${
               passed
@@ -378,23 +411,64 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
                 ? t.typing.passed
                 : t.typing.failed}
           </h1>
-          <p className="mt-2 text-lg text-white/80">
-            {t.typing.accuracyResult(pct, errors)}
-          </p>
-          <p className="mt-1 text-base text-white/65">
-            {t.typing.bestCombo}: {bestCombo}
-            {kind === 'words' && <> · {t.typing.wpmResult(wpm)}</>}
-          </p>
+          {/* Score tiles — the numbers ARE the reward, make them big. */}
+          <div
+            className={`mt-6 grid gap-3 ${
+              kind === 'words' ? 'grid-cols-3' : 'grid-cols-2'
+            }`}
+          >
+            <div className="learn-card rounded-2xl px-3 py-4">
+              <p
+                className={`text-3xl font-extrabold tabular-nums ${
+                  passed ? 'text-emerald-300' : 'text-rose-300'
+                }`}
+              >
+                {pct}%
+              </p>
+              <p className="mt-1 text-xs text-white/55">
+                {t.typing.accuracyLabel} · {t.typing.missCount(errors)}
+              </p>
+            </div>
+            <div className="learn-card rounded-2xl px-3 py-4">
+              <p className="text-3xl font-extrabold tabular-nums text-orange-300">
+                🔥 {bestCombo}
+              </p>
+              <p className="mt-1 text-xs text-white/55">{t.typing.bestCombo}</p>
+            </div>
+            {kind === 'words' && (
+              <div className="learn-card rounded-2xl px-3 py-4">
+                <p className="text-3xl font-extrabold tabular-nums text-cyan-300">
+                  {wpm}
+                </p>
+                <p className="mt-1 text-xs text-white/55">WPM</p>
+              </div>
+            )}
+          </div>
+
+          {/* EXP banner — the payout, visually distinct from the stats. */}
           {passed && reward && (
-            <p className="mt-2 text-base font-semibold text-fuchsia-200">
-              {reward.firstClear
-                ? t.typing.expGained(reward.exp)
-                : t.typing.stageAlreadyPaid}
-            </p>
+            <div
+              className={`mt-3 flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-lg font-bold ${
+                reward.firstClear
+                  ? 'border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-orange-500/15 text-amber-200'
+                  : 'bg-white/[0.04] text-base font-semibold text-white/60'
+              }`}
+            >
+              {reward.firstClear ? (
+                <>
+                  <Star className="h-6 w-6 fill-current text-amber-300" />
+                  {t.typing.expGained(reward.exp)}
+                </>
+              ) : (
+                t.typing.stageAlreadyPaid
+              )}
+            </div>
           )}
 
+          {/* Two buttons only: keep going (or retry on a fail) + back.
+              Replaying a passed stage lives on the unit page instead. */}
           <div className="mt-8 flex flex-col gap-3">
-            {passed && nextAfter && (
+            {passed && nextAfter ? (
               <button
                 onClick={() =>
                   router.push(`/typing/${nextAfter.unit}/${nextAfter.stage}`)
@@ -409,22 +483,23 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
                 )}
                 <ChevronRight className="h-5 w-5" />
               </button>
+            ) : (
+              !passed && (
+                <button
+                  onClick={restart}
+                  className="learn-accent-pill rounded-2xl px-6 py-3 font-bold shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-[0.99]"
+                >
+                  {t.typing.retry}
+                </button>
+              )
             )}
+            {/* Back to the unit MAP (landing) — "กลับหน้าด่าน N" confused the
+                kid; the map is the mental home base. */}
             <button
-              onClick={restart}
-              className={`rounded-2xl px-6 py-3 font-semibold transition ${
-                passed
-                  ? 'glass text-white/80 hover:bg-white/10'
-                  : 'learn-accent-pill font-bold shadow-lg shadow-pink-500/30 hover:brightness-110'
-              }`}
-            >
-              {passed ? t.typing.replay : t.typing.retry}
-            </button>
-            <button
-              onClick={() => router.push(exitHref)}
+              onClick={() => router.push('/typing')}
               className="glass rounded-2xl px-6 py-3 font-semibold text-white/80 transition hover:bg-white/10"
             >
-              {t.typing.backToUnit(unit)}
+              {t.typing.backToTyping}
             </button>
           </div>
         </div>
@@ -434,7 +509,9 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
 
   // ----- Intro + game screens share the field shell -----
   return (
-    <div className="learn-bg flex min-h-dvh flex-col">
+    // select-none: fast tapping/dragging must never text-select the rock,
+    // stats, or keyboard labels (nothing in the player is copy-worthy).
+    <div className="learn-bg flex min-h-dvh select-none flex-col">
       <LessonHeader
         lessonTitle={title}
         stepTitle={t.typing.rocksLeft(rocks.length - rockIndex)}
@@ -443,11 +520,14 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
         onClose={() => router.push(exitHref)}
       />
 
-      {/* Game field */}
+      {/* Game field. While playing, any press inside the field keeps the
+          hidden input focused (preventDefault stops the browser stealing
+          focus) — during the intro we leave defaults alone so the start
+          button's click works untouched. */}
       <div
         className="relative mx-auto w-full max-w-2xl flex-1 overflow-hidden px-2"
         style={{ minHeight: compactViewport ? 220 : 300 }}
-        onPointerDown={refocus}
+        onPointerDown={isPlaying ? refocus : undefined}
       >
         {/* Hidden input INSIDE the visible area (iOS: display:none is
             unfocusable; offscreen positions cause scroll jumps). */}
@@ -480,6 +560,9 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
               {t.typing.tapToStart}
             </span>
             <span className="text-base text-white/70">{t.typing.getReady}</span>
+            <span className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/70">
+              {t.typing.orPressSpace}
+            </span>
           </button>
         ) : (
           <>
@@ -611,16 +694,42 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
               </div>
             )}
 
-            {/* Paused overlay (focus lost) */}
+            {/* Wrong-input-language banner. */}
+            <AnimatePresence>
+              {wrongLang && (
+                <motion.div
+                  initial={{ opacity: 0, y: -12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  className="absolute inset-x-3 top-2 z-40 rounded-2xl border border-amber-400/50 bg-amber-500/15 px-4 py-3 text-center backdrop-blur-sm"
+                >
+                  <p className="text-base font-bold text-amber-200">
+                    ⚠️ {t.typing.wrongLangTitle}
+                  </p>
+                  <p className="mt-0.5 text-sm text-amber-100/80">
+                    {t.typing.wrongLangHint}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Paused overlay (focus lost). Resume on pointerdown with
+                preventDefault — a plain button onClick loses the race: the
+                overlay unmounts mid-gesture and mousedown's default focus
+                steal blurs the input right back. */}
             {paused && (
-              <button
+              <div
+                role="button"
+                tabIndex={-1}
+                onPointerDown={refocus}
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={refocus}
-                className="absolute inset-0 z-30 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+                className="absolute inset-0 z-30 flex cursor-pointer items-center justify-center bg-black/60 backdrop-blur-sm"
               >
                 <span className="rounded-2xl bg-white/10 px-6 py-3 text-lg font-bold text-white">
                   {t.typing.tapToResume}
                 </span>
-              </button>
+              </div>
             )}
           </>
         )}
@@ -643,13 +752,26 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
         </span>
       </div>
 
-      {/* Finger-guide keyboard */}
-      <div className="mx-auto w-full max-w-2xl px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      {/* Finger-guide keyboard with translucent hands laid over it (typing-
+          poster style) — the needed finger lifts + its nail glows. Hands hide
+          when the iPad OS keyboard already eats the viewport. */}
+      <div className="relative mx-auto w-full max-w-2xl px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <VirtualKeyboard
           highlightChar={isPlaying ? expectedChar : null}
           pressedChar={pressedChar}
           compact={compactViewport}
         />
+        {!compactViewport && (
+          <HandsGuide
+            activeFingers={
+              isPlaying && expectedChar
+                ? ([fingerForChar(LAYOUTS.en, expectedChar)].filter(
+                    Boolean,
+                  ) as NonNullable<ReturnType<typeof fingerForChar>>[])
+                : []
+            }
+          />
+        )}
       </div>
     </div>
   );

@@ -11,6 +11,7 @@ import { useParams } from 'next/navigation';
 import { CheckCircle2, Lock, Play, Star } from 'lucide-react';
 import AuthGuard from '@/components/auth/AuthGuard';
 import AppHeader from '@/components/layout/AppHeader';
+import HandsGuide from '@/components/typing/HandsGuide';
 import VirtualKeyboard from '@/components/typing/VirtualKeyboard';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
@@ -121,10 +122,21 @@ export default function TypingUnitPage() {
                   </span>
                 )}
               </div>
-              <VirtualKeyboard
-                emphasizeKeys={unit === 1 ? [...def.newKeys, ' '] : def.newKeys}
-                showLegend
-              />
+              {/* Keyboard with translucent hands over it — this unit's
+                  fingers raised, nails glowing (the finger lesson). */}
+              <div className="relative pb-16">
+                <VirtualKeyboard
+                  emphasizeKeys={unit === 1 ? [...def.newKeys, ' '] : def.newKeys}
+                />
+                <HandsGuide
+                  activeFingers={[
+                    ...def.newKeys
+                      .map((k) => fingerForChar(LAYOUTS.en, k))
+                      .filter((f): f is NonNullable<typeof f> => f !== null),
+                    ...(unit === 1 ? (['thumb'] as const) : []),
+                  ]}
+                />
+              </div>
             </div>
 
             {/* Stage rows. */}
@@ -134,14 +146,18 @@ export default function TypingUnitPage() {
                   const meta = stageMeta(unit, stage);
                   const cleared = isStageCleared(progress, unit, stage);
                   const stageOpen = isStageUnlocked(progress, unit, stage);
+                  // The stage to play NEXT gets the full gradient row (same
+                  // treatment as the /learn continue lesson) — a plain card
+                  // border is too subtle on the dark theme.
+                  const isNext = stageOpen && !cleared;
 
                   const row = (
                     <div
                       className={`flex items-center gap-3 rounded-2xl p-4 transition ${
                         cleared
                           ? 'border border-emerald-400/30 bg-emerald-500/[0.07]'
-                          : stageOpen
-                            ? 'learn-card hover:bg-white/[0.04] active:scale-[0.99]'
+                          : isNext
+                            ? 'learn-accent-pill shadow-lg shadow-pink-500/30 hover:brightness-110 active:scale-[0.99]'
                             : 'border border-white/10 bg-white/[0.02] opacity-55'
                       }`}
                     >
@@ -149,14 +165,14 @@ export default function TypingUnitPage() {
                         className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
                           cleared
                             ? 'bg-emerald-400/15 text-emerald-300'
-                            : stageOpen
-                              ? 'learn-accent-pill shadow-md shadow-pink-500/20'
+                            : isNext
+                              ? 'bg-white/25 text-white'
                               : 'bg-white/5 text-white/30'
                         }`}
                       >
                         {cleared ? (
                           <CheckCircle2 className="h-6 w-6" />
-                        ) : stageOpen ? (
+                        ) : isNext ? (
                           <Play className="h-5 w-5 fill-current" />
                         ) : (
                           <Lock className="h-5 w-5" />
@@ -171,20 +187,38 @@ export default function TypingUnitPage() {
                           {t.typing.stageWord} {stage} ·{' '}
                           {lang === 'en' ? meta.enTitle : meta.thaiTitle}
                           {lang === 'th' && (
-                            <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-xs font-bold text-cyan-200 no-underline">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-xs font-bold no-underline ${
+                                isNext
+                                  ? 'bg-white/25 text-white'
+                                  : 'bg-cyan-500/15 text-cyan-200'
+                              }`}
+                            >
                               {meta.enTitle}
                             </span>
                           )}
                         </p>
-                        <p className="mt-0.5 text-xs text-white/55">
+                        <p
+                          className={`mt-0.5 text-xs ${
+                            isNext ? 'text-white/85' : 'text-white/55'
+                          }`}
+                        >
                           {lang === 'en' ? meta.enHint : meta.thaiHint}
                         </p>
                       </div>
-                      <span className="flex shrink-0 items-center gap-2 text-xs text-white/45">
+                      <span
+                        className={`flex shrink-0 items-center gap-2 text-xs ${
+                          isNext ? 'text-white/85' : 'text-white/45'
+                        }`}
+                      >
                         {t.typing.approxMinutes}
                         <Star
                           className={`h-5 w-5 ${
-                            cleared ? 'fill-current text-amber-300' : 'text-white/25'
+                            cleared
+                              ? 'fill-current text-amber-300'
+                              : isNext
+                                ? 'text-white/70'
+                                : 'text-white/25'
                           }`}
                         />
                       </span>

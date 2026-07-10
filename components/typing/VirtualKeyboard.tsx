@@ -1,9 +1,11 @@
 // components/typing/VirtualKeyboard.tsx
 //
-// On-screen QWERTY guide for the typing game — pure presentational. Keys are
-// tinted by finger (see FINGER_COLORS) so kids learn which finger owns which
-// key; the next target key glows. NOT tappable: on iPad the kid types on the
-// OS keyboard, this component is the finger map. Used in two modes:
+// On-screen keyboard guide for the typing game — renders a COMPLETE keyboard
+// frame (number row, Tab/Caps/Shift/Enter, space row) so it looks like the
+// real thing; curriculum letters are tinted by finger (see FINGER_COLORS),
+// everything else is an inert gray filler. The next target key glows. NOT
+// tappable: on iPad the kid types on the OS keyboard, this is the finger map.
+// Modes:
 //   - player: highlightChar/pressedChar drive the glow + press animation
 //   - unit preview: emphasizeKeys lights up the unit's new keys
 
@@ -12,8 +14,9 @@
 import { motion } from 'framer-motion';
 import {
   FINGER_COLORS,
-  LAYOUTS,
+  FULL_ROWS,
   fingerName,
+  type KeySlot,
   type LayoutId,
 } from '@/lib/typing/layouts';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
@@ -29,11 +32,11 @@ const LEGEND = [
 
 interface Props {
   layoutId?: LayoutId;
-  // Next char to type ('' or ' ' highlights the space bar).
+  // Next char to type (' ' highlights the space bar).
   highlightChar?: string | null;
   // Char just typed — brief press-down flash.
   pressedChar?: string | null;
-  // Unit-page preview: emphasize these keys (full color), mute the rest.
+  // Unit-page preview: light these keys up bright.
   emphasizeKeys?: string[];
   // Tighter rows when the iPad OS keyboard shrinks the viewport.
   compact?: boolean;
@@ -41,7 +44,6 @@ interface Props {
 }
 
 export default function VirtualKeyboard({
-  layoutId = 'en',
   highlightChar = null,
   pressedChar = null,
   emphasizeKeys,
@@ -49,44 +51,55 @@ export default function VirtualKeyboard({
   showLegend = false,
 }: Props) {
   const { lang } = useLanguage();
-  const layout = LAYOUTS[layoutId];
 
-  const keySize = compact
-    ? 'h-8 min-w-7 text-xs sm:h-9 sm:min-w-8'
-    : 'h-10 min-w-8 text-sm sm:h-12 sm:min-w-10 sm:text-base';
+  const keyHeight = compact ? 'h-7 sm:h-8' : 'h-8 sm:h-10';
 
-  const isSpaceTarget = highlightChar === ' ';
+  const renderSlot = (slot: KeySlot, idx: number) => {
+    const width = slot.w ?? 1;
+    const isLetter = !!slot.char && !!slot.finger;
 
-  const renderKey = (char: string, label: string, fingerKey: keyof typeof FINGER_COLORS, homeKey?: boolean) => {
-    const colors = FINGER_COLORS[fingerKey];
-    const isTarget = highlightChar === char;
-    const isPressed = pressedChar === char;
-    const muted = emphasizeKeys && !emphasizeKeys.includes(char);
+    if (!isLetter) {
+      // Inert filler (numbers, modifiers, punctuation not in the curriculum).
+      return (
+        <div
+          key={idx}
+          style={{ flex: `${width} 1 0%` }}
+          className={`flex ${keyHeight} items-center justify-center rounded-lg bg-white/[0.05] text-xs font-semibold text-white/30`}
+        >
+          {slot.label}
+        </div>
+      );
+    }
+
+    const colors = FINGER_COLORS[slot.finger!];
+    const isTarget = highlightChar === slot.char;
+    const isPressed = pressedChar === slot.char;
+    const emphasized = emphasizeKeys?.includes(slot.char!) ?? false;
+    const isSpace = slot.char === ' ';
 
     return (
       <motion.div
-        key={char}
+        key={idx}
+        style={{ flex: `${width} 1 0%` }}
         animate={
           isTarget
-            ? { scale: [1, 1.12, 1], transition: { duration: 0.9, repeat: Infinity } }
+            ? { scale: [1, 1.1, 1], transition: { duration: 0.9, repeat: Infinity } }
             : isPressed
-              ? { scale: 0.9 }
+              ? { scale: 0.92 }
               : { scale: 1 }
         }
-        className={`relative flex ${keySize} flex-1 items-center justify-center rounded-lg font-bold uppercase ${
-          isTarget
-            ? `${colors.active} ring-2 shadow-lg`
-            : muted
-              ? 'bg-white/[0.03] text-white/25'
-              : colors.key
+        className={`relative flex ${keyHeight} items-center justify-center rounded-lg font-bold uppercase ${
+          isSpace ? 'text-xs' : 'text-sm sm:text-base'
+        } ${
+          isTarget || emphasized ? `${colors.active} ring-2 shadow-lg` : colors.key
         }`}
       >
-        {label}
+        {slot.label}
         {/* Tactile bump on F / J. */}
-        {homeKey && (
+        {slot.homeKey && (
           <span
             className={`absolute bottom-1 h-0.5 w-3 rounded-full ${
-              isTarget ? 'bg-white/80' : 'bg-white/30'
+              isTarget || emphasized ? 'bg-white/80' : 'bg-white/30'
             }`}
           />
         )}
@@ -95,39 +108,12 @@ export default function VirtualKeyboard({
   };
 
   return (
-    <div className="select-none space-y-1.5" aria-hidden="true">
-      {layout.rows.map((row, i) => (
-        <div
-          key={i}
-          className="flex justify-center gap-1"
-          // Stagger rows like a real keyboard.
-          style={{ paddingLeft: `${i * 4}%`, paddingRight: `${i === 2 ? 8 : 0}%` }}
-        >
-          {row.map((key) => renderKey(key.char, key.label, key.finger, key.homeKey))}
+    <div className="select-none space-y-1" aria-hidden="true">
+      {FULL_ROWS.map((row, i) => (
+        <div key={i} className="flex gap-1">
+          {row.map(renderSlot)}
         </div>
       ))}
-
-      {/* Space bar. */}
-      <div className="flex justify-center">
-        <motion.div
-          animate={
-            isSpaceTarget
-              ? { scale: [1, 1.06, 1], transition: { duration: 0.9, repeat: Infinity } }
-              : pressedChar === ' '
-                ? { scale: 0.95 }
-                : { scale: 1 }
-          }
-          className={`flex ${compact ? 'h-8' : 'h-10 sm:h-11'} w-1/2 items-center justify-center rounded-lg text-xs font-bold ${
-            isSpaceTarget
-              ? `${FINGER_COLORS.thumb.active} ring-2 shadow-lg`
-              : emphasizeKeys && !emphasizeKeys.includes(' ')
-                ? 'bg-white/[0.03] text-white/25'
-                : FINGER_COLORS.thumb.key
-          }`}
-        >
-          SPACE
-        </motion.div>
-      </div>
 
       {showLegend && (
         <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 pt-2">

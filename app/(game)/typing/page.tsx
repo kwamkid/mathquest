@@ -154,7 +154,7 @@ function UnitCard({
   const wrapper = done
     ? 'border-emerald-400/40 bg-emerald-500/[0.08]'
     : isNext
-      ? 'border-pink-400/60 bg-pink-500/[0.08] shadow-lg shadow-pink-500/20'
+      ? 'border-pink-400/80 bg-pink-500/[0.16] shadow-lg shadow-pink-500/30'
       : unlocked
         ? 'learn-card'
         : 'border-white/10 bg-white/[0.02] opacity-50';

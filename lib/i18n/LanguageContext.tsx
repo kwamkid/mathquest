@@ -31,7 +31,7 @@ interface LanguageContextValue {
 
 const LanguageContext = createContext<LanguageContextValue>({
   lang: 'th',
-  setLang: () => {},
+  setLang: () => undefined, // no-op default; real setter comes from the provider
   t: STRINGS.th,
 });
 

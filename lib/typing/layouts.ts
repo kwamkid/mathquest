@@ -90,3 +90,74 @@ export const fingerForChar = (layout: KeyboardLayout, char: string): Finger | nu
   }
   return null;
 };
+
+// ---------------------------------------------------------------------------
+// Full keyboard frame — the on-screen guide renders a COMPLETE keyboard
+// (number row, Tab/Caps/Shift/Enter, space row) so it reads as a real
+// keyboard; keys outside the curriculum are inert gray fillers.
+// `w` = width factor (1 = standard key).
+// ---------------------------------------------------------------------------
+
+export interface KeySlot {
+  label: string;
+  char?: string; // typeable curriculum key → finger-tinted + highlightable
+  finger?: Finger;
+  homeKey?: boolean;
+  w?: number;
+}
+
+const letterSlot = (char: string): KeySlot => {
+  for (const row of LAYOUTS.en.rows) {
+    const hit = row.find((k) => k.char === char);
+    if (hit) {
+      return {
+        label: hit.label,
+        char: hit.char,
+        finger: hit.finger,
+        homeKey: hit.homeKey,
+      };
+    }
+  }
+  return { label: char.toUpperCase(), char };
+};
+
+const filler = (label: string, w = 1): KeySlot => ({ label, w });
+
+export const FULL_ROWS: KeySlot[][] = [
+  [
+    filler('~'),
+    ...['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='].map((n) =>
+      filler(n),
+    ),
+    filler('⌫', 1.8),
+  ],
+  [
+    filler('⇥', 1.5),
+    ...[...'qwertyuiop'].map(letterSlot),
+    filler('['),
+    filler(']'),
+    filler('\\', 1.3),
+  ],
+  [
+    filler('⇪', 1.9),
+    ...[...'asdfghjkl'].map(letterSlot),
+    filler(';'),
+    filler("'"),
+    filler('⏎', 1.9),
+  ],
+  [
+    filler('⇧', 2.4),
+    ...[...'zxcvbnm'].map(letterSlot),
+    filler(','),
+    filler('.'),
+    filler('/'),
+    filler('⇧', 2.4),
+  ],
+  [
+    filler('ctrl', 1.4),
+    filler('alt', 1.4),
+    { label: 'SPACE', char: ' ', finger: 'thumb', w: 6.5 },
+    filler('alt', 1.4),
+    filler('ctrl', 1.4),
+  ],
+];
