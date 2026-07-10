@@ -257,13 +257,13 @@ export default function HomePage() {
                     iconBgClass="from-emerald-400 to-teal-500 shadow-emerald-500/40"
                   />
                   <ModeCard
+                    href="/typing"
                     title="Typing"
                     description={t.home.typingDesc}
-                    icon={<Keyboard className="w-8 h-8 sm:w-9 sm:h-9 text-white/70" />}
-                    borderClass="border-cyan-400/25"
-                    hoverBgClass="from-cyan-400/20 to-sky-500/10"
-                    iconBgClass="from-cyan-500/60 to-sky-600/60 shadow-cyan-500/20"
-                    badge={t.home.comingSoon}
+                    icon={<Keyboard className="w-8 h-8 sm:w-9 sm:h-9 text-white" />}
+                    borderClass="border-cyan-400/40"
+                    hoverBgClass="from-cyan-400/30 to-sky-500/10"
+                    iconBgClass="from-cyan-500 to-sky-600 shadow-cyan-500/40"
                   />
                 </div>
               </section>
