@@ -16,12 +16,14 @@ const STR = {
   th: {
     yourProgress: 'ความก้าวหน้าของคุณ',
     currentLevel: 'ระดับปัจจุบัน',
+    rangeWord: 'ระดับความยาก',
     ofThisRange: (pct: number) => `${pct}% ของช่วงนี้`,
     overallProgress: 'ความก้าวหน้ารวม',
   },
   en: {
     yourProgress: 'Your progress',
     currentLevel: 'Current level',
+    rangeWord: 'Difficulty',
     ofThisRange: (pct: number) => `${pct}% of this range`,
     overallProgress: 'Overall progress',
   },
@@ -75,7 +77,7 @@ export default function LevelProgressDisplay({ grade, currentLevel }: LevelProgr
                     <h4 className={`font-semibold ${
                       isCurrentRange ? 'text-white' : isCompleted ? 'text-green-400' : 'text-white/50'
                     }`}>
-                      Level {config.minLevel}-{config.maxLevel}
+                      {L.rangeWord} {config.minLevel}-{config.maxLevel}
                     </h4>
                   </div>
                   

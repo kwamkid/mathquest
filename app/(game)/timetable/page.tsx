@@ -28,6 +28,7 @@ import {
   getTimetableProgress,
   isMixClaimedToday,
   isTableUnlocked,
+  nextRoundInTable,
   tableRoundsCleared,
   tableStars,
   unlockedTables,
@@ -95,9 +96,12 @@ export default function TimetableHomePage() {
                     </span>
                     <span className="block text-lg font-bold">
                       {t.timetable.table} {next.table} ·{' '}
-                      {lang === 'en'
-                        ? stageOfRound(next.round).enTitle
-                        : stageOfRound(next.round).thaiTitle}
+                      {t.timetable.stageOf(
+                        stageOfRound(next.round).stage,
+                        lang === 'en'
+                          ? stageOfRound(next.round).enTitle
+                          : stageOfRound(next.round).thaiTitle,
+                      )}
                     </span>
                   </span>
                 </span>
@@ -129,6 +133,10 @@ export default function TimetableHomePage() {
                     stars={tableStars(progress, table)}
                     roundsCleared={tableRoundsCleared(progress, table)}
                     isNext={next?.table === table}
+                    // Tap = play. Straight into the next round of that table
+                    // (or a replay of the last round when complete) — no
+                    // intermediate round-picker page.
+                    playHref={`/timetable/${table}/${nextRoundInTable(progress, table)}`}
                     t={t}
                   />
                 ))}
@@ -210,6 +218,7 @@ function TableCard({
   stars,
   roundsCleared,
   isNext,
+  playHref,
   t,
 }: {
   table: number;
@@ -217,6 +226,7 @@ function TableCard({
   stars: number;
   roundsCleared: number;
   isNext: boolean;
+  playHref: string;
   t: Strings;
 }) {
   const done = stars >= STAGES_PER_TABLE;
@@ -286,5 +296,5 @@ function TableCard({
   );
 
   if (!unlocked) return content;
-  return <Link href={`/timetable/${table}`}>{content}</Link>;
+  return <Link href={playHref}>{content}</Link>;
 }

@@ -10,12 +10,12 @@ import { getGradeDisplayName } from '@/lib/game/gradeProgression';
 import AppHeader from '@/components/layout/AppHeader';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import confetti from 'canvas-confetti';
-import { 
-  Trophy, 
-  TrendingUp, 
-  TrendingDown, 
-  Zap, 
-  Clock, 
+import {
+  Trophy,
+  TrendingUp,
+  TrendingDown,
+  Coins,
+  Clock,
   Award,
   Gift,
   Home,
@@ -47,7 +47,7 @@ const STR = {
     pageTitle: 'ผลการเล่น',
     viewRanking: 'ดูอันดับ',
     gradeUpTitle: '🎉 ยินดีด้วย! เลื่อนชั้นแล้ว!',
-    restartAtLevel1: 'เริ่มต้นใหม่ที่ Level 1',
+    restartAtLevel1: 'เริ่มต้นใหม่ที่ระดับความยาก 1',
     summaryTitle: 'สรุปผลการเล่น',
     perfPerfect: 'Perfect! ยอดเยี่ยมมาก!',
     perfExcellent: 'Excellent! เก่งมาก!',
@@ -57,32 +57,33 @@ const STR = {
     perfAlmost: 'พยายามอีกนิด!',
     perfTryAgain: 'อย่าท้อ ลองใหม่นะ!',
     percentCorrect: (pct: number) => `${pct}% ถูกต้อง`,
-    newHighScore: (diff: number) => `New High Score! (+${diff} คะแนน)`,
+    newHighScore: () => `New High Score! สถิติใหม่ของด่านนี้!`,
     gradeUp: '🎉 เลื่อนชั้น!',
-    levelUp: 'Level Up!',
-    levelDown: 'Level Down',
-    levelSame: 'Level คงเดิม',
-    gradeAndLevel: 'ระดับชั้น & Level',
-    levelLabel: 'Level',
+    levelUp: 'ความยากเพิ่มขึ้น! ⬆',
+    levelDown: 'ความยากลดลง ⬇',
+    levelSame: 'ความยากคงเดิม',
+    gradeAndLevel: 'ระดับชั้น & ความยาก',
+    levelLabel: 'ระดับความยาก',
     timeUsed: 'เวลาที่ใช้',
     avgPerQuestion: (sec: number) => `เฉลี่ย ${sec} วิ/ข้อ`,
-    expEarned: 'EXP ที่ได้รับ',
+    expEarned: 'เหรียญที่ได้รับ',
     total: 'รวมทั้งหมด',
     streakDays: (days: number) => `เล่นต่อเนื่อง ${days} วัน!`,
-    firstTodayBonus: ' (+50 EXP โบนัสวันแรก)',
-    replayLevel: (level: number) => `เล่น Level ${level} อีกครั้ง`,
+    firstTodayBonus: ' (+50 เหรียญโบนัสวันแรก)',
+    replayLevel: (level: number) => `เล่นระดับความยาก ${level} อีกครั้ง`,
     startGrade: (grade: string) => `เริ่มต้น ${grade}`,
-    enterLevel: (level: number) => `เข้าสู่ Level ${level}`,
+    enterLevel: (level: number) => `ไประดับความยาก ${level}`,
     playNext: 'เล่นต่อ',
     home: 'หน้าหลัก',
     ranking: 'อันดับ',
-    totalExp: 'EXP ทั้งหมด:',
+    totalExp: 'เหรียญทั้งหมด:',
+    coinsUnit: 'เหรียญ',
   },
   en: {
     pageTitle: 'Results',
     viewRanking: 'View ranking',
     gradeUpTitle: '🎉 Congratulations! You moved up a grade!',
-    restartAtLevel1: 'Starting fresh at Level 1',
+    restartAtLevel1: 'Starting fresh at Difficulty 1',
     summaryTitle: 'Game Summary',
     perfPerfect: 'Perfect! Amazing!',
     perfExcellent: 'Excellent!',
@@ -92,26 +93,27 @@ const STR = {
     perfAlmost: 'Almost there — keep trying!',
     perfTryAgain: "Don't give up — try again!",
     percentCorrect: (pct: number) => `${pct}% correct`,
-    newHighScore: (diff: number) => `New High Score! (+${diff} points)`,
+    newHighScore: () => `New High Score!`,
     gradeUp: '🎉 Grade up!',
-    levelUp: 'Level Up!',
-    levelDown: 'Level Down',
-    levelSame: 'Level unchanged',
-    gradeAndLevel: 'Grade & Level',
-    levelLabel: 'Level',
+    levelUp: 'Difficulty up! ⬆',
+    levelDown: 'Difficulty down ⬇',
+    levelSame: 'Difficulty unchanged',
+    gradeAndLevel: 'Grade & Difficulty',
+    levelLabel: 'Difficulty',
     timeUsed: 'Time',
     avgPerQuestion: (sec: number) => `Avg ${sec} sec/question`,
-    expEarned: 'EXP earned',
+    expEarned: 'Coins earned',
     total: 'Total',
     streakDays: (days: number) => `${days}-day play streak!`,
-    firstTodayBonus: ' (+50 EXP first game today)',
-    replayLevel: (level: number) => `Replay Level ${level}`,
+    firstTodayBonus: ' (+50 coins first game today)',
+    replayLevel: (level: number) => `Replay Difficulty ${level}`,
     startGrade: (grade: string) => `Start ${grade}`,
-    enterLevel: (level: number) => `Go to Level ${level}`,
+    enterLevel: (level: number) => `Go to Difficulty ${level}`,
     playNext: 'Keep playing',
     home: 'Home',
     ranking: 'Ranking',
-    totalExp: 'Total EXP:',
+    totalExp: 'Total coins:',
+    coinsUnit: 'coins',
   },
 } as const;
 
@@ -521,7 +523,7 @@ function SummaryContent() {
                 <div className="flex items-center gap-3">
                   <Trophy className="w-6 h-6 text-yellow-400" />
                   <span className="text-lg font-bold text-yellow-400">
-                    {L.newHighScore(scoreDiff)}
+                    {L.newHighScore()}
                   </span>
                 </div>
               </motion.div>
@@ -548,7 +550,7 @@ function SummaryContent() {
                         {gradeName(oldGrade)} → {gradeName(newGrade)}
                       </div>
                       <div className="text-base md:text-lg font-bold text-white">
-                        Level {oldLevel} → <span className={levelInfo.color}>Level {newLevel}</span>
+                        {L.levelLabel} {oldLevel} → <span className={levelInfo.color}>{newLevel}</span>
                       </div>
                     </>
                   ) : (
@@ -603,7 +605,7 @@ function SummaryContent() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Zap className="w-6 h-6 text-yellow-400" />
+                <Coins className="w-6 h-6 text-yellow-400" />
                 {L.expEarned}
               </h3>
               {boostMultiplier > 1 && (
@@ -648,7 +650,7 @@ function SummaryContent() {
                   transition={{ type: "spring", delay: 1.5 }}
                   className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-400"
                 >
-                  +{exp} EXP
+                  +{exp} {L.coinsUnit}
                 </motion.span>
               </div>
             </div>

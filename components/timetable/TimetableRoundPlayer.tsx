@@ -12,9 +12,9 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, ChevronRight, Star, X } from 'lucide-react';
+import { BookOpenCheck, Check, ChevronDown, ChevronRight, Star, X } from 'lucide-react';
 import AppHeader from '@/components/layout/AppHeader';
 import LessonHeader from '@/components/lesson/LessonHeader';
 import MultipleChoiceTextQuestion from '@/components/question/MultipleChoiceTextQuestion';
@@ -30,11 +30,18 @@ import {
   saveTimetableRound,
 } from '@/lib/timetable/progress';
 import {
+  MULTIPLICAND_MAX,
   PASSING_RATIO,
   QUESTIONS_PER_ROUND,
   ROUNDS,
   stageOfRound,
 } from '@/lib/timetable/config';
+import type { Strings } from '@/lib/i18n/strings';
+
+// Tap-to-answer reveal hold before auto-advancing. A wrong answer lingers
+// longer so the kid can read the correct choice that just lit up.
+const REVEAL_CORRECT_MS = 650;
+const REVEAL_WRONG_MS = 1500;
 
 export type RoundPlayerVariant =
   | { kind: 'table'; table: number; round: number }
@@ -71,8 +78,9 @@ export default function TimetableRoundPlayer({ variant }: Props) {
       : `${t.timetable.table} ${variant.table} · ${
           (lang === 'en' ? roundDef?.enLabel : roundDef?.thaiLabel) ?? ''
         }`;
-  const exitHref =
-    variant.kind === 'mix' ? '/timetable' : `/timetable/${variant.table}`;
+  // The per-table picker page is gone (cards play directly), so every exit
+  // goes back to the timetable landing.
+  const exitHref = '/timetable';
 
   const [index, setIndex] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -86,16 +94,40 @@ export default function TimetableRoundPlayer({ variant }: Props) {
   const [nextAfter, setNextAfter] = useState<{ table: number; round: number } | null>(
     null,
   );
+  // Pending auto-advance (see handleAnswered). Cleared on restart/unmount so a
+  // queued jump can't fire into a round that's already been reset.
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const total = questions.length;
   const current = questions[index];
   const isLastQuestion = index === total - 1;
 
+  // Tap-to-answer: picking a choice IS the answer — no Next button. The
+  // reveal holds just long enough to read, then the round moves on by itself.
+  // A wrong answer holds longer so the kid can see the correct choice light up.
   const handleAnswered = (result: { correct: boolean; value: string }) => {
     if (feedback) return;
     playSound(result.correct ? 'correct' : 'incorrect');
     setFeedback({ correct: result.correct });
-    if (result.correct) setCorrectCount((c) => c + 1);
+    // Compute the running total explicitly: the auto-advance timer below fires
+    // from THIS render's closure, where a setCorrectCount update hasn't landed
+    // yet — reading state there would finish the round one answer short.
+    const nextCorrect = correctCount + (result.correct ? 1 : 0);
+    if (result.correct) setCorrectCount(nextCorrect);
+
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = setTimeout(
+      () => {
+        if (isLastQuestion) {
+          void finishRound(nextCorrect);
+          return;
+        }
+        setIndex((i) => i + 1);
+        setFeedback(null);
+        setResetSignal((s) => s + 1);
+      },
+      result.correct ? REVEAL_CORRECT_MS : REVEAL_WRONG_MS,
+    );
   };
 
   const finishRound = async (finalCorrect: number) => {
@@ -150,20 +182,19 @@ export default function TimetableRoundPlayer({ variant }: Props) {
     }
   };
 
-  const handleAdvance = () => {
-    const finalCorrect = correctCount;
-    if (isLastQuestion) {
-      void finishRound(finalCorrect);
-      return;
-    }
-    setIndex((i) => i + 1);
-    setFeedback(null);
-    setResetSignal((s) => s + 1);
-  };
+  // Drop any queued auto-advance on unmount so it can't fire after the player
+  // is gone (or after an exit mid-reveal).
+  useEffect(
+    () => () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    },
+    [],
+  );
 
   // Full local restart with a fresh question set (router.refresh() would keep
   // client state, so it can't restart the drill).
   const restart = () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
     setAttempt((a) => a + 1);
     setIndex(0);
     setCorrectCount(0);
@@ -215,12 +246,14 @@ export default function TimetableRoundPlayer({ variant }: Props) {
             {t.timetable.answeredRight(correctCount, total, pct)}
           </p>
           {passed && reward && (
-            <p className="mt-2 text-base font-semibold text-fuchsia-200">
+            <p
+              className={`mt-2 text-base font-semibold ${
+                reward.firstClear ? 'text-fuchsia-200' : 'text-amber-200/80'
+              }`}
+            >
               {reward.firstClear
                 ? t.timetable.expGained(reward.exp)
-                : variant.kind === 'mix'
-                  ? t.timetable.mixAlreadyPaid
-                  : t.timetable.roundAlreadyPaid}
+                : t.timetable.replayGained(reward.exp)}
             </p>
           )}
 
@@ -235,6 +268,7 @@ export default function TimetableRoundPlayer({ variant }: Props) {
               >
                 {t.timetable.playNext(
                   nextAfter.table,
+                  stageOfRound(nextAfter.round).stage,
                   lang === 'en'
                     ? stageOfRound(nextAfter.round).enTitle
                     : stageOfRound(nextAfter.round).thaiTitle,
@@ -257,9 +291,7 @@ export default function TimetableRoundPlayer({ variant }: Props) {
               onClick={() => router.push(exitHref)}
               className="glass rounded-2xl px-6 py-3 font-semibold text-white/80 transition hover:bg-white/10"
             >
-              {variant.kind === 'mix'
-                ? t.timetable.backToTimetable
-                : t.timetable.backToTable(variant.table)}
+              {t.timetable.backToTimetable}
             </button>
           </div>
         </div>
@@ -279,6 +311,13 @@ export default function TimetableRoundPlayer({ variant }: Props) {
         onClose={() => router.push(exitHref)}
       />
       <div className="mx-auto w-full max-w-2xl flex-1 px-4 pb-32 pt-6 sm:px-6">
+        {/* Peek-able reference chart — moved here from the removed table page
+            so kids can still review the แม่ before (or while) drilling. */}
+        {variant.kind === 'table' && (
+          <div className="mb-4">
+            <ReferenceChart table={variant.table} t={t} />
+          </div>
+        )}
         <MultipleChoiceTextQuestion
           key={current.id}
           question={current}
@@ -288,7 +327,8 @@ export default function TimetableRoundPlayer({ variant }: Props) {
         />
       </div>
 
-      {/* Bottom bar: feedback icon + next button. */}
+      {/* Bottom bar: score + the answer feedback icon. No Next button —
+          tapping a choice answers AND advances (see handleAnswered). */}
       <footer className="fixed inset-x-0 bottom-0 z-30 border-t border-white/10 bg-[#0a0a0a]/85 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md sm:px-6">
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <span className="text-sm text-white/55">
@@ -313,16 +353,42 @@ export default function TimetableRoundPlayer({ variant }: Props) {
               )}
             </span>
           )}
-          <button
-            onClick={handleAdvance}
-            disabled={!feedback}
-            className="learn-accent-pill flex h-12 items-center gap-1 rounded-2xl px-6 text-base font-bold shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-          >
-            {isLastQuestion ? t.timetable.seeResult : t.timetable.nextQuestion}
-            <ChevronRight className="h-5 w-5" />
-          </button>
         </div>
       </footer>
+    </div>
+  );
+}
+
+// Collapsible "peek at the table" reference — review before drilling.
+// (Lifted from the removed /timetable/[table] picker page.)
+function ReferenceChart({ table, t }: { table: number; t: Strings }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="learn-card overflow-hidden rounded-2xl">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition hover:bg-white/[0.03]"
+        aria-expanded={open}
+      >
+        <span className="flex items-center gap-2 text-sm font-semibold text-white/85">
+          <BookOpenCheck className="h-4 w-4 text-cyan-300" />
+          {t.timetable.peekChart(table)}
+        </span>
+        <ChevronDown
+          className={`h-4 w-4 text-white/40 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <div className="grid grid-cols-2 gap-x-6 gap-y-1 border-t border-white/10 p-4 sm:grid-cols-3">
+          {Array.from({ length: MULTIPLICAND_MAX }, (_, i) => i + 1).map((n) => (
+            <p key={n} className="text-sm tabular-nums text-white/80">
+              {table} × {n} ={' '}
+              <span className="font-bold text-white">{table * n}</span>
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -127,18 +127,25 @@ export default function HomePage() {
         <LanguageToggle />
       </div>
 
-      {/* Main Content */}
-      <div className="relative z-10 container mx-auto px-4 py-8 min-h-screen flex flex-col items-center justify-center">
-        {/* Logo & Title */}
+      {/* Main Content — logged-in kids see a compact "mission control" that
+        * fits one screen (no scroll to reach the mode cards); visitors get the
+        * full marketing hero. Hence the many `user ?` size/spacing switches. */}
+      <div
+        className={`relative z-10 container mx-auto flex min-h-screen flex-col items-center px-4 ${
+          user ? 'justify-start py-6 sm:justify-center' : 'justify-center py-8'
+        }`}
+      >
+        {/* Logo & Title — shrinks hard for logged-in users; they already know
+          * the app, so the wordmark shouldn't eat the fold. */}
         <motion.div
           initial={{ opacity: 0, y: -50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, type: 'spring' }}
-          className="text-center mb-10"
+          className={`text-center ${user ? 'mb-4' : 'mb-10'}`}
         >
           {/* Animated Game Icon */}
           <motion.div
-            className="inline-block mb-6 text-white"
+            className={`inline-block text-white ${user ? 'mb-2' : 'mb-6'}`}
             animate={{
               rotate: [0, 10, -10, 0],
               scale: [1, 1.05, 0.95, 1]
@@ -149,28 +156,42 @@ export default function HomePage() {
               ease: "easeInOut"
             }}
           >
-            <Pi className="w-20 h-20 filter drop-shadow-[0_0_30px_rgba(147,51,234,0.5)]" />
+            <Pi
+              className={`filter drop-shadow-[0_0_30px_rgba(147,51,234,0.5)] ${
+                user ? 'h-10 w-10 sm:h-12 sm:w-12' : 'h-20 w-20'
+              }`}
+            />
           </motion.div>
 
           {/* Title */}
-          <h1 className="text-6xl md:text-8xl font-bold text-white mb-4 drop-shadow-lg">
+          <h1
+            className={`font-bold text-white drop-shadow-lg ${
+              user ? 'mb-1 text-3xl sm:text-4xl' : 'mb-4 text-6xl md:text-8xl'
+            }`}
+          >
             Math
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-metaverse-purple to-metaverse-red">
               Quest
             </span>
           </h1>
-          <p className="text-xl md:text-3xl text-white/80 font-medium">
+          {/* Tagline is marketing copy — hide it for logged-in users to save
+            * vertical space (kept on very tall screens via sm+). */}
+          <p
+            className={`font-medium text-white/80 ${
+              user ? 'hidden text-base sm:block' : 'text-xl md:text-3xl'
+            }`}
+          >
             {t.home.tagline}
           </p>
         </motion.div>
 
-        {/* Character Preview — the user's own avatar when logged in (big, like
-          * the Play page); the emoji line-up stays as marketing for visitors. */}
+        {/* Character Preview — the user's own avatar when logged in; the emoji
+          * line-up stays as marketing for visitors. */}
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3, duration: 0.6 }}
-          className="mb-10"
+          className={user ? 'mb-5' : 'mb-10'}
         >
           {user ? (
             <AvatarBuddy
@@ -201,7 +222,7 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.6 }}
-          className="space-y-6 mb-16 w-full max-w-2xl"
+          className={`w-full max-w-2xl space-y-5 ${user ? 'mb-6' : 'mb-16'}`}
         >
           {user ? (
             <>
@@ -465,8 +486,10 @@ function AvatarBuddy({
 
   return (
     <div className="flex flex-col items-center">
-      {/* Speech bubble — reserved height so the page doesn't jump. */}
-      <div className="mb-3 flex min-h-[3.5rem] items-end justify-center">
+      {/* Speech bubble sits close to the avatar (small negative gap via -mb) so
+        * it reads as coming from the buddy. The title badge is moved BELOW the
+        * avatar (titlePlacement='below') so it never collides with the bubble. */}
+      <div className="-mb-1 flex min-h-[3rem] items-end justify-center">
         <AnimatePresence mode="wait">
           {lineIdx !== null && (
             <motion.div
@@ -497,22 +520,28 @@ function AvatarBuddy({
         className="group relative cursor-pointer"
       >
         <div className="absolute inset-0 scale-110 rounded-full bg-gradient-to-r from-metaverse-purple/20 to-metaverse-pink/20 blur-xl opacity-0 transition-opacity group-hover:opacity-100" />
+        {/* Home keeps the avatar compact and drops the pulsing purple glow ring
+          * (showEffects=false) so it doesn't dominate the fold. The title badge
+          * is placed BELOW the avatar so it clears the speech bubble above.
+          * Play page keeps the full effects + above-head badge. */}
         <EnhancedAvatarDisplay
           userId={user.id}
           avatarData={user.avatarData}
           basicAvatar={user.avatar}
-          size="xlarge"
-          showEffects={true}
+          size="medium"
+          showEffects={false}
           showTitle={true}
+          titlePlacement="below"
           titleBadge={user.currentTitleBadge}
         />
       </motion.button>
 
-      <p className="mt-4 text-lg text-white/80 md:text-xl">
+      {/* mt-8 clears the title badge, which now floats below the avatar. */}
+      <p className="mt-8 text-base text-white/80 md:text-lg">
         {hello}{' '}
         <span className="font-bold text-white">{name}</span> 👋
       </p>
-      <p className="mt-1 text-base text-white/60 md:text-lg">{whatToday}</p>
+      <p className="mt-0.5 text-sm text-white/60 md:text-base">{whatToday}</p>
     </div>
   );
 }

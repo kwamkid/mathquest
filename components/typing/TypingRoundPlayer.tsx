@@ -29,18 +29,21 @@ import {
   motion,
   useAnimationFrame,
   useMotionValue,
-  useTransform,
 } from 'framer-motion';
-import { Check, ChevronRight, Rocket, Star, X } from 'lucide-react';
+import { Check, ChevronRight, Coins, Rocket, Star, X } from 'lucide-react';
 import AppHeader from '@/components/layout/AppHeader';
 import LessonHeader from '@/components/lesson/LessonHeader';
 import HandsGuide from '@/components/typing/HandsGuide';
+import HomeRowGate from '@/components/typing/HomeRowGate';
 import VirtualKeyboard from '@/components/typing/VirtualKeyboard';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
+import SpaceDefenseField from '@/components/typing/games/SpaceDefenseField';
+import DinoRunField from '@/components/typing/games/DinoRunField';
 import { useSound } from '@/lib/game/soundManager';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
-import { fingerForChar, LAYOUTS } from '@/lib/typing/layouts';
+import { useDeviceClass } from '@/lib/useDeviceClass';
+import { FINGER_COLORS, fingerForChar, LAYOUTS } from '@/lib/typing/layouts';
 import { generateStageRocks, type Rock } from '@/lib/typing/content';
 import {
   findNextStage,
@@ -49,11 +52,18 @@ import {
   stageId,
 } from '@/lib/typing/progress';
 import {
+  gameForStage,
   meteorSeconds,
   PASSING_ACCURACY,
+  roundPace,
+  SPAWN_GAP,
   stageKind,
   stageMeta,
+  stageMods,
+  unitDef,
 } from '@/lib/typing/config';
+import { totalTargets } from '@/lib/typing/content';
+import type { GameFieldProps, LiveTarget } from '@/components/typing/games/types';
 
 interface Props {
   unit: number;
@@ -67,17 +77,77 @@ const CHEERS = {
 } as const;
 
 const WRONG_REPEAT_GUARD_MS = 120;
-const ROCK_TRAVEL_PCT = 72; // rock falls from 0% → 72% of field height (shield line)
+
+// Start always requires the full home-row ritual (all 8 fingers). Resume is
+// gentler by default — 'anykey' = tap / press any key to continue. Flip to
+// 'homerow' to demand the full placement on every resume too (wired and ready;
+// left off because re-placing 8 fingers after a brief blur felt heavy).
+const RESUME_READY: 'anykey' | 'homerow' = 'anykey';
+
+// How long the intro waits before offering a "skip finger check" escape — so a
+// keyboard-less tablet (warned, not blocked) is never trapped at the gate.
+const SKIP_OFFER_MS = 5000;
+
+// How many obstacles the field can ever hold at once — the size of the fixed
+// MotionValue pool below (hooks can't be created per-target). A stage asks for
+// fewer via stageMods().maxConcurrent (1 = classic single-rock). Raise this
+// (and add a matching useMotionValue) to allow more at high levels.
+const MAX_LIVE = 4;
+
+// One in-flight obstacle. `elapsedMs / fallMs` is its own 0..1 approach
+// progress — each rock keeps its own clock, so a trailing rock does NOT
+// restart when the rock in front of it is destroyed.
+interface LiveRock {
+  index: number; // position in `rocks`
+  elapsedMs: number;
+  fallMs: number;
+}
+
+// Which script this player drills. v1 ships the EN track only; the future
+// Thai track flips the wrong-keyboard check below (a LATIN keystroke would
+// then mean "switch to Thai"), so the check is written per-track, not as a
+// blanket "Thai = wrong".
+const TRACK: 'en' | 'th' = 'en';
+
+// True when a keystroke's script says the OS keyboard doesn't match the
+// track being played — EN track: Thai chars are the giveaway; TH track:
+// Latin letters are.
+const wrongScriptForTrack = (ch: string): boolean =>
+  TRACK === 'en' ? /[฀-๿]/.test(ch) : /[a-z]/.test(ch);
+
+// A keystroke that positively confirms the keyboard matches the track (used
+// to clear the warning): the track's own script.
+const matchesTrackScript = (ch: string): boolean =>
+  TRACK === 'en' ? /[a-z ]/.test(ch) : /[฀-๿ ]/.test(ch);
 
 export default function TypingRoundPlayer({ unit, stage }: Props) {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
   const { lang, t } = useLanguage();
   const { playSound } = useSound();
+  // Touch typing needs a physical keyboard: phones are blocked outright,
+  // tablets get a gentle "plug in a keyboard" hint (see below). null until
+  // mounted, so we never flash the block screen during hydration.
+  const device = useDeviceClass();
 
   const meta = stageMeta(unit, stage);
   const kind = stageKind(unit, stage);
-  const exitHref = `/typing/${unit}`;
+  // The unit's new keys — the intro doubles as the finger lesson now that the
+  // per-unit page is gone (space joins in unit 1, where the thumb is taught).
+  const lessonKeys = useMemo(() => {
+    const keys = unitDef(unit)?.newKeys ?? [];
+    return unit === 1 ? [...keys, ' '] : keys;
+  }, [unit]);
+  const lessonFingers = useMemo(
+    () =>
+      lessonKeys
+        .map((k) => (k === ' ' ? 'thumb' : fingerForChar(LAYOUTS.en, k)))
+        .filter((f): f is NonNullable<typeof f> => f !== null),
+    [lessonKeys],
+  );
+  // The per-unit picker page is gone (cards play directly), so exits go back
+  // to the typing landing.
+  const exitHref = '/typing';
 
   // ----- Round content (regenerated per attempt) -----
   const [attempt, setAttempt] = useState(0);
@@ -86,6 +156,17 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [unit, stage, attempt],
   );
+  // Stage modifiers (timed bonus, multi-obstacle). Stable per unit/stage.
+  const mods = useMemo(() => stageMods(unit, stage), [unit, stage]);
+  // Timed stages: total seconds on the clock = keystrokes × secondsPerChar.
+  const timeLimitMs = useMemo(
+    () =>
+      mods.timed
+        ? Math.ceil(totalTargets(rocks) * mods.timed.secondsPerChar) * 1000
+        : 0,
+    [mods, rocks],
+  );
+
   // Horizontal position per rock (15%..85%), stable per attempt.
   const rockXs = useMemo(
     () => rocks.map(() => 15 + Math.random() * 70),
@@ -95,7 +176,15 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
   // ----- Game state -----
   const [phase, setPhase] = useState<'intro' | 'playing' | 'finished'>('intro');
   const [focused, setFocused] = useState(false);
-  const [rockIndex, setRockIndex] = useState(0);
+  // Live obstacles, frontmost first. The ref is the 60fps source of truth
+  // (mutated in the fall loop); the state mirrors just the ids so React
+  // re-renders when the SET changes — which is rare (spawn / resolve), not
+  // every frame. Position data rides MotionValues instead.
+  const liveRef = useRef<LiveRock[]>([]);
+  const [liveIndices, setLiveIndices] = useState<number[]>([]);
+  const spawnedRef = useRef(0);  // rocks sent out so far
+  const resolvedRef = useRef(0); // rocks destroyed or missed so far
+  const [resolvedCount, setResolvedCount] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
   const [hits, setHits] = useState(0);
   const [errors, setErrors] = useState(0);
@@ -104,72 +193,180 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
   const [cheer, setCheer] = useState<string | null>(null);
   const [pressedChar, setPressedChar] = useState<string | null>(null);
   const [shakeTick, setShakeTick] = useState(0);
-  const [laserTick, setLaserTick] = useState(0);
-  const [boom, setBoom] = useState<{ x: number; tick: number } | null>(null);
+  // Shot: the tick drives the effect, `progress` records where the target was
+  // when the key was pressed so a projectile can actually be aimed at it (the
+  // live value is already reset/re-seated by the time the skin renders).
+  const [laser, setLaser] = useState({ tick: 0, progress: 0 });
+  const [boom, setBoom] = useState<{
+    x: number;
+    progress: number;
+    tick: number;
+  } | null>(null);
   const [shieldFlash, setShieldFlash] = useState(0);
-  const [reward, setReward] = useState<{ exp: number; firstClear: boolean } | null>(null);
+  const [reward, setReward] = useState<{
+    exp: number;
+    firstClear: boolean;
+    timeBonus: number;
+  } | null>(null);
   const [nextAfter, setNextAfter] = useState<{ unit: number; stage: number } | null>(null);
   const [compactViewport, setCompactViewport] = useState(false);
+  // Intro only: reveal the "skip finger check" link after a beat, so nobody
+  // is stuck at the home-row gate (see SKIP_OFFER_MS).
+  const [showSkip, setShowSkip] = useState(false);
   // True while the OS keyboard is emitting Thai characters (forgot to switch
   // input language) — shows a how-to-switch banner instead of counting errors.
   const [wrongLang, setWrongLang] = useState(false);
+  // Timed stages only: whole seconds left on the clock (state so the HUD
+  // re-renders per second, NOT per frame), and a flash tick when a wrong key
+  // costs time. penaltyMsRef accumulates error penalties (see processChar).
+  const [timeLeftSec, setTimeLeftSec] = useState(0);
+  const [penaltyFlash, setPenaltyFlash] = useState(0);
+  const penaltyMsRef = useRef(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const fieldRef = useRef<HTMLDivElement>(null);
   const lastWrongRef = useRef<{ char: string; time: number } | null>(null);
   const pressedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cheerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeMsRef = useRef(0); // unpaused play time (drives WPM)
-  const fallMsRef = useRef(meteorSeconds(unit, stage) * 1000);
-  const elapsedRef = useRef(0); // current rock's fall time
   const shieldHitGuard = useRef(false);
+  // Brief input-swallow right after the home-row ritual: the kid's fingers are
+  // resting ON the home row (f, j = unit 1's first targets), so OS key-repeat
+  // could fire a stray keystroke into the game the instant it starts. Ignore
+  // input until this timestamp so the round starts on a clean, intentional key.
+  const startGuardRef = useRef(0);
 
-  const rock = rocks[rockIndex] as Rock | undefined;
-  const rockX = rockXs[rockIndex] ?? 50;
+  // Approach MotionValues, one per SLOT (not per rock): slot 0 always feeds
+  // the active target, slot 1 the one behind it, etc. Fixed count because
+  // hooks can't be created per-target; the fall loop re-seats them when the
+  // set shifts, so a trailing rock keeps its position as it becomes active.
+  // To support more concurrent obstacles, add a useMotionValue + one array
+  // entry and bump MAX_LIVE — nothing else changes (skins map over the array).
+  const p0 = useMotionValue(0);
+  const p1 = useMotionValue(0);
+  const p2 = useMotionValue(0);
+  const p3 = useMotionValue(0);
+  const progressPool = useMemo(() => [p0, p1, p2, p3], [p0, p1, p2, p3]);
+
+  const activeIndex = liveIndices[0] ?? -1;
+  const rock = (activeIndex >= 0 ? rocks[activeIndex] : undefined) as
+    | Rock
+    | undefined;
+
+  // Clamp each rock's x so its (centered) text never hangs past the field
+  // edge — the raw 15–85% range overflows with long rocks on narrow fields.
+  const [fieldW, setFieldW] = useState(0);
+  useEffect(() => {
+    const measure = () => setFieldW(fieldRef.current?.clientWidth ?? 0);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+  // Half the rock's rendered width, roughly: mono chars ≈ 24px + padding;
+  // the bare-space rock renders the wide "เว้นวรรค (Space)" pill instead.
+  const clampedX = useCallback(
+    (index: number) => {
+      const text = rocks[index]?.text ?? '';
+      const halfPx = text === ' ' ? 80 : 24 + (text.length || 1) * 12;
+      const edgePct = fieldW > 0 ? Math.min(42, (halfPx / fieldW) * 100) : 25;
+      const rawX = rockXs[index] ?? 50;
+      return Math.min(100 - edgePct, Math.max(edgePct, rawX));
+    },
+    [rocks, rockXs, fieldW],
+  );
   const expectedChar = rock?.text[charIndex] ?? null;
   const isPlaying = phase === 'playing';
   const paused = isPlaying && !focused;
 
-  // Rock fall progress 0..1 → top offset. MotionValue avoids re-render/frame.
-  const fallProgress = useMotionValue(0);
-  const rockTop = useTransform(fallProgress, (v) => `${v * ROCK_TRAVEL_PCT}%`);
+  // How many obstacles this stage puts on the field at once (1 = classic).
+  const maxConcurrent = Math.min(MAX_LIVE, Math.max(1, mods.maxConcurrent ?? 1));
+  // Spacing between obstacles, as approach-progress. Tightens as the count
+  // grows so N rocks actually fit on screen together instead of the front
+  // resolving before the back spawns. Capped at SPAWN_GAP so 1-2 obstacles
+  // keep their original roomy feel (0.9/2 = 0.45 = SPAWN_GAP, unchanged).
+  const spawnGap = Math.min(SPAWN_GAP, 0.9 / maxConcurrent);
+
+  // Which game skin plays this stage (context-based; see gameForStage).
+  const gameId = gameForStage(unit, stage);
 
   const accuracy = hits + errors > 0 ? hits / (hits + errors) : 1;
 
-  // ----- Fall loop (pausable) -----
-  useAnimationFrame((_, delta) => {
-    if (!isPlaying || paused || !rock) return;
-    activeMsRef.current += delta;
-    elapsedRef.current += delta;
-    const p = Math.min(1, elapsedRef.current / fallMsRef.current);
-    fallProgress.set(p);
-    if (p >= 1 && !shieldHitGuard.current) {
-      shieldHitGuard.current = true;
-      handleShieldHit();
-    }
-  });
+  // ----- Spawn / resolve -----
+  // Progress of the frontmost live rock right now (0 when the field is empty).
+  const frontProgress = useCallback(() => {
+    const front = liveRef.current[0];
+    return front ? Math.min(1, front.elapsedMs / front.fallMs) : 0;
+  }, []);
+  // Progress of the BACKMOST live rock — the newest one. New rocks are spaced
+  // off this (not the front), so obstacles stay evenly spread no matter how
+  // many are on the field (front-based spacing would dump 3rd/4th rocks on top
+  // of each other the instant the front passed the gap).
+  const backProgress = useCallback(() => {
+    const back = liveRef.current[liveRef.current.length - 1];
+    return back ? Math.min(1, back.elapsedMs / back.fallMs) : 0;
+  }, []);
 
-  const resetRockFall = useCallback(() => {
-    elapsedRef.current = 0;
-    shieldHitGuard.current = false;
-    fallProgress.set(0);
-  }, [fallProgress]);
+  // Send out the next rock in the queue. Its approach time is fixed at spawn
+  // (per-rock roundPace ramp), so rocks in flight keep the pace they launched
+  // with even as later ones get faster.
+  const spawnRock = useCallback(() => {
+    const index = spawnedRef.current;
+    if (index >= rocks.length) return;
+    spawnedRef.current = index + 1;
+    const live = [
+      ...liveRef.current,
+      {
+        index,
+        elapsedMs: 0,
+        fallMs:
+          meteorSeconds(unit, stage) * 1000 * roundPace(index, rocks.length),
+      },
+    ];
+    liveRef.current = live;
+    progressPool[live.length - 1]?.set(0);
+    setLiveIndices(live.map((l) => l.index));
+  }, [rocks.length, unit, stage, progressPool]);
 
-  // ----- Advance / finish -----
-  const advanceRock = useCallback(
+  // Retire the frontmost rock (destroyed by typing, or missed at the player).
+  // Everything behind it shifts one slot forward AND KEEPS ITS OWN PROGRESS —
+  // that continuity is the whole point of the multi-obstacle mode.
+  const resolveFront = useCallback(
     (destroyed: boolean) => {
+      const front = liveRef.current[0];
+      if (!front) return;
       if (destroyed) {
-        setBoom({ x: rockX, tick: Date.now() });
+        setBoom({
+          x: clampedX(front.index),
+          progress: Math.min(1, front.elapsedMs / front.fallMs),
+          tick: Date.now(),
+        });
         playSound('correct');
       }
-      setCharIndex(0);
-      resetRockFall();
-      if (rockIndex + 1 >= rocks.length) {
-        setPhase('finished');
-      } else {
-        setRockIndex((i) => i + 1);
+      const rest = liveRef.current.slice(1);
+      liveRef.current = rest;
+      rest.forEach((l, slot) =>
+        progressPool[slot]?.set(Math.min(1, l.elapsedMs / l.fallMs)),
+      );
+      for (let slot = rest.length; slot < progressPool.length; slot++) {
+        progressPool[slot]?.set(0);
       }
+      setCharIndex(0);
+      shieldHitGuard.current = false;
+
+      const resolved = resolvedRef.current + 1;
+      resolvedRef.current = resolved;
+      setResolvedCount(resolved);
+      if (resolved >= rocks.length) {
+        setLiveIndices([]);
+        setPhase('finished');
+        return;
+      }
+      // Single-obstacle stages: the field would sit empty, so the next rock
+      // launches immediately (identical to the classic one-at-a-time feel).
+      if (rest.length === 0) spawnRock();
+      else setLiveIndices(rest.map((l) => l.index));
     },
-    [rockIndex, rocks.length, rockX, playSound, resetRockFall],
+    [rocks.length, clampedX, playSound, progressPool, spawnRock],
   );
 
   const handleShieldHit = useCallback(() => {
@@ -177,29 +374,99 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     setCombo(0);
     setShieldFlash((s) => s + 1);
     playSound('incorrect');
-    advanceRock(false);
-  }, [advanceRock, playSound]);
+    resolveFront(false);
+  }, [resolveFront, playSound]);
+
+  // ----- Fall loop (pausable) -----
+  // wrongLang freezes the fall too: switching the OS language takes a moment,
+  // and losing the rock to the shield while doing it would feel unfair.
+  useAnimationFrame((_, delta) => {
+    if (!isPlaying || paused || wrongLang || liveRef.current.length === 0) return;
+    activeMsRef.current += delta;
+
+    const live = liveRef.current;
+    for (let slot = 0; slot < live.length; slot++) {
+      live[slot].elapsedMs += delta;
+      progressPool[slot]?.set(
+        Math.min(1, live[slot].elapsedMs / live[slot].fallMs),
+      );
+    }
+
+    // Arrival is checked on the FRONT rock only — the spawn gap guarantees a
+    // trailing rock is nowhere near the player while the front one is there.
+    if (frontProgress() >= 1 && !shieldHitGuard.current) {
+      shieldHitGuard.current = true;
+      handleShieldHit(); // may pop/spawn → re-read liveRef below
+    }
+
+    // Send out the next one once the newest (backmost) rock has travelled far
+    // enough to leave a readable gap behind it — so with 3-4 concurrent they
+    // stay evenly spaced instead of stacking.
+    if (
+      liveRef.current.length > 0 &&
+      liveRef.current.length < maxConcurrent &&
+      spawnedRef.current < rocks.length &&
+      backProgress() >= spawnGap
+    ) {
+      spawnRock();
+    }
+
+    // Timed stages: tick the visible clock down (state changes only when the
+    // whole-second value changes, so this stays ~1 re-render/sec, not 60).
+    if (timeLimitMs > 0) {
+      const leftMs = Math.max(
+        0,
+        timeLimitMs - activeMsRef.current - penaltyMsRef.current,
+      );
+      const leftSec = Math.ceil(leftMs / 1000);
+      if (leftSec !== timeLeftSec) setTimeLeftSec(leftSec);
+    }
+  });
+
+  // Clear the field (start / restart).
+  const resetLive = useCallback(() => {
+    liveRef.current = [];
+    spawnedRef.current = 0;
+    resolvedRef.current = 0;
+    shieldHitGuard.current = false;
+    setResolvedCount(0);
+    setLiveIndices([]);
+    progressPool.forEach((p) => p.set(0));
+  }, [progressPool]);
 
   // ----- Keystroke handling (single path for desktop + iPad) -----
   const processChar = useCallback(
     (raw: string) => {
       if (!isPlaying || paused || !rock) return;
+      // Swallow residual key-repeat from the home-row ritual (see startGuardRef).
+      if (performance.now() < startGuardRef.current) return;
       const ch = raw.toLowerCase(); // defeats residual iOS auto-capitalization
-      // Thai character = the OS keyboard is still in Thai. Warn, don't punish
-      // (not the kid's typing skill) — clears on the first Latin keystroke.
-      if (/[\u0E00-\u0E7F]/.test(ch)) {
+      // OS keyboard doesn't match the track's language (e.g. Thai keys while
+      // playing the EN track). Warn + freeze, don't punish (not the kid's
+      // typing skill) — clears on the first keystroke in the right script.
+      if (wrongScriptForTrack(ch)) {
         setWrongLang(true);
         playSound('incorrect');
         return;
       }
-      if (/[a-z ]/.test(ch)) setWrongLang(false);
+      if (matchesTrackScript(ch) && wrongLang) {
+        setWrongLang(false);
+        // The overlay says "press any letter to continue" — so the resuming
+        // keystroke is free: count it only when it happens to be correct.
+        if (ch !== rock.text[charIndex]) return;
+      }
       const expected = rock.text[charIndex];
       if (!expected) return;
 
       if (ch === expected) {
         lastWrongRef.current = null;
         setHits((h) => h + 1);
-        setLaserTick((n) => n + 1);
+        // Capture WHERE the target is NOW, eagerly — the killing keystroke
+        // calls resolveFront() below, which shifts this rock out of liveRef.
+        // Reading frontProgress() lazily inside the state updater would run
+        // after that shift and aim the shot at the next rock instead.
+        const shotProgress = frontProgress();
+        setLaser((l) => ({ tick: l.tick + 1, progress: shotProgress }));
         setPressedChar(ch);
         if (pressedTimer.current) clearTimeout(pressedTimer.current);
         pressedTimer.current = setTimeout(() => setPressedChar(null), 140);
@@ -215,7 +482,7 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
         }
 
         if (charIndex + 1 >= rock.text.length) {
-          advanceRock(true);
+          resolveFront(true);
         } else {
           playSound('click');
           setCharIndex((i) => i + 1);
@@ -232,9 +499,29 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
         setCombo(0);
         setShakeTick((s) => s + 1);
         playSound('incorrect');
+        // Timed stages with an error penalty: this counted miss costs seconds
+        // off the clock (only eats the bonus — the timer floors at 0, never
+        // fails the round). Wired but off in v1 (no stage sets the field).
+        const penalty = mods.timed?.errorPenaltySeconds;
+        if (penalty) {
+          penaltyMsRef.current += penalty * 1000;
+          setPenaltyFlash((f) => f + 1);
+        }
       }
     },
-    [isPlaying, paused, rock, charIndex, combo, lang, advanceRock, playSound],
+    [
+      isPlaying,
+      paused,
+      wrongLang,
+      rock,
+      charIndex,
+      combo,
+      lang,
+      resolveFront,
+      frontProgress,
+      playSound,
+      mods,
+    ],
   );
 
   const handleBeforeInput = (e: FormEvent<HTMLInputElement>) => {
@@ -268,18 +555,36 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
         router.push(exitHref);
         return;
       }
-      if (phase === 'intro' && (e.key === ' ' || e.key === 'Enter')) {
-        e.preventDefault(); // space would scroll the page
-        startGame();
-      } else if (isPlaying && !focused && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      // Intro start is the home-row ritual (HomeRowGate), not a keypress —
+      // nothing to do here for the intro anymore.
+      // Resume: in 'anykey' mode any key refocuses the input to continue; in
+      // 'homerow' mode the paused overlay's HomeRowGate handles resume instead.
+      if (
+        RESUME_READY === 'anykey' &&
+        isPlaying &&
+        !focused &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
         e.preventDefault();
         inputRef.current?.focus({ preventScroll: true });
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, exitHref, phase, isPlaying, focused]);
+
+  // Offer the skip-finger-check escape a few seconds into the intro; hide it
+  // again whenever we leave the intro (start / restart).
+  useEffect(() => {
+    if (phase !== 'intro') {
+      setShowSkip(false);
+      return;
+    }
+    const id = setTimeout(() => setShowSkip(true), SKIP_OFFER_MS);
+    return () => clearTimeout(id);
+  }, [phase]);
 
   // iPad OS keyboard shrinks the visual viewport → compact keyboard guide.
   useEffect(() => {
@@ -302,7 +607,11 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
   // ----- Start / resume (must run inside a user gesture for iOS) -----
   const startGame = () => {
     setPhase('playing');
-    resetRockFall();
+    resetLive();
+    spawnRock(); // launch the first obstacle
+    startGuardRef.current = performance.now() + 350; // swallow home-row repeat
+    penaltyMsRef.current = 0;
+    if (timeLimitMs > 0) setTimeLeftSec(Math.ceil(timeLimitMs / 1000));
     inputRef.current?.focus({ preventScroll: true });
   };
 
@@ -318,7 +627,6 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
 
   const restart = () => {
     setAttempt((a) => a + 1);
-    setRockIndex(0);
     setCharIndex(0);
     setHits(0);
     setErrors(0);
@@ -328,7 +636,9 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     setReward(null);
     setNextAfter(null);
     activeMsRef.current = 0;
-    resetRockFall();
+    penaltyMsRef.current = 0;
+    setTimeLeftSec(0);
+    resetLive();
     setPhase('intro');
   };
 
@@ -341,9 +651,31 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     savedRef.current = true;
     if (!passed || !user) return;
     playSound('levelUp');
+    // Timed bonus: fraction of the clock left × the cap, floored. Uses the
+    // final activeMs + penalties captured at finish. Zero for untimed stages.
+    let timeBonus = 0;
+    if (mods.timed && timeLimitMs > 0) {
+      const leftMs = Math.max(
+        0,
+        timeLimitMs - activeMsRef.current - penaltyMsRef.current,
+      );
+      timeBonus = Math.floor((leftMs / timeLimitMs) * mods.timed.bonusExpMax);
+    }
     void (async () => {
-      const res = await saveTypingStage({ userId: user.id, unit, stage, perfect });
-      setReward({ exp: res.expGained, firstClear: res.firstClear });
+      const res = await saveTypingStage({
+        userId: user.id,
+        unit,
+        stage,
+        perfect,
+        bonusExp: timeBonus,
+      });
+      setReward({
+        exp: res.expGained,
+        firstClear: res.firstClear,
+        // Only first clears actually bank the bonus (saveTypingStage gates it);
+        // show the line only when it was really awarded.
+        timeBonus: res.firstClear ? timeBonus : 0,
+      });
       // Recommend "next" as if this clear is already saved (refreshUser is void).
       const before = getTypingProgress(user);
       setNextAfter(
@@ -368,15 +700,50 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
       );
       await refreshUser();
     })();
+    // mods/timeLimitMs are stable for a given unit/stage; activeMsRef read at
+    // finish. eslint wants them but they don't change within a round.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, passed, perfect, user, unit, stage, playSound, refreshUser]);
   // Reset the save guard on restart.
   useEffect(() => {
     if (phase === 'intro') savedRef.current = false;
   }, [phase]);
 
-  const title = `${t.typing.unitWord} ${unit} · ${
-    lang === 'en' ? meta.enTitle : meta.thaiTitle
-  }`;
+  // "บทเรียน 4 · ตอนที่ 1/3 · รู้จักแป้น" — part number spelled out so the
+  // part's name never reads as the lesson's name.
+  const title = `${t.typing.unitWord} ${unit} · ${t.typing.stageOf(
+    stage,
+    lang === 'en' ? meta.enTitle : meta.thaiTitle,
+  )}`;
+
+  // ----- Phone block — touch typing can't be practised on a phone screen
+  // (no home row, on-screen keyboard eats the field). Show a friendly
+  // "use a computer" card instead of the game. Tablets fall through (they
+  // may have a keyboard) and only get a soft hint on the intro. -----
+  if (device === 'phone') {
+    return (
+      <div className="learn-bg flex min-h-dvh flex-col">
+        {user && <AppHeader user={user} />}
+        <div className="mx-auto flex max-w-md flex-1 select-none flex-col items-center justify-center px-6 py-12 text-center">
+          <span className="text-6xl" aria-hidden>
+            💻
+          </span>
+          <h1 className="mt-5 text-2xl font-bold text-white">
+            {t.typing.phoneBlockTitle}
+          </h1>
+          <p className="mt-3 text-base leading-relaxed text-white/75">
+            {t.typing.phoneBlockBody}
+          </p>
+          <button
+            onClick={() => router.push('/')}
+            className="learn-accent-pill mt-8 rounded-2xl px-6 py-3 font-bold shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-[0.99]"
+          >
+            {t.typing.phoneBlockBack}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // ----- Result screen -----
   if (phase === 'finished') {
@@ -445,24 +812,32 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
             )}
           </div>
 
-          {/* EXP banner — the payout, visually distinct from the stats. */}
+          {/* Coin banner — the payout. First clear = full amber celebration;
+              replays still pay a small practice bonus, shown quieter. */}
           {passed && reward && (
             <div
-              className={`mt-3 flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-lg font-bold ${
+              className={`mt-3 flex items-center justify-center gap-2 rounded-2xl px-4 py-3 ${
                 reward.firstClear
-                  ? 'border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-orange-500/15 text-amber-200'
-                  : 'bg-white/[0.04] text-base font-semibold text-white/60'
+                  ? 'border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-orange-500/15 text-lg font-bold text-amber-200'
+                  : 'bg-white/[0.05] text-base font-semibold text-amber-200/80'
               }`}
             >
-              {reward.firstClear ? (
-                <>
-                  <Star className="h-6 w-6 fill-current text-amber-300" />
-                  {t.typing.expGained(reward.exp)}
-                </>
-              ) : (
-                t.typing.stageAlreadyPaid
-              )}
+              <Coins
+                className={reward.firstClear ? 'h-6 w-6 text-amber-300' : 'h-5 w-5 text-amber-300/80'}
+              />
+              {reward.firstClear
+                ? t.typing.expGained(reward.exp)
+                : t.typing.replayGained(reward.exp)}
             </div>
+          )}
+
+          {/* Time-bonus breakdown — only when a timed stage actually paid one
+              (first clear + bonus > 0). The total above already includes it;
+              this line shows where the extra came from. */}
+          {passed && reward && reward.timeBonus > 0 && (
+            <p className="mt-2 text-sm font-semibold text-cyan-200/90">
+              {t.typing.timeBonus(reward.timeBonus)}
+            </p>
           )}
 
           {/* Two buttons only: keep going (or retry on a fail) + back.
@@ -477,6 +852,7 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
               >
                 {t.typing.playNext(
                   nextAfter.unit,
+                  nextAfter.stage,
                   lang === 'en'
                     ? stageMeta(nextAfter.unit, nextAfter.stage).enTitle
                     : stageMeta(nextAfter.unit, nextAfter.stage).thaiTitle,
@@ -514,8 +890,8 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     <div className="learn-bg flex min-h-dvh select-none flex-col">
       <LessonHeader
         lessonTitle={title}
-        stepTitle={t.typing.rocksLeft(rocks.length - rockIndex)}
-        currentStep={rockIndex}
+        stepTitle={t.typing.rocksLeft(rocks.length - resolvedCount)}
+        currentStep={resolvedCount}
         totalSteps={rocks.length}
         onClose={() => router.push(exitHref)}
       />
@@ -525,6 +901,7 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
           focus) — during the intro we leave defaults alone so the start
           button's click works untouched. */}
       <div
+        ref={fieldRef}
         className="relative mx-auto w-full max-w-2xl flex-1 overflow-hidden px-2"
         style={{ minHeight: compactViewport ? 220 : 300 }}
         onPointerDown={isPlaying ? refocus : undefined}
@@ -549,130 +926,123 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
         />
 
         {phase === 'intro' ? (
-          <button
-            onClick={startGame}
-            className="absolute inset-0 flex flex-col items-center justify-center gap-4"
-          >
-            <span className="learn-accent-pill flex h-20 w-20 items-center justify-center rounded-full shadow-xl shadow-pink-500/40">
-              <Rocket className="h-10 w-10" />
-            </span>
-            <span className="text-2xl font-bold text-white">
-              {t.typing.tapToStart}
-            </span>
-            <span className="text-base text-white/70">{t.typing.getReady}</span>
-            <span className="rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/70">
-              {t.typing.orPressSpace}
-            </span>
-          </button>
-        ) : (
-          <>
-            {/* Meteor — outer div owns position (top from the fall
-                MotionValue, Tailwind centers on left%); inner motion.div owns
-                the shake so framer's transform never clobbers the centering. */}
-            {rock && (
-              <motion.div
-                style={{ top: rockTop, left: `${rockX}%` }}
-                className="absolute z-10"
-              >
-                <motion.div
-                  key={shakeTick}
-                  animate={shakeTick ? { x: [0, -7, 7, -4, 0] } : undefined}
-                  transition={{ duration: 0.3 }}
-                  className="-translate-x-1/2"
-                >
-                  <div className="rounded-2xl border border-white/20 bg-gradient-to-br from-slate-600/90 to-slate-800/90 px-4 py-2.5 shadow-xl shadow-black/40">
-                    <RockText
-                      text={rock.text}
-                      charIndex={charIndex}
-                      spaceLabel={t.typing.spaceKey}
-                    />
-                  </div>
-                </motion.div>
-              </motion.div>
-            )}
-
-            {/* Laser flash */}
-            <AnimatePresence>
-              {laserTick > 0 && (
-                <motion.div
-                  key={laserTick}
-                  initial={{ opacity: 0.9 }}
-                  animate={{ opacity: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18 }}
-                  style={{ left: `${rockX}%` }}
-                  className="absolute bottom-14 top-0 z-0 w-1 -translate-x-1/2 rounded-full bg-gradient-to-t from-cyan-300 via-fuchsia-400 to-transparent"
-                />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center">
+            <span className="learn-accent-pill flex h-12 w-12 items-center justify-center rounded-full shadow-xl shadow-pink-500/40 sm:h-14 sm:w-14">
+              {gameId === 'dino' ? (
+                <span className="text-2xl sm:text-3xl" aria-hidden>
+                  🦖
+                </span>
+              ) : (
+                <Rocket className="h-7 w-7 sm:h-8 sm:w-8" />
               )}
-            </AnimatePresence>
+            </span>
 
-            {/* Explosion particles */}
-            <AnimatePresence>
-              {boom && (
-                <motion.div
-                  key={boom.tick}
-                  className="pointer-events-none absolute z-20"
-                  style={{ left: `${boom.x}%`, top: '30%' }}
-                  initial={{ opacity: 1 }}
-                  animate={{ opacity: 0 }}
-                  transition={{ duration: 0.6 }}
-                  onAnimationComplete={() => setBoom(null)}
-                >
-                  {Array.from({ length: 7 }).map((_, i) => (
-                    <motion.span
-                      key={i}
-                      initial={{ x: 0, y: 0, scale: 1 }}
-                      animate={{
-                        x: Math.cos((i / 7) * Math.PI * 2) * 42,
-                        y: Math.sin((i / 7) * Math.PI * 2) * 42,
-                        scale: 0,
-                      }}
-                      transition={{ duration: 0.55, ease: 'easeOut' }}
-                      className="absolute h-2.5 w-2.5 rounded-full bg-amber-300"
-                    />
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
+            {/* Today's lesson keys — compact, so the ritual below is the star
+                but the kid still sees which new keys this stage teaches (the
+                bottom keyboard + hands highlight them too). */}
+            <span className="flex flex-wrap items-center justify-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-white/45">
+                {t.typing.todayKeys}
+              </span>
+              {lessonKeys.map((keyChar) => {
+                const finger =
+                  keyChar === ' ' ? 'thumb' : fingerForChar(LAYOUTS.en, keyChar);
+                const colors = finger ? FINGER_COLORS[finger] : null;
+                return (
+                  <span
+                    key={keyChar}
+                    className={`flex h-9 items-center justify-center rounded-lg text-lg font-extrabold uppercase shadow ${
+                      keyChar === ' ' ? 'w-24 text-sm' : 'w-9'
+                    } ${colors ? colors.active : 'bg-white/10 text-white'}`}
+                  >
+                    {keyChar === ' ' ? 'SPACE' : keyChar}
+                  </span>
+                );
+              })}
+            </span>
 
-            {/* Shield line */}
-            <motion.div
-              key={shieldFlash}
-              initial={shieldFlash ? { opacity: 1 } : { opacity: 0.35 }}
-              animate={{ opacity: 0.35 }}
-              transition={{ duration: 0.6 }}
-              className="absolute inset-x-4 z-0 h-1 rounded-full bg-gradient-to-r from-transparent via-cyan-300 to-transparent"
-              style={{ top: `${ROCK_TRAVEL_PCT + 8}%` }}
+            {/* Home-row readiness ritual — rest all 8 fingers, then press. */}
+            <p className="max-w-xs text-base font-bold text-white">
+              {t.typing.placeFingers}
+            </p>
+            <HomeRowGate
+              onReady={startGame}
+              readyLabel={t.typing.placeFingersReady}
+              wrongLangHint={t.typing.fingersWrongLang}
             />
 
-            {/* Cannon slides under the rock */}
-            <motion.div
-              animate={{ left: `${rockX}%` }}
-              transition={{ type: 'spring', stiffness: 200, damping: 22 }}
-              className="absolute bottom-2 z-10 -translate-x-1/2"
-            >
-              <div className="mx-auto h-6 w-2.5 rounded-t-full bg-gradient-to-t from-fuchsia-500 to-cyan-300" />
-              <div className="h-4 w-12 rounded-xl bg-gradient-to-br from-slate-500 to-slate-700 shadow-lg" />
-            </motion.div>
+            {/* Modifier badge — tells the kid what's special about this stage
+                before they start (timed / two-at-once). */}
+            {(mods.timed || (mods.maxConcurrent ?? 1) > 1) && (
+              <span className="rounded-full bg-cyan-500/15 px-4 py-1.5 text-sm font-bold text-cyan-200 ring-1 ring-cyan-400/30">
+                {mods.timed
+                  ? t.typing.timedIntro
+                  : t.typing.multiIntro(mods.maxConcurrent ?? 2)}
+              </span>
+            )}
+            {/* Tablet: we can't tell if a keyboard is attached, so nudge. */}
+            {device === 'tablet' && (
+              <span className="rounded-full bg-amber-500/15 px-4 py-1.5 text-sm font-semibold text-amber-200 ring-1 ring-amber-400/30">
+                {t.typing.tabletKeyboardHint}
+              </span>
+            )}
+            {/* Escape hatch — appears a few seconds in so a keyboard-less
+                device isn't trapped at the gate. */}
+            {showSkip && (
+              <button
+                onClick={startGame}
+                className="mt-1 rounded-full px-4 py-1.5 text-sm font-semibold text-white/45 underline decoration-white/25 underline-offset-4 transition hover:text-white/70"
+              >
+                {t.typing.skipFingers}
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Game skin — presentation only; all state comes from these
+                props. Which skin plays is context-based (gameForStage). */}
+            {(() => {
+              // Slot order IS render order: [0] is the frontmost/active rock.
+              const targets: LiveTarget[] = liveIndices.flatMap((index, slot) => {
+                const r = rocks[index];
+                if (!r) return [];
+                return [
+                  {
+                    id: index,
+                    rock: r,
+                    charIndex: slot === 0 ? charIndex : 0,
+                    progress: progressPool[slot],
+                    x: clampedX(index),
+                    active: slot === 0,
+                  },
+                ];
+              });
+              const fieldProps: GameFieldProps = {
+                targets,
+                paused,
+                shakeTick,
+                laserTick: laser.tick,
+                laserProgress: laser.progress,
+                boom,
+                onBoomDone: () => setBoom(null),
+                arrivalTick: shieldFlash,
+                spaceLabel: t.typing.spaceKey,
+              };
+              return gameId === 'dino' ? (
+                <DinoRunField {...fieldProps} />
+              ) : (
+                <SpaceDefenseField {...fieldProps} />
+              );
+            })()}
 
-            {/* Avatar cheerleader (bottom-left) + combo bubble */}
-            <div className="pointer-events-none absolute bottom-1 left-2 z-10 hidden sm:block">
-              <AnimatePresence>
-                {cheer && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.9 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    className="absolute -top-9 left-4 whitespace-nowrap rounded-xl bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-lg"
-                  >
-                    {cheer}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            {/* Avatar cheerleader — top-left corner (out of the play area; it
+                used to sit at bottom-left where it floated awkwardly under the
+                ground). Cheer bubble now drops BELOW it. */}
+            <div className="pointer-events-none absolute left-2 top-1 z-10 hidden sm:block">
               <motion.div
                 animate={combo >= 5 ? { y: [0, -6, 0] } : { y: 0 }}
                 transition={{ duration: 0.5, repeat: combo >= 5 ? Infinity : 0 }}
-                className="scale-[0.6] origin-bottom-left"
+                className="origin-top-left scale-[0.5]"
               >
                 {user && (
                   <EnhancedAvatarDisplay
@@ -685,6 +1055,18 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
                   />
                 )}
               </motion.div>
+              <AnimatePresence>
+                {cheer && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6, scale: 0.9 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4 }}
+                    className="absolute left-1 top-12 whitespace-nowrap rounded-xl bg-white px-2.5 py-1 text-xs font-bold text-slate-800 shadow-lg"
+                  >
+                    {cheer}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Combo badge */}
@@ -694,43 +1076,94 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
               </div>
             )}
 
-            {/* Wrong-input-language banner. */}
-            <AnimatePresence>
-              {wrongLang && (
+            {/* Timer pill (timed stages only) — engine-level HUD, top-center.
+                Turns amber under 10s, shows "bonus time up" at 0. A wrong key
+                flashes it red + floats a "−Ns" penalty (v1: penalty is off, so
+                penaltyFlash never bumps; the markup is ready for when it's on). */}
+            {timeLimitMs > 0 && (
+              <div className="absolute left-1/2 top-2 z-10 -translate-x-1/2">
                 <motion.div
-                  initial={{ opacity: 0, y: -12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  className="absolute inset-x-3 top-2 z-40 rounded-2xl border border-amber-400/50 bg-amber-500/15 px-4 py-3 text-center backdrop-blur-sm"
+                  key={penaltyFlash}
+                  animate={penaltyFlash ? { scale: [1, 1.15, 1] } : undefined}
+                  transition={{ duration: 0.3 }}
+                  className={`rounded-full px-3 py-1 text-sm font-extrabold ${
+                    timeLeftSec <= 0
+                      ? 'bg-rose-500/25 text-rose-200'
+                      : timeLeftSec < 10
+                        ? 'bg-amber-500/25 text-amber-200'
+                        : 'bg-cyan-500/20 text-cyan-200'
+                  }`}
                 >
-                  <p className="text-base font-bold text-amber-200">
-                    ⚠️ {t.typing.wrongLangTitle}
-                  </p>
-                  <p className="mt-0.5 text-sm text-amber-100/80">
-                    {t.typing.wrongLangHint}
-                  </p>
+                  {timeLeftSec <= 0 ? t.typing.timeBonusOver : t.typing.timeLeft(timeLeftSec)}
+                </motion.div>
+              </div>
+            )}
+
+            {/* Wrong-input-language overlay — the game freezes (see the fall
+                loop) and a big center card tells the kid to switch language.
+                Clears itself on the first Latin keystroke; taps just keep the
+                hidden input focused so that keystroke can arrive. */}
+            <AnimatePresence>
+              {wrongLang && !paused && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onPointerDown={refocus}
+                  className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+                >
+                  <motion.div
+                    initial={{ scale: 0.9, y: 8 }}
+                    animate={{ scale: 1, y: 0 }}
+                    className="max-w-md rounded-3xl border border-amber-400/50 bg-amber-500/15 px-6 py-6 text-center"
+                  >
+                    <p className="text-4xl">⚠️</p>
+                    <p className="mt-2 text-xl font-bold text-amber-200 sm:text-2xl">
+                      {t.typing.wrongLangTitle}
+                    </p>
+                    <p className="mt-2 text-base text-amber-100/85">
+                      {t.typing.wrongLangHint}
+                    </p>
+                    <p className="mt-4 rounded-full bg-white/10 px-4 py-1.5 text-sm font-semibold text-white/75">
+                      {t.typing.wrongLangResume}
+                    </p>
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Paused overlay (focus lost). Resume on pointerdown with
-                preventDefault — a plain button onClick loses the race: the
-                overlay unmounts mid-gesture and mousedown's default focus
-                steal blurs the input right back. */}
-            {paused && (
-              <div
-                role="button"
-                tabIndex={-1}
-                onPointerDown={refocus}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={refocus}
-                className="absolute inset-0 z-30 flex cursor-pointer items-center justify-center bg-black/60 backdrop-blur-sm"
-              >
-                <span className="rounded-2xl bg-white/10 px-6 py-3 text-lg font-bold text-white">
-                  {t.typing.tapToResume}
-                </span>
-              </div>
-            )}
+            {/* Paused overlay (focus lost). 'homerow' resume mode asks the kid
+                to re-place all 8 fingers; the default 'anykey' mode resumes on
+                any tap/keypress. Resume on pointerdown with preventDefault — a
+                plain button onClick loses the race: the overlay unmounts
+                mid-gesture and mousedown's default focus steal blurs the input
+                right back. */}
+            {paused &&
+              (RESUME_READY === 'homerow' ? (
+                <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/70 px-4 text-center backdrop-blur-sm">
+                  <p className="max-w-xs text-base font-bold text-white">
+                    {t.typing.placeFingers}
+                  </p>
+                  <HomeRowGate
+                    onReady={refocus}
+                    readyLabel={t.typing.placeFingersReady}
+                    wrongLangHint={t.typing.fingersWrongLang}
+                  />
+                </div>
+              ) : (
+                <div
+                  role="button"
+                  tabIndex={-1}
+                  onPointerDown={refocus}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={refocus}
+                  className="absolute inset-0 z-30 flex cursor-pointer items-center justify-center bg-black/60 backdrop-blur-sm"
+                >
+                  <span className="rounded-2xl bg-white/10 px-6 py-3 text-lg font-bold text-white">
+                    {t.typing.tapToResume}
+                  </span>
+                </div>
+              ))}
           </>
         )}
       </div>
@@ -759,16 +1192,20 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
         <VirtualKeyboard
           highlightChar={isPlaying ? expectedChar : null}
           pressedChar={pressedChar}
+          // Intro = finger lesson: light up this unit's new keys.
+          emphasizeKeys={phase === 'intro' ? lessonKeys : undefined}
           compact={compactViewport}
         />
         {!compactViewport && (
           <HandsGuide
             activeFingers={
-              isPlaying && expectedChar
-                ? ([fingerForChar(LAYOUTS.en, expectedChar)].filter(
-                    Boolean,
-                  ) as NonNullable<ReturnType<typeof fingerForChar>>[])
-                : []
+              phase === 'intro'
+                ? lessonFingers
+                : isPlaying && expectedChar
+                  ? ([fingerForChar(LAYOUTS.en, expectedChar)].filter(
+                      Boolean,
+                    ) as NonNullable<ReturnType<typeof fingerForChar>>[])
+                  : []
             }
           />
         )}
@@ -777,40 +1214,3 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
   );
 }
 
-// The rock's text: burned (typed) chars dim out, the current char glows.
-// A bare-space rock renders as a SPACE pill so the kid knows to hit thumb.
-function RockText({
-  text,
-  charIndex,
-  spaceLabel,
-}: {
-  text: string;
-  charIndex: number;
-  spaceLabel: string;
-}) {
-  if (text === ' ') {
-    return (
-      <span className="rounded-lg bg-violet-500/30 px-3 py-0.5 font-mono text-lg font-bold text-violet-100">
-        {spaceLabel}
-      </span>
-    );
-  }
-  return (
-    <span className="font-mono text-2xl font-extrabold tracking-wider sm:text-3xl">
-      {[...text].map((ch, i) => (
-        <span
-          key={i}
-          className={
-            i < charIndex
-              ? 'text-emerald-400/40 line-through'
-              : i === charIndex
-                ? 'rounded bg-fuchsia-500/40 px-0.5 text-white'
-                : 'text-white/75'
-          }
-        >
-          {ch}
-        </span>
-      ))}
-    </span>
-  );
-}

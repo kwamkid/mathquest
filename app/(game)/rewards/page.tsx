@@ -9,12 +9,12 @@ import { getActiveRewards, purchaseReward, getUserInventory } from '@/lib/fireba
 import { Reward, RewardType, ShippingAddress, UserInventory } from '@/types/avatar';
 import { useDialog } from '@/components/ui/Dialog';
 import ShippingAddressForm from '@/components/rewards/ShippingAddressForm';
-import { 
-  Gift, 
-  Sparkles, 
-  Package, 
-  Zap, 
-  Crown, 
+import {
+  Gift,
+  Sparkles,
+  Package,
+  Coins,
+  Crown,
   Search,
   Filter,
   ShoppingCart,
@@ -58,14 +58,14 @@ const sortOptions = [
 
 const STR = {
   th: {
-    subtitle: 'แลกรางวัลด้วย EXP',
+    subtitle: 'แลกรางวัลด้วยเหรียญ',
     history: 'ประวัติ',
     sortBy: 'เรียงตาม',
     searchPlaceholder: 'ค้นหารางวัล...',
     resultsCount: (n: number) => `พบ ${n} รางวัล`,
     pageOf: (page: number, total: number) => `หน้า ${page} จาก ${total}`,
     notEnoughExp: (have: number, need: number) =>
-      `EXP ไม่พอ! คุณมี ${have} EXP แต่ต้องการ ${need} EXP`,
+      `เหรียญไม่พอ! คุณมี ${have} เหรียญ แต่ต้องการ ${need} เหรียญ`,
     alreadyOwned: 'คุณมีไอเทมนี้แล้ว',
     purchaseError: 'เกิดข้อผิดพลาดในการแลกรางวัล',
     owned: 'มีแล้ว',
@@ -73,13 +73,15 @@ const STR = {
     stockLeft: (n: number) => `เหลือ ${n}`,
     hot: '🔥 ฮิต',
     boostMinutes: (m: number) => `${m} นาที`,
-    requiresLevel: (lv: number) => `ต้องการ Level ${lv}+`,
+    boostCoins: (x: number) => `เหรียญ x${x}`,
+    coinsUnit: 'เหรียญ',
+    requiresLevel: (lv: number) => `ต้องการระดับความยาก ${lv}+`,
     ownedPrice: 'Owned',
     redeem: 'แลก',
     emptySearch: 'ไม่พบรางวัลที่ค้นหา',
     confirmTitle: 'ยืนยันการแลกรางวัล',
     priceLabel: 'ราคา:',
-    expLeftLabel: 'EXP คงเหลือ:',
+    expLeftLabel: 'เหรียญคงเหลือ:',
     shipTo: 'จัดส่งไปที่:',
     phoneLabel: 'โทร:',
     cancel: 'ยกเลิก',
@@ -87,14 +89,14 @@ const STR = {
     confirmRedeem: 'ยืนยันการแลก',
   },
   en: {
-    subtitle: 'Redeem rewards with EXP',
+    subtitle: 'Redeem rewards with coins',
     history: 'History',
     sortBy: 'Sort by',
     searchPlaceholder: 'Search rewards...',
     resultsCount: (n: number) => `${n} rewards found`,
     pageOf: (page: number, total: number) => `Page ${page} of ${total}`,
     notEnoughExp: (have: number, need: number) =>
-      `Not enough EXP! You have ${have} EXP but need ${need} EXP`,
+      `Not enough coins! You have ${have} but need ${need}`,
     alreadyOwned: 'You already own this item',
     purchaseError: 'Something went wrong while redeeming',
     owned: 'Owned',
@@ -102,13 +104,15 @@ const STR = {
     stockLeft: (n: number) => `${n} left`,
     hot: '🔥 Hot',
     boostMinutes: (m: number) => `${m} min`,
-    requiresLevel: (lv: number) => `Requires Level ${lv}+`,
+    boostCoins: (x: number) => `${x}x coins`,
+    coinsUnit: 'coins',
+    requiresLevel: (lv: number) => `Requires Difficulty ${lv}+`,
     ownedPrice: 'Owned',
     redeem: 'Redeem',
     emptySearch: 'No rewards match your search',
     confirmTitle: 'Confirm redemption',
     priceLabel: 'Price:',
-    expLeftLabel: 'EXP after:',
+    expLeftLabel: 'Coins after:',
     shipTo: 'Ship to:',
     phoneLabel: 'Tel:',
     cancel: 'Cancel',
@@ -669,7 +673,7 @@ export default function RewardShopPage() {
                             <div className="glass rounded-lg p-1.5 mb-2">
                               <div className="flex items-center justify-center gap-1 text-yellow-400 text-xs">
                                 <TrendingUp className="w-3 h-3" />
-                                <span className="font-bold">{reward.boostMultiplier}x EXP</span>
+                                <span className="font-bold">{L.boostCoins(reward.boostMultiplier ?? 2)}</span>
                                 <Clock className="w-3 h-3" />
                                 <span>{L.boostMinutes(reward.boostDuration ?? 0)}</span>
                               </div>
@@ -686,7 +690,7 @@ export default function RewardShopPage() {
                           {/* Price & Button */}
                           <div className="flex items-center justify-between mt-auto">
                             <div className="flex items-center gap-1">
-                              <Zap className={`w-4 h-4 ${
+                              <Coins className={`w-4 h-4 ${
                                 isOwned ? 'text-green-400' : canAfford ? 'text-yellow-400' : 'text-red-400'
                               }`} />
                               <span className={`text-sm md:text-base font-bold ${
@@ -812,9 +816,9 @@ export default function RewardShopPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-white/60 text-sm">{L.priceLabel}</span>
                   <div className="flex items-center gap-1">
-                    <Zap className="w-4 h-4 text-yellow-400" />
+                    <Coins className="w-4 h-4 text-yellow-400" />
                     <span className="text-lg font-bold text-yellow-400">
-                      {selectedReward.price} EXP
+                      {selectedReward.price} {L.coinsUnit}
                     </span>
                   </div>
                 </div>

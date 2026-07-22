@@ -215,7 +215,7 @@ export const calculateExpGained = (
     {
       label: 'คะแนนพื้นฐาน',
       value: baseExp,
-      description: `${score} ข้อ × ${10 + levelBonus} EXP`
+      description: `${score} ข้อ × ${10 + levelBonus} เหรียญ`
     }
   ];
   

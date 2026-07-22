@@ -247,22 +247,58 @@ select:-webkit-autofill:active {
 }
 
 /* ---------------------------------------------------------------------------
- * /learn theme — dark metaverse, tuned for long reading sessions.
- * Cards are translucent (glass on purple gradient bg) so the page still feels
- * like the rest of MathQuest but is calmer than the /play arena.
+ * Per-mode ambient theming. `.learn-bg` paints its background from these three
+ * variables; a route-level theme class (set in app/(game)/layout.tsx) swaps
+ * them so each mode — lesson / timetable / typing / quiz — has its own hue,
+ * making it obvious which section you're in and cutting cross-mode confusion.
+ * Defaults below = the original purple/pink (home + any unthemed route). Only
+ * the background tints change: cards, pills and brand accents stay consistent.
  * ------------------------------------------------------------------------- */
+:root {
+  --bg-base: #0a0a0a;
+  --bg-accent-a: 147, 51, 234; /* purple (top-left glow) */
+  --bg-accent-b: 236, 72, 153; /* pink (bottom-right glow) */
+}
+
+/* Lesson (เรียน) — calm blue/indigo for long reading. */
+.theme-lesson {
+  --bg-base: #070a14;
+  --bg-accent-a: 59, 130, 246; /* blue */
+  --bg-accent-b: 79, 70, 229; /* indigo */
+}
+/* Timetable (สูตรคูณ) — warm amber/orange. */
+.theme-timetable {
+  --bg-base: #100a05;
+  --bg-accent-a: 245, 158, 11; /* amber */
+  --bg-accent-b: 234, 88, 12; /* orange */
+}
+/* Typing (พิมพ์ดีด) — fresh emerald/teal. */
+.theme-typing {
+  --bg-base: #05100b;
+  --bg-accent-a: 16, 185, 129; /* emerald */
+  --bg-accent-b: 13, 148, 136; /* teal */
+}
+/* Quiz / Play arena — purple/red energy. (Note: /play uses its own metaverse
+ * bg, not .learn-bg; this is here for any .learn-bg surfaces it renders and to
+ * keep the mode → theme map complete.) */
+.theme-quiz {
+  --bg-base: #0d0512;
+  --bg-accent-a: 168, 85, 247; /* purple */
+  --bg-accent-b: 220, 38, 38; /* red */
+}
+
 .learn-bg {
   background: radial-gradient(
       circle at 20% -10%,
-      rgba(147, 51, 234, 0.25) 0%,
+      rgba(var(--bg-accent-a), 0.25) 0%,
       transparent 50%
     ),
     radial-gradient(
       circle at 90% 100%,
-      rgba(236, 72, 153, 0.18) 0%,
+      rgba(var(--bg-accent-b), 0.18) 0%,
       transparent 55%
     ),
-    #0a0a0a;
+    var(--bg-base);
   color: #f5f5f5;
 }
 

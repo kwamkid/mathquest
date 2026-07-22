@@ -25,6 +25,10 @@ interface EnhancedAvatarDisplayProps {
   showTitle?: boolean;
   titleBadge?: string;
   titleColor?: string;
+  /** Where the title badge floats relative to the avatar. Default 'above'
+    * (over the head). 'below' tucks it under the feet — used on the home page
+    * so the badge doesn't collide with the speech bubble above the avatar. */
+  titlePlacement?: 'above' | 'below';
   className?: string;
   onClick?: () => void;
   debug?: boolean;
@@ -43,6 +47,7 @@ export default function EnhancedAvatarDisplay({
   showTitle = false,
   titleBadge,
   titleColor = '#FFD700',
+  titlePlacement = 'above',
   className = '',
   onClick,
   debug = false
@@ -198,12 +203,15 @@ export default function EnhancedAvatarDisplay({
         </div>
       )}
       
-      {/* Title Badge */}
+      {/* Title Badge — floats above the head by default, or below the feet
+        * when titlePlacement='below' (keeps it clear of a speech bubble). */}
       {showTitle && titleData && (
         <motion.div
-          initial={{ opacity: 0, y: -10 }}
+          initial={{ opacity: 0, y: titlePlacement === 'below' ? 10 : -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="absolute -top-6 left-1/2 transform -translate-x-1/2 whitespace-nowrap z-10"
+          className={`absolute left-1/2 z-10 -translate-x-1/2 transform whitespace-nowrap ${
+            titlePlacement === 'below' ? '-bottom-4' : '-top-6'
+          }`}
         >
           <div 
             className="px-3 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1"

@@ -18,7 +18,7 @@ import {
   PlayCircle,
   Star,
   Trophy,
-  Zap,
+  Coins,
 } from 'lucide-react';
 import type { Lesson } from '@/types/curriculum';
 import { getLessonRewardPreview } from '@/lib/curricula/progress-helpers';
@@ -30,11 +30,15 @@ const STR = {
     completedAria: 'เรียนแล้ว',
     maxStars: (n: number) => `สูงสุด ${n}`,
     readyToPlay: 'พร้อมเล่น',
+    difficultyWord: 'ระดับความยาก',
+    coinsUnit: 'เหรียญ',
   },
   en: {
     completedAria: 'Completed',
     maxStars: (n: number) => `up to ${n}`,
     readyToPlay: 'Ready to play',
+    difficultyWord: 'Difficulty',
+    coinsUnit: 'coins',
   },
 } as const;
 
@@ -243,14 +247,14 @@ export function QuizLevelItem({
         <div className="flex items-center gap-2">
           <Trophy className="h-4 w-4 shrink-0 text-amber-300" />
           <h3 className={`truncate text-base font-bold ${completed ? 'text-white/60 line-through' : 'text-white'}`}>
-            Quiz Level {level}
+            Quiz · {L.difficultyWord} {level}
           </h3>
           {!unlocked && <Lock className="h-4 w-4 shrink-0 text-white/40" />}
         </div>
         <p className="mt-0.5 truncate text-sm text-white/65">{cleanTitle}</p>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
           <span className="text-white/55">{t.curriculum.estMinutes(lesson.estimatedMinutes)}</span>
-          {/* Reward preview — stars + EXP. Always shown so the learner sees
+          {/* Reward preview — stars + coins. Always shown so the learner sees
             * what they're earning even before unlocking. */}
           <span
             className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-bold ${
@@ -263,7 +267,7 @@ export function QuizLevelItem({
             {completed && stars > 0 ? `${stars}/${reward.stars}` : L.maxStars(reward.stars)}
           </span>
           <span className="inline-flex items-center gap-1 rounded-full bg-fuchsia-500/15 px-2 py-0.5 font-bold text-fuchsia-200">
-            <Zap className="h-3 w-3 fill-current" />+{reward.exp} EXP
+            <Coins className="h-3 w-3" />+{reward.exp} {L.coinsUnit}
           </span>
           {isNext && (
             <span className="rounded-full bg-amber-500/25 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-200">

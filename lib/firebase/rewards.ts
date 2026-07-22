@@ -253,6 +253,7 @@ export const purchaseReward = async (
       transaction.set(redemptionRef, cleanedRedemption);
       
       // 7. Deduct EXP from user
+      // NOTE: อย่าแตะ lifetimeExp ตรงนี้ — มันคือ "เหรียญสะสมตลอดกาล" นับเฉพาะตอน earn
       transaction.update(userRef, {
         experience: userExp - reward.price
       });
@@ -539,6 +540,7 @@ export const cancelRedemption = async (
       });
       
       // Refund EXP to user
+      // NOTE: อย่าเพิ่ม lifetimeExp ตอน refund — เหรียญก้อนนี้ถูกนับตอน earn ไปแล้ว จะกลายเป็นนับซ้ำ
       transaction.update(userRef, {
         experience: currentExp + redemption.expCost
       });
@@ -552,7 +554,7 @@ export const cancelRedemption = async (
       
       return {
         success: true,
-        message: 'ยกเลิกและคืน EXP เรียบร้อยแล้ว'
+        message: 'ยกเลิกและคืนเหรียญเรียบร้อยแล้ว'
       };
     });
   } catch (error) {
@@ -629,6 +631,7 @@ export const adminCancelRedemption = async (
       });
       
       // 6. Refund EXP (always refund for admin cancellation)
+      // NOTE: อย่าเพิ่ม lifetimeExp ตอน refund — เหรียญก้อนนี้ถูกนับตอน earn ไปแล้ว จะกลายเป็นนับซ้ำ
       transaction.update(userRef, {
         experience: currentExp + redemption.expCost
       });

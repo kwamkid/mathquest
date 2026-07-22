@@ -14,6 +14,7 @@ import AuthGuard from '@/components/auth/AuthGuard';
 import AppHeader from '@/components/layout/AppHeader';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { useDeviceClass } from '@/lib/useDeviceClass';
 import type { Strings } from '@/lib/i18n/strings';
 import { FINGER_COLORS, LAYOUTS, fingerForChar } from '@/lib/typing/layouts';
 import { STAGES_PER_UNIT, stageMeta, UNITS } from '@/lib/typing/config';
@@ -21,6 +22,7 @@ import {
   findNextStage,
   getTypingProgress,
   isUnitUnlocked,
+  nextStageInUnit,
   unitStars,
 } from '@/lib/typing/progress';
 
@@ -28,6 +30,7 @@ export default function TypingHomePage() {
   const router = useRouter();
   const { user } = useAuth();
   const { lang, t } = useLanguage();
+  const device = useDeviceClass();
   const progress = getTypingProgress(user);
 
   const next = findNextStage(progress);
@@ -64,6 +67,19 @@ export default function TypingHomePage() {
               </div>
             </header>
 
+            {/* Phone notice — typing needs a real keyboard; tapping a unit on
+                a phone lands on the "use a computer" card. Say so up front. */}
+            {device === 'phone' && (
+              <div className="flex items-start gap-3 rounded-2xl border border-amber-400/30 bg-amber-500/[0.08] px-4 py-3">
+                <span className="text-xl" aria-hidden>
+                  💻
+                </span>
+                <p className="text-sm leading-relaxed text-amber-100/90">
+                  {t.typing.phoneBlockBody}
+                </p>
+              </div>
+            )}
+
             {/* Track tabs — EN live, Thai teaser. */}
             <div className="flex items-center gap-2">
               <span className="learn-accent-pill rounded-full px-4 py-1.5 text-sm font-bold shadow-md shadow-pink-500/20">
@@ -92,6 +108,7 @@ export default function TypingHomePage() {
                     <span className="block text-lg font-bold">
                       {t.typing.playNext(
                         next.unit,
+                        next.stage,
                         lang === 'en'
                           ? stageMeta(next.unit, next.stage).enTitle
                           : stageMeta(next.unit, next.stage).thaiTitle,
@@ -111,18 +128,32 @@ export default function TypingHomePage() {
                 {t.typing.chooseUnit}
               </h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {UNITS.map((u) => (
-                  <UnitCard
-                    key={u.number}
-                    unit={u.number}
-                    label={lang === 'en' ? u.enLabel : u.thaiLabel}
-                    newKeys={u.newKeys}
-                    unlocked={isUnitUnlocked(progress, u.number)}
-                    stars={unitStars(progress, u.number)}
-                    isNext={next?.unit === u.number}
-                    t={t}
-                  />
-                ))}
+                {UNITS.map((u) => {
+                  const nextStage = nextStageInUnit(progress, u.number);
+                  const nextStageTitle =
+                    lang === 'en'
+                      ? stageMeta(u.number, nextStage).enTitle
+                      : stageMeta(u.number, nextStage).thaiTitle;
+                  return (
+                    <UnitCard
+                      key={u.number}
+                      unit={u.number}
+                      label={lang === 'en' ? u.enLabel : u.thaiLabel}
+                      newKeys={u.newKeys}
+                      unlocked={isUnitUnlocked(progress, u.number)}
+                      stars={unitStars(progress, u.number)}
+                      isNext={next?.unit === u.number}
+                      // Tap = play. Straight into the stage to do next (or a
+                      // replay of stage 3 when the unit is complete) — no
+                      // intermediate stage-picker page.
+                      playHref={`/typing/${u.number}/${nextStage}`}
+                      // "ระดับ 1/3 · รู้จักแป้น" — names the sub-level the tap
+                      // will start, so stage names never read as unit names.
+                      nextStageLabel={t.typing.stageOf(nextStage, nextStageTitle)}
+                      t={t}
+                    />
+                  );
+                })}
               </div>
             </section>
           </div>
@@ -139,6 +170,8 @@ function UnitCard({
   unlocked,
   stars,
   isNext,
+  playHref,
+  nextStageLabel,
   t,
 }: {
   unit: number;
@@ -147,6 +180,8 @@ function UnitCard({
   unlocked: boolean;
   stars: number;
   isNext: boolean;
+  playHref: string;
+  nextStageLabel: string;
   t: Strings;
 }) {
   const done = stars >= STAGES_PER_UNIT;
@@ -212,11 +247,7 @@ function UnitCard({
             done ? 'text-emerald-300' : isNext ? 'text-pink-300' : 'text-white/50'
           }`}
         >
-          {done
-            ? t.typing.master
-            : isNext
-              ? t.typing.playHere
-              : t.typing.starsOf(stars, STAGES_PER_UNIT)}
+          {done ? t.typing.master : nextStageLabel}
         </span>
       ) : (
         <span className="flex items-center gap-1 text-xs text-white/40">
@@ -227,5 +258,5 @@ function UnitCard({
   );
 
   if (!unlocked) return content;
-  return <Link href={`/typing/${unit}`}>{content}</Link>;
+  return <Link href={playHref}>{content}</Link>;
 }

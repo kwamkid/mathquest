@@ -16,7 +16,7 @@ import {
   XCircle,
   Truck,
   Gift,
-  Zap,
+  Coins,
   Crown,
   AlertCircle,
   RefreshCw,
@@ -30,7 +30,7 @@ import { useLanguage } from '@/lib/i18n/LanguageContext';
 
 const STR = {
   th: {
-    cancelSuccess: 'ยกเลิกและคืน EXP เรียบร้อยแล้ว',
+    cancelSuccess: 'ยกเลิกและคืนเหรียญเรียบร้อยแล้ว',
     cancelError: 'เกิดข้อผิดพลาดในการยกเลิก',
     statusPending: 'รอดำเนินการ',
     statusApproved: 'อนุมัติแล้ว',
@@ -39,7 +39,7 @@ const STR = {
     statusDelivered: 'ส่งถึงแล้ว',
     statusReceived: 'รับของแล้ว',
     statusCancelled: 'ยกเลิกแล้ว',
-    statusRefunded: 'คืน EXP แล้ว',
+    statusRefunded: 'คืนเหรียญแล้ว',
     pageTitle: 'ประวัติการแลกรางวัล',
     pageSubtitle: 'ติดตามสถานะรางวัลที่แลกไป',
     statusFilter: 'สถานะ:',
@@ -71,10 +71,11 @@ const STR = {
     keepIt: 'ไม่ยกเลิก',
     cancelling: 'กำลังยกเลิก...',
     confirmCancel: 'ยืนยันยกเลิก',
-    refundNote: '* EXP จะถูกคืนให้ทันทีหลังยกเลิก',
+    refundNote: '* เหรียญจะถูกคืนให้ทันทีหลังยกเลิก',
+    coinsUnit: 'เหรียญ',
   },
   en: {
-    cancelSuccess: 'Cancelled and EXP refunded',
+    cancelSuccess: 'Cancelled and coins refunded',
     cancelError: 'Something went wrong while cancelling',
     statusPending: 'Pending',
     statusApproved: 'Approved',
@@ -83,7 +84,7 @@ const STR = {
     statusDelivered: 'Delivered',
     statusReceived: 'Received',
     statusCancelled: 'Cancelled',
-    statusRefunded: 'EXP refunded',
+    statusRefunded: 'Coins refunded',
     pageTitle: 'Redemption History',
     pageSubtitle: 'Track the rewards you redeemed',
     statusFilter: 'Status:',
@@ -115,7 +116,8 @@ const STR = {
     keepIt: 'Keep it',
     cancelling: 'Cancelling...',
     confirmCancel: 'Confirm cancel',
-    refundNote: '* Your EXP is refunded right after cancelling',
+    refundNote: '* Your coins are refunded right after cancelling',
+    coinsUnit: 'coins',
   },
 } as const;
 
@@ -485,9 +487,9 @@ export default function RedemptionHistoryPage() {
                           </div>
                           
                           <div className="flex items-center gap-1">
-                            <Zap className="w-3 h-3 text-yellow-400" />
+                            <Coins className="w-3 h-3 text-yellow-400" />
                             <span className="text-yellow-400 font-medium">
-                              {redemption.expCost} EXP
+                              {redemption.expCost} {L.coinsUnit}
                             </span>
                           </div>
                         </div>
@@ -663,7 +665,7 @@ export default function RedemptionHistoryPage() {
                       {L.typeLabel} {selectedRedemption.rewardType}
                     </p>
                     <p className="text-yellow-400 font-medium text-sm mt-1">
-                      {selectedRedemption.expCost} EXP
+                      {selectedRedemption.expCost} {L.coinsUnit}
                     </p>
                   </div>
                 </div>
@@ -787,7 +789,7 @@ export default function RedemptionHistoryPage() {
                   </div>
                   <div>
                     <p className="font-bold text-white text-sm">{selectedRedemption.rewardName}</p>
-                    <p className="text-xs text-yellow-400">{selectedRedemption.expCost} EXP</p>
+                    <p className="text-xs text-yellow-400">{selectedRedemption.expCost} {L.coinsUnit}</p>
                   </div>
                 </div>
               </div>

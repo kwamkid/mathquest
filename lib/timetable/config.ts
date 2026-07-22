@@ -29,6 +29,8 @@ export const QUESTIONS_PER_ROUND = 20;
 export const EXP_PER_ROUND = 10;
 export const EXP_PER_PERFECT_BONUS = 5; // extra when all 20 correct
 export const SCORE_PER_ROUND = 2;
+// เล่นซ้ำรอบที่เคยผ่านแล้วยังได้เหรียญเล็กน้อย (ฝึกซ้ำไม่ฟรีเปล่า แต่ไม่คุ้มไว้ปั๊ม)
+export const EXP_PER_REPLAY = 3;
 
 // Mix challenge (ด่านรวมพลัง): draws from every unlocked table, replayable
 // forever, but pays EXP only once per calendar day.

@@ -40,19 +40,20 @@ const STR = {
     nowPlaying: 'กำลังเล่น',
     highScoreOf: (score: number, total: number) => `คะแนนสูงสุด: ${score}/${total}`,
     successRate: 'ความสำเร็จ',
-    levelsPlayedStat: 'Level ที่เล่น',
+    levelsPlayedStat: 'ระดับที่เล่น',
     totalScore: 'คะแนนรวม',
     average: 'เฉลี่ย',
     current: 'ปัจจุบัน',
-    playedLevelsTitle: (grade: string) => `${grade} - Level ที่เล่นแล้ว`,
+    playedLevelsTitle: (grade: string) => `${grade} - ระดับความยากที่เล่นแล้ว`,
     noHistoryTitle: 'ยังไม่มีประวัติการเล่น',
     noHistoryDesc: 'เริ่มเล่นเกมเพื่อบันทึกคะแนนสูงสุดของคุณ',
-    levelCount: (n: number) => `${n} Level`,
+    levelCount: (n: number) => `${n} ระดับ`,
     percentAverage: (pct: number) => `${pct}% เฉลี่ย`,
     playedTimes: (n: number) => `เล่น ${n} ครั้ง`,
+    rangeWord: 'ระดับความยาก',
     tipLabel: '💡 เคล็ดลับ:',
     tipBody:
-      'กลับมาเล่น level เดิมเพื่อทำคะแนนให้ดีขึ้น คะแนนสูงสุดจะถูกบันทึกไว้และนับรวมในคะแนนรวมของคุณ',
+      'กลับมาเล่นระดับเดิมเพื่อทำคะแนนให้ดีขึ้น คะแนนสูงสุดของแต่ละระดับจะถูกบันทึกไว้',
   },
   en: {
     pageTitle: 'My High Scores',
@@ -69,9 +70,10 @@ const STR = {
     levelCount: (n: number) => `${n} levels`,
     percentAverage: (pct: number) => `${pct}% average`,
     playedTimes: (n: number) => `Played ${n} times`,
+    rangeWord: 'Difficulty',
     tipLabel: '💡 Tip:',
     tipBody:
-      'Replay a level to beat your score — your best score is saved and counts toward your total.',
+      'Replay a level to beat your score — your best score for each difficulty is saved.',
   },
 } as const;
 
@@ -224,7 +226,7 @@ export default function HighScoresPage() {
                   </span>
                 </h2>
                 <p className="text-sm md:text-base text-white/80">
-                  {L.nowPlaying} <span className="font-bold text-metaverse-purple">Level {user.level}</span>
+                  {L.nowPlaying} <span className="font-bold text-metaverse-purple">{L.rangeWord} {user.level}</span>
                   {user.levelScores && user.levelScores[user.level.toString()] && (
                     <span className="text-white/60 hidden sm:inline">
                       {' '}• {L.highScoreOf(user.levelScores[user.level.toString()].highScore, questionsPerLevel)}
@@ -278,7 +280,7 @@ export default function HighScoresPage() {
           <div className="glass-dark rounded-lg p-3 border border-metaverse-purple/30 text-center">
             <Zap className="w-6 h-6 md:w-8 md:h-8 text-orange-400 mx-auto mb-1" />
             <p className="text-lg md:text-2xl font-bold text-white">
-              Level {user.level}
+              {L.rangeWord} {user.level}
             </p>
             <p className="text-xs text-white/60">{L.current}</p>
           </div>
@@ -337,7 +339,7 @@ export default function HighScoresPage() {
                         </div>
                         <div className="text-left">
                           <h4 className="font-semibold text-white flex items-center gap-2">
-                            Level {group.minLevel}-{group.maxLevel}
+                            {L.rangeWord} {group.minLevel}-{group.maxLevel}
                             {hasCurrentLevel && (
                               <span className="text-xs px-2 py-1 bg-gradient-to-r from-metaverse-purple to-metaverse-pink text-white rounded-full">
                                 {L.nowPlaying}

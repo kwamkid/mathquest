@@ -1,7 +1,7 @@
 // components/layout/AppHeader.tsx
 //
 // Unified top bar for the whole app. Left → right:
-//   Logo · [sub: back + title] · spacer · score/EXP · sound toggles · UserMenu
+//   Logo · [sub: back + title] · spacer · coins · sound toggles · UserMenu
 //
 // The avatar lives on the FAR RIGHT as a circular profile pic; tapping it opens
 // a dropdown (My Avatar / Shop / Setting / Log out) — see UserMenu. Sound is two
@@ -17,7 +17,7 @@
 import { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Pi } from 'lucide-react';
+import { ArrowLeft, Coins, Pi } from 'lucide-react';
 import LanguageToggle from './LanguageToggle';
 import SoundToggles from './SoundToggles';
 import UserMenu from './UserMenu';
@@ -95,26 +95,17 @@ export default function AppHeader({
         {/* Spacer pushes the right cluster to the edge. */}
         <div className="flex-1" />
 
-        {/* Right cluster: extras · score/EXP · sound · user menu */}
+        {/* Right cluster: extras · coins · sound · user menu */}
         {!hideActions && (
           <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
             {extras && (
               <div className="hidden items-center gap-1 sm:flex">{extras}</div>
             )}
 
-            {/* Score + EXP — compact on phones; labels drop on mobile. */}
-            <div className="glass-dark flex items-center gap-1 rounded-full border border-metaverse-purple/30 px-1.5 py-0.5 sm:gap-2 sm:px-3 sm:py-1">
-              <span className="hidden text-xs uppercase tracking-wide text-white/50 sm:inline">
-                {t.common.score}
-              </span>
-              <span className="bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-xs font-bold text-transparent sm:text-sm">
-                {user.totalScore.toLocaleString()}
-              </span>
-              <span className="h-3 w-px bg-white/20" aria-hidden />
-              <span className="hidden text-xs uppercase tracking-wide text-white/50 sm:inline">
-                EXP
-              </span>
-              <span className="bg-gradient-to-r from-metaverse-purple to-metaverse-pink bg-clip-text text-xs font-bold text-transparent sm:text-sm">
+            {/* เหรียญ (spendable coins = experience) — the ONE number kids see. */}
+            <div className="glass-dark flex items-center gap-1.5 rounded-full border border-amber-400/30 px-2 py-1 sm:gap-2 sm:px-3">
+              <Coins className="h-3.5 w-3.5 text-amber-300 sm:h-4 sm:w-4" />
+              <span className="bg-gradient-to-r from-yellow-300 to-orange-400 bg-clip-text text-xs font-bold text-transparent sm:text-sm">
                 {user.experience.toLocaleString()}
               </span>
             </div>

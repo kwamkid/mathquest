@@ -15,6 +15,9 @@ export interface User {
   level: number;
   experience: number;
   totalScore: number;
+  // เหรียญสะสมตลอดกาล — เพิ่มอย่างเดียว (แลกของ/refund ไม่แตะ, รอด grade reset);
+  // ไม่มี field = ยังไม่เคย earn หลังเพิ่มระบบ ให้ fallback เป็น experience
+  lifetimeExp?: number;
   // dailyStreak: number;
   lastLoginDate: string;
   registrationCode: string;

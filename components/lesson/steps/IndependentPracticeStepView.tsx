@@ -10,11 +10,16 @@
 
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { IndependentPracticeStep, Question } from '@/types/curriculum';
 import QuestionRenderer from '@/components/question/QuestionRenderer';
 import { useSound } from '@/lib/game/soundManager';
 import type { FooterAction, StepFeedback } from '../LessonPlayer';
+
+// Reveal hold before an MCQ auto-advances. Wrong answers linger longer so the
+// learner can see the correct choice light up.
+const REVEAL_CORRECT_MS = 650;
+const REVEAL_WRONG_MS = 1500;
 
 const noop = () => undefined;
 
@@ -88,6 +93,24 @@ export default function IndependentPracticeStepView({
     }
   }, [index, total, correctCount, step.passingScore, onComplete]);
 
+  // Tap-to-answer auto-advance, MCQ ONLY: picking a choice already commits the
+  // answer, so there's nothing left to press — hold the reveal a beat, then
+  // move on. Typed formats keep their "ตรวจคำตอบ" footer button (the learner
+  // still has to submit), so they are deliberately excluded here.
+  const isMcqCurrent =
+    current?.format === 'mcq-text' || current?.format === 'mcq-visual';
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!feedback || summary || !isMcqCurrent) return;
+    advanceTimer.current = setTimeout(
+      handleAdvance,
+      feedback.correct ? REVEAL_CORRECT_MS : REVEAL_WRONG_MS,
+    );
+    return () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    };
+  }, [feedback, summary, isMcqCurrent, handleAdvance]);
+
   // Surface feedback in the footer (bottom bar) rather than inline.
   useEffect(() => {
     if (!onFeedback) return;
@@ -111,7 +134,9 @@ export default function IndependentPracticeStepView({
     if (feedback) {
       onFooterAction({
         label: finished ? 'ดูสรุป' : 'ข้อถัดไป',
-        enabled: true,
+        // MCQ advances on its own (see the auto-advance effect) — show the
+        // label but don't offer a press. Typed formats still advance by tap.
+        enabled: !isMcqCurrent,
         onClick: handleAdvance,
       });
     } else {
@@ -140,6 +165,7 @@ export default function IndependentPracticeStepView({
     handleAdvance,
     current,
     draftValid,
+    isMcqCurrent,
   ]);
 
   // Clear the footer override + feedback when this step view unmounts.

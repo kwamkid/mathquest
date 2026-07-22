@@ -59,19 +59,19 @@ const GRADE_NAMES = {
 // Local bilingual UI strings for this page
 const STR = {
   th: {
-    boostForGame: (multiplier: number) => `EXP x${multiplier} สำหรับเกมนี้`,
+    boostForGame: (multiplier: number) => `เหรียญ x${multiplier} สำหรับเกมนี้`,
     boostTimeLeft: (minutes: number) => `เหลือเวลา ${minutes} นาที`,
     manageAvatar: 'จัดการ Avatar',
     readyTitle: 'พร้อมเริ่มการผจญภัยหรือยัง?',
     gradeLabel: 'ระดับชั้น:',
     replayingLevel: (level: number, currentLevel: number) =>
-      `🔁 กำลังเล่น Level ${level} ซ้ำ (ปกติคุณอยู่ Level ${currentLevel})`,
+      `🔁 กำลังเล่นระดับความยาก ${level} ซ้ำ (ปกติคุณอยู่ระดับ ${currentLevel})`,
     questionCountLabel: 'จำนวน:',
     questionCount: (n: number) => `${n} ข้อ`,
     startNow: 'เริ่มเลย!',
     rankingDesc: 'ดูอันดับคะแนนในระดับชั้นของคุณ',
     viewRanking: 'ดูอันดับ',
-    playedLevels: (n: number) => `เล่นแล้ว ${n} Level`,
+    playedLevels: (n: number) => `เล่นแล้ว ${n} ระดับ`,
     noHistory: 'ยังไม่มีประวัติ',
     viewAll: 'ดูทั้งหมด',
     avatarDesc: 'จัดการตัวละครและเครื่องประดับ',
@@ -87,19 +87,19 @@ const STR = {
     keepPlaying: 'เล่นต่อ',
   },
   en: {
-    boostForGame: (multiplier: number) => `EXP x${multiplier} for this game`,
+    boostForGame: (multiplier: number) => `${multiplier}x coins for this game`,
     boostTimeLeft: (minutes: number) => `${minutes} min left`,
     manageAvatar: 'Edit Avatar',
     readyTitle: 'Ready to start the adventure?',
     gradeLabel: 'Grade:',
     replayingLevel: (level: number, currentLevel: number) =>
-      `🔁 Replaying Level ${level} (you are normally on Level ${currentLevel})`,
+      `🔁 Replaying Difficulty ${level} (you are normally on ${currentLevel})`,
     questionCountLabel: 'Questions:',
     questionCount: (n: number) => `${n} questions`,
     startNow: "Let's go!",
     rankingDesc: 'See the top scores in your grade',
     viewRanking: 'View ranking',
-    playedLevels: (n: number) => `${n} levels played`,
+    playedLevels: (n: number) => `${n} difficulty levels played`,
     noHistory: 'No history yet',
     viewAll: 'View all',
     avatarDesc: 'Customize your character and accessories',
@@ -136,7 +136,6 @@ function PlayPageContent() {
   const [questionNumber, setQuestionNumber] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
   const [score, setScore] = useState(0);
-  const [tempTotalScore, setTempTotalScore] = useState(0);
   const [highScoreInfo, setHighScoreInfo] = useState<{ isNew: boolean; oldScore: number; scoreDiff: number } | null>(null);
   const [answers, setAnswers] = useState<Array<{
     question: Question;
@@ -163,8 +162,7 @@ function PlayPageContent() {
   useEffect(() => {
     if (user) {
       setTotalQuestions(getQuestionCount(user.grade));
-      setTempTotalScore(user.totalScore);
-      
+
       // Check for active boosts
       getActiveBoosts(user.id).then(boosts => {
         setActiveBoosts(boosts);
@@ -390,6 +388,8 @@ function PlayPageContent() {
         const updateData: any = {
           totalScore: newTotalScore,
           experience: user.experience + boostedExp,
+          // เหรียญสะสมตลอดกาล — `?? experience` คือ lazy backfill สำหรับ user เก่า
+          lifetimeExp: (user.lifetimeExp ?? user.experience ?? 0) + boostedExp,
           lastPlayedAt: new Date().toISOString(),
           levelScores: levelScores,
           playStreak: playStreak
@@ -404,9 +404,7 @@ function PlayPageContent() {
         
         await updateUserGameData(user.id, updateData);
         await refreshUser();
-        
-        setTempTotalScore(newTotalScore);
-        
+
         const timeSpent = Math.floor((Date.now() - gameStartTime) / 1000);
         
         const params = new URLSearchParams({
@@ -501,7 +499,7 @@ function PlayPageContent() {
         ))}
       </div>
 
-      {user && <AppHeader user={{ ...user, totalScore: tempTotalScore }} hideActions={gameState === 'playing'} />}
+      {user && <AppHeader user={user} hideActions={gameState === 'playing'} />}
       
       <div className="relative z-10 container mx-auto px-4 py-8 max-w-6xl">
         <AnimatePresence mode="wait">
@@ -665,7 +663,7 @@ function PlayPageContent() {
                       <Trophy className="w-8 h-8 text-yellow-400" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-2">Level Ranking</h3>
+                      <h3 className="text-xl font-bold text-white mb-2">Ranking</h3>
                       <p className="text-white/60 text-sm mb-3">{L.rankingDesc}</p>
                       <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
                         <span>{L.viewRanking}</span>
@@ -756,7 +754,7 @@ function PlayPageContent() {
                     <div className="flex-1">
                       <h3 className="text-xl font-bold text-white mb-2">Reward Shop</h3>
                       <p className="text-white/60 text-sm mb-3">
-                        EXP: {user?.experience.toLocaleString()}
+                        🪙 {user?.experience.toLocaleString()}
                       </p>
                       <div className="flex items-center gap-2 text-metaverse-pink text-sm font-medium">
                         <span>{L.redeemRewards}</span>
@@ -929,7 +927,6 @@ function PlayPageContent() {
               <motion.button
                 onClick={() => {
                   playSound('click');
-                  setTempTotalScore(user?.totalScore || 0);
                   setForceLevel(null);
                   const url = new URL(window.location.href);
                   url.search = '';

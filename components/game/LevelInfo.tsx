@@ -32,7 +32,7 @@ export default function LevelInfo({ grade, level }: LevelInfoProps) {
         <div className="flex-1">
           <h4 className="font-semibold text-white mb-1 flex items-center gap-2">
             <Target className="w-4 h-4" />
-            Level {config.minLevel}-{config.maxLevel}
+            {lang === 'en' ? 'Difficulty' : 'ระดับความยาก'} {config.minLevel}-{config.maxLevel}
           </h4>
           <p className="text-white/70 text-sm">{config.description}</p>
           

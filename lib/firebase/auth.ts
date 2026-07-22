@@ -301,6 +301,7 @@ export const updateUserProfile = async (
     };
 
     // If grade changed, reset level to 1
+    // NOTE: ห้าม reset lifetimeExp — เหรียญสะสมตลอดกาลต้องรอดข้าม grade
     if (updates.grade && updates.grade !== currentData.grade) {
       updateData.level = 1;
       // Optionally reset other grade-specific data

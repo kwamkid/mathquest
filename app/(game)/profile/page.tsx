@@ -35,7 +35,9 @@ const STR = {
   th: {
     pageTitle: 'ข้อมูลส่วนตัว',
     joinedOn: 'สมัครเมื่อ',
-    score: 'คะแนน',
+    difficultyLabel: 'ระดับความยาก',
+    lifetimeCoinsLabel: 'เหรียญสะสม',
+    coinsLabel: 'เหรียญ',
     streakDays: 'วันต่อเนื่อง',
     manageAvatar: 'จัดการ Avatar',
     manageAvatarShort: 'Avatar',
@@ -57,10 +59,10 @@ const STR = {
     gradeRequired: 'กรุณาเลือกระดับชั้น',
     gradePlaceholder: 'เลือกระดับชั้น',
     gradeWarnTitle: '⚠️ การเปลี่ยนระดับชั้นจะรีเซ็ต:',
-    gradeWarnLevel: 'Level กลับเป็น 1',
-    gradeWarnExp: 'EXP กลับเป็น 0',
+    gradeWarnLevel: 'ระดับความยากกลับเป็น 1',
+    gradeWarnExp: 'เหรียญที่ใช้แลกของกลับเป็น 0',
     gradeWarnHistory: 'ประวัติการเล่นของระดับชั้นเดิมจะถูกล้าง',
-    gradeWarnScoreKept: '(คะแนนรวมจะยังคงอยู่)',
+    gradeWarnScoreKept: '(เหรียญสะสมตลอดกาลยังอยู่ครบ)',
     saving: 'กำลังบันทึก...',
     save: 'บันทึกข้อมูล',
     cancel: 'ยกเลิก',
@@ -68,11 +70,11 @@ const STR = {
     noteText: 'Username ไม่สามารถเปลี่ยนได้ หากต้องการเปลี่ยน Username จะต้องสร้างบัญชีใหม่',
     modalTitle: '⚠️ คำเตือน: ยืนยันการเปลี่ยนระดับชั้น',
     modalEffects: 'การเปลี่ยนระดับชั้นจะส่งผลให้:',
-    modalLevelResetPrefix: 'Level กลับไปเป็น',
-    modalExpReset: 'EXP ทั้งหมดจะถูกรีเซ็ตเป็น 0',
-    modalExpFrom: (exp: string) => `(จาก ${exp} EXP → 0 EXP)`,
+    modalLevelResetPrefix: 'ระดับความยากกลับไปเป็น',
+    modalExpReset: 'เหรียญที่ใช้แลกของจะถูกรีเซ็ตเป็น 0',
+    modalExpFrom: (exp: string) => `(จาก ${exp} เหรียญ → 0 เหรียญ)`,
     modalHistoryCleared: 'ประวัติการเล่นของระดับชั้นเดิมจะถูกล้าง',
-    modalScoreKept: 'คะแนนรวมยังคงเหมือนเดิม',
+    modalScoreKept: 'เหรียญสะสมตลอดกาลยังอยู่ครบ',
     modalTypePrefix: 'พิมพ์',
     modalTypeSuffix: 'เพื่อยืนยันการเปลี่ยนระดับชั้น',
     modalInputPlaceholder: 'พิมพ์ CONFIRM',
@@ -83,7 +85,9 @@ const STR = {
   en: {
     pageTitle: 'My Profile',
     joinedOn: 'Joined',
-    score: 'Score',
+    difficultyLabel: 'Difficulty',
+    lifetimeCoinsLabel: 'Lifetime coins',
+    coinsLabel: 'Coins',
     streakDays: 'Day streak',
     manageAvatar: 'Manage Avatar',
     manageAvatarShort: 'Avatar',
@@ -105,10 +109,10 @@ const STR = {
     gradeRequired: 'Please select a grade',
     gradePlaceholder: 'Select a grade',
     gradeWarnTitle: '⚠️ Changing your grade will reset:',
-    gradeWarnLevel: 'Level goes back to 1',
-    gradeWarnExp: 'EXP goes back to 0',
+    gradeWarnLevel: 'Difficulty goes back to 1',
+    gradeWarnExp: 'Spendable coins go back to 0',
     gradeWarnHistory: 'Play history for your old grade will be cleared',
-    gradeWarnScoreKept: '(Your total score is kept)',
+    gradeWarnScoreKept: '(Your lifetime coins are kept)',
     saving: 'Saving...',
     save: 'Save',
     cancel: 'Cancel',
@@ -116,11 +120,11 @@ const STR = {
     noteText: 'Your username cannot be changed. To change it you would need to create a new account.',
     modalTitle: '⚠️ Warning: Confirm grade change',
     modalEffects: 'Changing your grade will:',
-    modalLevelResetPrefix: 'Reset Level back to',
-    modalExpReset: 'Reset ALL your EXP to 0',
-    modalExpFrom: (exp: string) => `(from ${exp} EXP → 0 EXP)`,
+    modalLevelResetPrefix: 'Reset Difficulty back to',
+    modalExpReset: 'Reset your spendable coins to 0',
+    modalExpFrom: (exp: string) => `(from ${exp} coins → 0 coins)`,
     modalHistoryCleared: 'Clear the play history of your old grade',
-    modalScoreKept: 'Your total score stays the same',
+    modalScoreKept: 'Your lifetime coins are kept',
     modalTypePrefix: 'Type',
     modalTypeSuffix: 'to confirm the grade change',
     modalInputPlaceholder: 'Type CONFIRM',
@@ -237,6 +241,7 @@ export default function ProfilePage() {
       };
       
       // If grade changed, reset EXP and level
+      // NOTE: ห้าม reset lifetimeExp — เหรียญสะสมตลอดกาลต้องรอดข้าม grade
       if (gradeChanged) {
         updateData.experience = 0;
         updateData.level = 1;
@@ -345,21 +350,21 @@ export default function ProfilePage() {
                   whileHover={{ scale: 1.05 }}
                 >
                   <p className="text-xl md:text-2xl font-bold text-metaverse-purple">{user.level}</p>
-                  <p className="text-xs text-white/60">Level</p>
+                  <p className="text-xs text-white/60">{L.difficultyLabel}</p>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   className="glass rounded-xl p-3 text-center border border-metaverse-purple/20"
                   whileHover={{ scale: 1.05 }}
                 >
-                  <p className="text-xl md:text-2xl font-bold text-metaverse-pink">{user.totalScore.toLocaleString()}</p>
-                  <p className="text-xs text-white/60">{L.score}</p>
+                  <p className="text-xl md:text-2xl font-bold text-metaverse-pink">{(user.lifetimeExp ?? user.experience ?? 0).toLocaleString()}</p>
+                  <p className="text-xs text-white/60">{L.lifetimeCoinsLabel}</p>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   className="glass rounded-xl p-3 text-center border border-metaverse-purple/20"
                   whileHover={{ scale: 1.05 }}
                 >
                   <p className="text-xl md:text-2xl font-bold text-yellow-400">{user.experience.toLocaleString()}</p>
-                  <p className="text-xs text-white/60">EXP</p>
+                  <p className="text-xs text-white/60">{L.coinsLabel}</p>
                 </motion.div>
                 <motion.div 
                   className="glass rounded-xl p-3 text-center border border-metaverse-purple/20"

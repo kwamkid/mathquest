@@ -3,21 +3,17 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import UserDisplayName from '@/components/user/UserDisplayName';
-import { 
-  Trophy, 
-  Medal, 
-  Crown, 
-  ArrowLeft, 
+import {
+  Trophy,
+  Medal,
+  Crown,
   Users,
-  Star,
   ChevronDown,
-  Zap,
   Globe,
   TrendingUp
 } from 'lucide-react';
@@ -35,6 +31,7 @@ interface RankingUser {
   totalScore: number;
   level: number;
   experience: number;
+  coins: number; // เหรียญสะสมตลอดกาล (lifetimeExp ?? experience)
   rank?: number;
   grade: Grade | string;
   playStreak?: number; // ✅ เพิ่มบรรทัดนี้
@@ -63,18 +60,16 @@ const grades = [
 // Local bilingual UI strings for this page
 const STR = {
   th: {
-    pageTitle: 'อันดับคะแนน',
+    pageTitle: 'อันดับเหรียญสะสม',
     allShort: 'รวม',
     you: '(คุณ)',
     yourRank: 'อันดับคุณ',
-    totalScoreTab: 'คะแนนรวม',
-    scoreShort: 'คะแนน',
-    topExpTab: 'EXP สูงสุด',
-    sortedByScore: 'เรียงตามคะแนนรวม',
-    sortedByExp: 'เรียงตาม EXP',
+    coinsLabel: 'เหรียญ',
+    difficulty: 'ระดับความยาก',
+    sortedByCoins: 'เรียงตามเหรียญสะสมตลอดกาล',
     noRankingData: 'ยังไม่มีข้อมูลอันดับ',
-    noPlayersAll: 'ยังไม่มีผู้เล่นในระบบ หรือยังไม่มีคะแนน',
-    noPlayersGrade: (label: string) => `อาจจะยังไม่มีผู้เล่นใน${label} หรือยังไม่มีคะแนน`,
+    noPlayersAll: 'ยังไม่มีผู้เล่นในระบบ หรือยังไม่มีเหรียญ',
+    noPlayersGrade: (label: string) => `อาจจะยังไม่มีผู้เล่นใน${label} หรือยังไม่มีเหรียญ`,
     youAreRanked: (rank: number, label: string) => `คุณอยู่อันดับที่ #${rank} ใน ${label}`,
     onlyTopShown: (n: string) => `แสดงเฉพาะ ${n} อันดับแรก - เล่นต่อเพื่อขึ้น Top!`,
     systemTitle: 'ระบบอันดับ MathQuest',
@@ -82,24 +77,20 @@ const STR = {
     infoAllDesc: 'แสดง Top 50 ของทุกคน',
     infoGradeLabel: 'แยกตามระดับ:',
     infoGradeDesc: 'แสดง Top 30 ของแต่ละระดับชั้น',
-    infoScoreLabel: 'คะแนนรวม:',
-    infoScoreDesc: 'คะแนนสะสมจากการเล่นเกม',
-    infoExpLabel: 'EXP:',
-    infoExpDesc: 'ประสบการณ์ที่ใช้แลกรางวัล',
+    infoCoinsLabel: 'เหรียญสะสม:',
+    infoCoinsDesc: 'เหรียญทั้งหมดที่เคยได้รับ — เอาเหรียญไปแลกรางวัลแล้ว อันดับไม่ลด',
   },
   en: {
-    pageTitle: 'Ranking',
+    pageTitle: 'Coin Ranking',
     allShort: 'All',
     you: '(you)',
     yourRank: 'Your rank',
-    totalScoreTab: 'Total score',
-    scoreShort: 'Score',
-    topExpTab: 'Top EXP',
-    sortedByScore: 'Sorted by total score',
-    sortedByExp: 'Sorted by EXP',
+    coinsLabel: 'Coins',
+    difficulty: 'Difficulty',
+    sortedByCoins: 'Sorted by lifetime coins',
     noRankingData: 'No ranking data yet',
-    noPlayersAll: 'No players yet, or no scores yet',
-    noPlayersGrade: (label: string) => `No players in ${label} yet, or no scores yet`,
+    noPlayersAll: 'No players yet, or no coins yet',
+    noPlayersGrade: (label: string) => `No players in ${label} yet, or no coins yet`,
     youAreRanked: (rank: number, label: string) => `You are ranked #${rank} in ${label}`,
     onlyTopShown: (n: string) => `Only the top ${n} are shown — keep playing to climb!`,
     systemTitle: 'MathQuest Ranking',
@@ -107,22 +98,18 @@ const STR = {
     infoAllDesc: 'shows the Top 50 across everyone',
     infoGradeLabel: 'By grade:',
     infoGradeDesc: 'shows the Top 30 for each grade',
-    infoScoreLabel: 'Total score:',
-    infoScoreDesc: 'points collected from playing games',
-    infoExpLabel: 'EXP:',
-    infoExpDesc: 'experience you can spend on rewards',
+    infoCoinsLabel: 'Lifetime coins:',
+    infoCoinsDesc: 'every coin ever earned — spending coins on rewards never lowers your rank',
   },
 } as const;
 
 export default function RankingPage() {
-  const router = useRouter();
   const { user } = useAuth();
   const { lang } = useLanguage();
   const L = STR[lang];
   const [rankings, setRankings] = useState<RankingUser[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [selectedGrade, setSelectedGrade] = useState<Grade | 'ALL'>('ALL');
-  const [rankingType, setRankingType] = useState<'score' | 'exp'>('score');
   const [showGradeDropdown, setShowGradeDropdown] = useState(false);
   const [loadingRankings, setLoadingRankings] = useState(false);
 
@@ -136,94 +123,79 @@ export default function RankingPage() {
     if (selectedGrade && user) {
       loadRankings(selectedGrade, user.id);
     }
-  }, [selectedGrade, rankingType, user]);
+  }, [selectedGrade, user]);
 
   const loadRankings = async (grade: Grade | 'ALL', userId: string) => {
     setLoadingRankings(true);
     try {
-      console.log('Loading rankings for grade:', grade);
-      
       const usersRef = collection(db, 'users');
-      let q;
-      
-      if (grade === 'ALL') {
-        q = query(
-          usersRef,
-          where('isActive', '==', true),
-          orderBy(rankingType === 'score' ? 'totalScore' : 'experience', 'desc'),
-          limit(50)
-        );
-      } else {
-        q = query(
-          usersRef,
-          where('grade', '==', grade),
-          where('isActive', '==', true),
-          orderBy(rankingType === 'score' ? 'totalScore' : 'experience', 'desc'),
-          limit(30)
-        );
+      const filters =
+        grade === 'ALL'
+          ? [where('isActive', '==', true)]
+          : [where('grade', '==', grade), where('isActive', '==', true)];
+      const lim = grade === 'ALL' ? 50 : 30;
+
+      // Dual-query merge: orderBy('lifetimeExp') ไม่เห็นเอกสารที่ยังไม่มี field
+      // (user เก่าที่ยังไม่ earn หลังอัปเดต) เลยยิง orderBy('experience') คู่กัน
+      // แล้ว merge — พอ field saturate แล้วค่อยถอด query สำรองได้
+      const [lifetimeSnap, expSnap] = await Promise.all([
+        getDocs(query(usersRef, ...filters, orderBy('lifetimeExp', 'desc'), limit(lim)))
+          // index ยังไม่ถูกสร้าง → ใช้ list สำรองไปก่อน (ดู console สำหรับลิงก์สร้าง index)
+          .catch((e) => {
+            console.error('lifetimeExp ranking query failed (missing index?):', e);
+            return null;
+          }),
+        getDocs(query(usersRef, ...filters, orderBy('experience', 'desc'), limit(lim))),
+      ]);
+
+      const byId = new Map<string, RankingUser>();
+      for (const snap of [lifetimeSnap, expSnap]) {
+        if (!snap) continue;
+        snap.docs.forEach((doc) => {
+          if (byId.has(doc.id)) return;
+          const data = doc.data();
+          byId.set(doc.id, {
+            id: doc.id,
+            username: data.username || 'Unknown',
+            displayName: data.displayName,
+            avatar: data.avatar || '👤',
+            avatarData: data.avatarData,
+            currentTitleBadge: data.currentTitleBadge,
+            totalScore: data.totalScore || 0,
+            level: data.level || 1,
+            experience: data.experience || 0,
+            coins: data.lifetimeExp ?? data.experience ?? 0,
+            grade: data.grade,
+          });
+        });
       }
-      
-      const snapshot = await getDocs(q);
-      console.log('Found users:', snapshot.size);
-      
-      const users: RankingUser[] = [];
-      let currentUserRank = null;
-      let currentUserInList = false;
-      
-      snapshot.docs.forEach((doc, index) => {
-        const data = doc.data();
-        
-        const rankUser: RankingUser = {
-          id: doc.id,
-          username: data.username || 'Unknown',
-          displayName: data.displayName,
-          avatar: data.avatar || '👤',
-          avatarData: data.avatarData,
-          currentTitleBadge: data.currentTitleBadge,
-          totalScore: data.totalScore || 0,
-          level: data.level || 1,
-          experience: data.experience || 0,
-          rank: index + 1,
-          grade: data.grade
-        };
-        
-        users.push(rankUser);
-        
-        if (doc.id === userId) {
-          currentUserRank = index + 1;
-          currentUserInList = true;
-        }
-      });
-      
-      users.sort((a, b) => (a.rank || 0) - (b.rank || 0));
-      
+
+      const users = Array.from(byId.values())
+        .sort((a, b) => b.coins - a.coins)
+        .slice(0, lim)
+        .map((u, index) => ({ ...u, rank: index + 1 }));
+
+      let currentUserRank: number | null =
+        users.find((u) => u.id === userId)?.rank ?? null;
+      const currentUserInList = currentUserRank !== null;
+
       if (!currentUserInList && (grade === user?.grade || grade === 'ALL') && userId) {
         try {
-          let countQuery;
-          if (grade === 'ALL') {
-            countQuery = query(
-              usersRef,
-              where('isActive', '==', true),
-              where(rankingType === 'score' ? 'totalScore' : 'experience', '>', 
-                    rankingType === 'score' ? (user?.totalScore || 0) : (user?.experience || 0))
-            );
-          } else {
-            countQuery = query(
-              usersRef,
-              where('grade', '==', grade),
-              where('isActive', '==', true),
-              where(rankingType === 'score' ? 'totalScore' : 'experience', '>', 
-                    rankingType === 'score' ? (user?.totalScore || 0) : (user?.experience || 0))
-            );
-          }
-          
+          const myCoins = user?.lifetimeExp ?? user?.experience ?? 0;
+          // ช่วงเปลี่ยนผ่าน user ที่ยังไม่มี lifetimeExp จะไม่ถูกนับว่าอยู่เหนือเรา
+          // (อันดับอาจดีเกินจริงเล็กน้อย) — self-heals เมื่อทุกคน earn ครั้งแรก
+          const countQuery = query(
+            usersRef,
+            ...filters,
+            where('lifetimeExp', '>', myCoins)
+          );
           const higherRankedUsers = await getDocs(countQuery);
           currentUserRank = higherRankedUsers.size + 1;
         } catch (error) {
           console.error('Error calculating user rank:', error);
         }
       }
-      
+
       setRankings(users);
       setUserRank(currentUserRank);
     } catch (error) {
@@ -371,36 +343,6 @@ export default function RankingPage() {
           )}
         </motion.div>
 
-        {/* Filter Tabs */}
-        <div className="glass-dark rounded-xl p-1 mb-3 border border-metaverse-purple/30 flex-shrink-0">
-          <div className="flex">
-            <button
-              onClick={() => setRankingType('score')}
-              className={`flex-1 px-3 py-2 rounded-lg font-medium transition flex items-center justify-center gap-1.5 text-sm ${
-                rankingType === 'score'
-                  ? 'metaverse-button text-white'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              <Star className="w-4 h-4" />
-              <span className="hidden sm:inline">{L.totalScoreTab}</span>
-              <span className="sm:hidden">{L.scoreShort}</span>
-            </button>
-            <button
-              onClick={() => setRankingType('exp')}
-              className={`flex-1 px-3 py-2 rounded-lg font-medium transition flex items-center justify-center gap-1.5 text-sm ${
-                rankingType === 'exp'
-                  ? 'metaverse-button text-white'
-                  : 'text-white/60 hover:text-white'
-              }`}
-            >
-              <Zap className="w-4 h-4" />
-              <span className="hidden sm:inline">{L.topExpTab}</span>
-              <span className="sm:hidden">EXP</span>
-            </button>
-          </div>
-        </div>
-
         {/* Rankings List */}
         <div className="flex-1 glass-dark rounded-2xl p-3 md:p-4 border border-metaverse-purple/30 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between mb-3 flex-shrink-0">
@@ -410,9 +352,7 @@ export default function RankingPage() {
                 Top {selectedGrade === 'ALL' ? '50' : '30'} - {selectedGradeInfo.label}
               </h2>
             </div>
-            <div className="text-xs text-white/60">
-              {rankingType === 'score' ? L.sortedByScore : L.sortedByExp}
-            </div>
+            <div className="text-xs text-white/60">{L.sortedByCoins}</div>
           </div>
 
           {loadingRankings ? (
@@ -486,7 +426,7 @@ export default function RankingPage() {
                           />
                         </h3>
                         <div className="text-xs md:text-sm text-white/60 leading-none">
-                          Level {player.level}
+                          {L.difficulty} {player.level}
                         </div>
                       </div>
                       
@@ -505,16 +445,13 @@ export default function RankingPage() {
                         )}
                       </div>
                       
-                      {/* Score/EXP */}
+                      {/* Lifetime coins */}
                       <div className="text-right flex-shrink-0 min-w-0">
                         <p className="text-lg md:text-xl font-black text-white leading-none">
-                          {(rankingType === 'score' 
-                            ? player.totalScore 
-                            : player.experience
-                          ).toLocaleString()}
+                          {player.coins.toLocaleString()}
                         </p>
                         <p className="text-xs md:text-sm text-white/60 leading-none font-medium">
-                          {rankingType === 'score' ? 'PTS' : 'EXP'}
+                          {L.coinsLabel}
                         </p>
                       </div>
                     </div>
@@ -574,8 +511,7 @@ export default function RankingPage() {
               <ul className="text-white/60 space-y-0.5 text-xs">
                 <li>• <strong>{L.infoAllLabel}</strong> {L.infoAllDesc}</li>
                 <li>• <strong>{L.infoGradeLabel}</strong> {L.infoGradeDesc}</li>
-                <li>• <strong>{L.infoScoreLabel}</strong> {L.infoScoreDesc}</li>
-                <li>• <strong>{L.infoExpLabel}</strong> {L.infoExpDesc}</li>
+                <li>• <strong>{L.infoCoinsLabel}</strong> {L.infoCoinsDesc}</li>
               </ul>
             </div>
           </div>

@@ -20,6 +20,7 @@ import type { CurriculumProgress } from '@/types/curriculum';
 import {
   EXP_MIX_DAILY,
   EXP_PER_PERFECT_BONUS,
+  EXP_PER_REPLAY,
   EXP_PER_ROUND,
   ROUNDS_PER_TABLE,
   SCORE_MIX_DAILY,
@@ -170,6 +171,23 @@ export const findNextRound = (
   return null;
 };
 
+// Where a tap on this table's card should land: the first uncleared round in
+// stage order (rounds within a stage in listed order), or the very last round
+// for a fully-cleared table (free replay). Assumes the table is unlocked.
+export const nextRoundInTable = (
+  progress: CurriculumProgress | undefined,
+  table: number,
+): number => {
+  for (const stage of STAGES) {
+    if (!isStageUnlocked(progress, table, stage.stage)) break;
+    for (const r of stage.rounds) {
+      if (!isRoundCleared(progress, table, r.round)) return r.round;
+    }
+  }
+  const last = STAGES[STAGES.length - 1];
+  return last.rounds[last.rounds.length - 1].round;
+};
+
 // Whether today's mix challenge EXP has been claimed already.
 export const isMixClaimedToday = (
   progress: CurriculumProgress | undefined,
@@ -236,21 +254,20 @@ const saveClear = async (args: {
       : existing.completedLessonIds,
   };
 
-  // Pay only on first clear so replays (for practice) don't farm EXP.
-  const expGained = firstClear ? exp : 0;
+  // First clear pays full; replays pay a small practice bonus (score stays
+  // first-clear-only — it's an admin-side metric now).
+  const expGained = firstClear ? exp : EXP_PER_REPLAY;
   const scoreGained = firstClear ? score : 0;
 
-  if (firstClear) {
-    await updateDoc(doc(db, 'users', userId), {
-      [`curriculumProgress.${TIMETABLE_CURRICULUM_ID}`]: next,
-      experience: (user.experience ?? 0) + expGained,
-      totalScore: (user.totalScore ?? 0) + scoreGained,
-    });
-  } else {
-    await updateDoc(doc(db, 'users', userId), {
-      [`curriculumProgress.${TIMETABLE_CURRICULUM_ID}`]: next,
-    });
-  }
+  await updateDoc(doc(db, 'users', userId), {
+    [`curriculumProgress.${TIMETABLE_CURRICULUM_ID}`]: next,
+    experience: (user.experience ?? 0) + expGained,
+    ...(firstClear
+      ? { totalScore: (user.totalScore ?? 0) + scoreGained }
+      : {}),
+    // เหรียญสะสมตลอดกาล — `?? experience` คือ lazy backfill สำหรับ user เก่า
+    lifetimeExp: (user.lifetimeExp ?? user.experience ?? 0) + expGained,
+  });
 
   return { expGained, scoreGained, firstClear };
 };

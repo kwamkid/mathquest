@@ -187,6 +187,8 @@ export const saveLessonRunResult = async (
       currentCurriculumId: user.currentCurriculumId ?? curriculumId,
       experience: (user.experience ?? 0) + expGained,
       totalScore: (user.totalScore ?? 0) + scoreGained,
+      // เหรียญสะสมตลอดกาล — `?? experience` คือ lazy backfill สำหรับ user เก่า
+      lifetimeExp: (user.lifetimeExp ?? user.experience ?? 0) + expGained,
     });
   } else {
     await updateDoc(doc(db, 'users', userId), {

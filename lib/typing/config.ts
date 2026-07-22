@@ -16,6 +16,16 @@
 
 export type StageKind = 'keys' | 'combos' | 'words' | 'runs';
 
+// Which game "skin" plays a given stage. Chosen by CONTEXT, not at random:
+// single-key drills (stage 1) suit Dino Run — one keystroke = one jump, short
+// punchy rhythm; multi-char combos/words suit Space Defense, where the whole
+// target hangs in view long enough to read ahead. One function so the mapping
+// (or a future player-facing picker) lives in exactly one place.
+export type GameId = 'space' | 'dino';
+
+export const gameForStage = (unitNumber: number, stage: number): GameId =>
+  stageKind(unitNumber, stage) === 'keys' ? 'dino' : 'space';
+
 export interface UnitDef {
   number: number;       // 1-based, persisted in ids — keep stable
   newKeys: string[];    // keys introduced by this unit (lowercase)
@@ -70,8 +80,8 @@ export function stageMeta(unitNumber: number, stage: number): StageMeta {
       stage: 1,
       thaiTitle: 'รู้จักแป้น',
       enTitle: 'Keys',
-      thaiHint: 'ยิงอุกกาบาตตัวอักษรทีละตัว — วางนิ้วตามสีบนแป้น!',
-      enHint: 'Zap one letter at a time — match your fingers to the key colors!',
+      thaiHint: 'ช่วยไดโนยิงก้อนหินที่กลิ้งมาทีละตัว — วางนิ้วตามสีบนแป้น!',
+      enHint: 'Help Dino blast the rolling rocks — match your fingers to the key colors!',
     };
   }
   if (stage === 2) {
@@ -111,10 +121,82 @@ export const PASSING_ACCURACY = 0.85; // accuracy = targets / (targets + errors)
 export const EXP_PER_ROUND = 10;
 export const EXP_PER_PERFECT_BONUS = 5; // perfect = zero errors
 export const SCORE_PER_ROUND = 2;
+// เล่นซ้ำรอบที่เคยผ่านแล้วยังได้เหรียญเล็กน้อย (ฝึกซ้ำไม่ฟรีเปล่า แต่ไม่คุ้มไว้ปั๊ม)
+export const EXP_PER_REPLAY = 3;
 
 // Meteor fall time (seconds) per rock — generous, eases down as units go up.
 // Reaching the shield line is a soft miss (1 error), never a game over.
+// The dino runner feels sluggish at the meteor's leisurely drift, so its
+// obstacles arrive faster (endless-runner pace) via GAME_SPEED below.
 export function meteorSeconds(unitNumber: number, stage: number): number {
   const base = 14 - Math.min(unitNumber, 8) * 0.5; // 13.5s (U1) → 10s (U8+)
-  return stage === 1 ? base : base + 4; // multi-char rocks get extra time
+  const seconds = stage === 1 ? base : base + 4; // multi-char rocks get extra time
+  return seconds * GAME_SPEED[gameForStage(unitNumber, stage)];
+}
+
+// Per-game pace multiplier on the approach time. 1 = meteor's leisurely drift;
+// < 1 = faster. Dino Run is a runner — its obstacles rush in.
+const GAME_SPEED: Record<GameId, number> = {
+  space: 1,
+  dino: 0.6,
+};
+
+// Within-round pace ramp: the first target gets the full approach time, the
+// last gets RAMP_END × that — the round speeds up as the kid warms up, so
+// late-round targets feel like a streak instead of the same slow drift.
+// Applies on top of the per-unit easing and GAME_SPEED.
+const RAMP_END = 0.7;
+
+export function roundPace(rockIndex: number, totalRocks: number): number {
+  if (totalRocks <= 1) return 1;
+  const t = Math.min(1, rockIndex / (totalRocks - 1));
+  return 1 - t * (1 - RAMP_END);
+}
+
+// ----- Stage modifiers (opt-in per stage; see stageMods) -----
+// Timed = the round has a countdown; typing fast leaves time on the clock,
+// which pays a small first-clear-only EXP bonus. Running out of time is NEVER
+// a fail — the kid keeps playing, they just forfeit the bonus (soft-fail
+// philosophy preserved). maxConcurrent lets 2+ obstacles share the field.
+export interface StageMods {
+  timed?: {
+    /** Time limit = ceil(total keystrokes × secondsPerChar). */
+    secondsPerChar: number;
+    /** Max EXP for finishing with time to spare (0..this, first clear only). */
+    bonusExpMax: number;
+    /** Each counted wrong key subtracts this many seconds from the remaining
+      * clock. undefined = no penalty. Only ever eats the bonus (clamps at 0);
+      * never fails the round. Wired but disabled in v1 (no stage enables it). */
+    errorPenaltySeconds?: number;
+  };
+  /** Obstacles allowed on the field at once. Default 1 (classic single-rock).
+    * The active target is always the frontmost; the rest are visible-but-dim. */
+  maxConcurrent?: number;
+}
+
+export const TIMED_SECONDS_PER_CHAR = 2.5; // ~12 words ≈ 48 keys ≈ 120s — generous
+export const EXP_TIME_BONUS_MAX = 5;       // same ceiling as the perfect bonus
+export const SPAWN_GAP = 0.45;             // next rock spawns when the front rock
+                                           // reaches this progress (multi-obstacle)
+
+// Which modifiers apply to a stage. ONE place to change the rollout. v1:
+//   • stage 1 (learning new keys) → never modified (focus on one key)
+//   • stage 2, units 6-10 → two obstacles at once (kids are fluent by then)
+//   • stage 3, units 4-10 (words) → timed bonus
+//   • units 1-3 → nothing (beginners)
+//   • never stack both mods on one stage in v1
+export function stageMods(unit: number, stage: number): StageMods {
+  if (stage === 3 && unit >= 4) {
+    return {
+      timed: {
+        secondsPerChar: TIMED_SECONDS_PER_CHAR,
+        bonusExpMax: EXP_TIME_BONUS_MAX,
+        // errorPenaltySeconds intentionally omitted in v1 — flip on here later.
+      },
+    };
+  }
+  if (stage === 2 && unit >= 6) {
+    return { maxConcurrent: 2 };
+  }
+  return {};
 }
