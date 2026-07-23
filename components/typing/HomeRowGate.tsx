@@ -1,15 +1,16 @@
 // components/typing/HomeRowGate.tsx
 //
 // The "fingers on home row" readiness ritual: before a round starts (and,
-// optionally, before resuming) the kid rests all eight fingers on ASDF JKL;
-// and presses. Each key lights up as it's placed; once all eight are down the
-// gate flashes "Ready!" and fires onReady a beat later.
+// optionally, before resuming) the kid places each finger on ASDF JKL; and
+// presses the keys — ANY order, ANY pace, one finger at a time is fine. A
+// pressed key lights up and STAYS lit; when all eight are collected the gate
+// flashes "Ready!" and fires onReady a beat later.
 //
-// Why a rolling window, not true simultaneity: many keyboards can't report 8
-// physical keys held at once (n-key rollover / ghosting), but they DO report
-// 8 presses in quick succession. So a key "counts as placed" for WINDOW_MS
-// after its last press — the kid must touch all eight within that window,
-// which reads as "press together" without tripping over hardware limits.
+// Why collect-the-set, NOT "press together": consumer keyboards physically
+// can't report 6-8 simultaneous keys (matrix ghosting) — pressing all eight
+// at once means some keydowns NEVER arrive, so a simultaneity/rolling-window
+// gate randomly refuses to complete and kids get stuck (we shipped that
+// version; it tested terribly). Sequential taps always register.
 //
 // Input is read from WINDOW-level keydown (not the game's hidden input), so it
 // works before the input is focused and needs no on-screen keyboard — exactly
@@ -35,7 +36,6 @@ const HOME_ROW: { key: string; label: string; finger: Finger }[] = [
   { key: ';', label: ';', finger: 'rp' },
 ];
 
-const WINDOW_MS = 1600; // how long a press keeps a key "placed"
 const READY_HOLD_MS = 450; // "Ready!" beat before firing onReady
 
 export default function HomeRowGate({
@@ -51,7 +51,6 @@ export default function HomeRowGate({
     * otherwise be stuck pressing keys that do nothing). */
   wrongLangHint: string;
 }) {
-  const pressRef = useRef<Map<string, number>>(new Map());
   const [lit, setLit] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState(false);
   const [wrongLang, setWrongLang] = useState(false);
@@ -75,33 +74,22 @@ export default function HomeRowGate({
       }
       e.preventDefault(); // don't let ASDF scroll or leak anywhere
       setWrongLang(false);
-      pressRef.current.set(k, performance.now());
+      // Collect the set: once pressed, a key stays lit — no expiry, no
+      // simultaneity. Complete on the press that fills the eighth slot.
+      setLit((prev) => {
+        if (prev.has(k)) return prev;
+        const next = new Set(prev);
+        next.add(k);
+        if (!doneRef.current && HOME_ROW.every((h) => next.has(h.key))) {
+          doneRef.current = true;
+          setReady(true);
+          setTimeout(onReady, READY_HOLD_MS);
+        }
+        return next;
+      });
     };
     window.addEventListener('keydown', onDown);
-
-    // Recompute the lit set on a light interval: keys pressed within WINDOW_MS
-    // are "placed"; older presses expire (the keycap dims again). Completion
-    // is checked here too — only a fresh press can complete the set, and the
-    // interval catches it within a frame or two.
-    const id = setInterval(() => {
-      const now = performance.now();
-      const active = new Set<string>();
-      for (const [key, at] of pressRef.current) {
-        if (now - at <= WINDOW_MS) active.add(key);
-        else pressRef.current.delete(key);
-      }
-      setLit(active);
-      if (!doneRef.current && HOME_ROW.every((h) => active.has(h.key))) {
-        doneRef.current = true;
-        setReady(true);
-        setTimeout(onReady, READY_HOLD_MS);
-      }
-    }, 120);
-
-    return () => {
-      window.removeEventListener('keydown', onDown);
-      clearInterval(id);
-    };
+    return () => window.removeEventListener('keydown', onDown);
   }, [onReady]);
 
   const renderKey = (h: (typeof HOME_ROW)[number]) => {

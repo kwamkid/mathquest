@@ -39,6 +39,8 @@ import VirtualKeyboard from '@/components/typing/VirtualKeyboard';
 import EnhancedAvatarDisplay from '@/components/avatar/EnhancedAvatarDisplay';
 import SpaceDefenseField from '@/components/typing/games/SpaceDefenseField';
 import DinoRunField from '@/components/typing/games/DinoRunField';
+import SushiBeltField from '@/components/typing/games/SushiBeltField';
+import RacerField from '@/components/typing/games/RacerField';
 import { useSound } from '@/lib/game/soundManager';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
@@ -46,12 +48,21 @@ import { useDeviceClass } from '@/lib/useDeviceClass';
 import { FINGER_COLORS, fingerForChar, LAYOUTS } from '@/lib/typing/layouts';
 import { generateStageRocks, type Rock } from '@/lib/typing/content';
 import {
+  dayPlan,
+  generateDayRocks,
+  generateFreestyleRocks,
+  TOTAL_DAYS,
+} from '@/lib/typing/days';
+import {
   findNextStage,
   getTypingProgress,
+  saveFreestyle,
+  saveTypingDay,
   saveTypingStage,
   stageId,
 } from '@/lib/typing/progress';
 import {
+  comboPace,
   gameForStage,
   meteorSeconds,
   PASSING_ACCURACY,
@@ -66,8 +77,15 @@ import { totalTargets } from '@/lib/typing/content';
 import type { GameFieldProps, LiveTarget } from '@/components/typing/games/types';
 
 interface Props {
-  unit: number;
-  stage: number;
+  /** Classic mode: play one raw unit/stage (old routes + day 1-30 surface). */
+  unit?: number;
+  stage?: number;
+  /** 100-day plan mode: play day N — content, save path, and result CTA all
+    * come from dayPlan(N)/generateDayRocks(N) instead of the raw stage. */
+  day?: number;
+  /** Freestyle mode (post-day-100 WPM arena): random sentences, live WPM
+    * HUD, personal-best save — no stars, no timer, no fail-pressure. */
+  freestyle?: boolean;
 }
 
 // Cheer lines for combo milestones (every 5 hits without a miss).
@@ -120,7 +138,12 @@ const wrongScriptForTrack = (ch: string): boolean =>
 const matchesTrackScript = (ch: string): boolean =>
   TRACK === 'en' ? /[a-z ]/.test(ch) : /[฀-๿ ]/.test(ch);
 
-export default function TypingRoundPlayer({ unit, stage }: Props) {
+export default function TypingRoundPlayer({
+  unit: unitProp,
+  stage: stageProp,
+  day,
+  freestyle = false,
+}: Props) {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
   const { lang, t } = useLanguage();
@@ -129,6 +152,17 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
   // tablets get a gentle "plug in a keyboard" hint (see below). null until
   // mounted, so we never flash the block screen during hydration.
   const device = useDeviceClass();
+
+  // Day mode resolves to an effective unit/stage: slot 1-3 days ARE real
+  // stages (star + same feel); other days borrow a stage's timing curve.
+  // Freestyle borrows the full-alphabet words timing (unit 10, stage 3).
+  const plan = useMemo(() => (day !== undefined ? dayPlan(day) : null), [day]);
+  const unit = plan ? plan.unit : freestyle ? 10 : (unitProp ?? 1);
+  const stage = plan
+    ? (plan.stageRef?.stage ?? plan.timingStage)
+    : freestyle
+      ? 3
+      : (stageProp ?? 1);
 
   const meta = stageMeta(unit, stage);
   const kind = stageKind(unit, stage);
@@ -151,13 +185,29 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
 
   // ----- Round content (regenerated per attempt) -----
   const [attempt, setAttempt] = useState(0);
-  const rocks: Rock[] = useMemo(
-    () => generateStageRocks(unit, stage),
+  const dayRocks = useMemo(
+    () =>
+      day !== undefined
+        ? generateDayRocks(day)
+        : freestyle
+          ? generateFreestyleRocks()
+          : null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [unit, stage, attempt],
+    [day, freestyle, attempt],
   );
-  // Stage modifiers (timed bonus, multi-obstacle). Stable per unit/stage.
-  const mods = useMemo(() => stageMods(unit, stage), [unit, stage]);
+  const rocks: Rock[] = useMemo(
+    () => (dayRocks ? dayRocks.rocks : generateStageRocks(unit, stage)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dayRocks, unit, stage, attempt],
+  );
+  // Where the appended practice segment starts (== rocks.length when none).
+  const practiceStartIndex = dayRocks?.practiceStartIndex ?? rocks.length;
+  // Stage modifiers (timed bonus, multi-obstacle). Day mode carries its own;
+  // freestyle runs clean — no clock, no concurrent pressure, just speed.
+  const mods = useMemo(
+    () => (freestyle ? {} : plan ? plan.mods : stageMods(unit, stage)),
+    [freestyle, plan, unit, stage],
+  );
   // Timed stages: total seconds on the clock = keystrokes × secondsPerChar.
   const timeLimitMs = useMemo(
     () =>
@@ -190,6 +240,12 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
   const [errors, setErrors] = useState(0);
   const [combo, setCombo] = useState(0);
   const [bestCombo, setBestCombo] = useState(0);
+  // Mirror of `combo` for the spawn path (fall loop closures read the ref so
+  // spawnRock's deps don't churn every keystroke).
+  const comboRef = useRef(0);
+  useEffect(() => {
+    comboRef.current = combo;
+  }, [combo]);
   const [cheer, setCheer] = useState<string | null>(null);
   const [pressedChar, setPressedChar] = useState<string | null>(null);
   const [shakeTick, setShakeTick] = useState(0);
@@ -200,6 +256,7 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
   const [boom, setBoom] = useState<{
     x: number;
     progress: number;
+    id: number;
     tick: number;
   } | null>(null);
   const [shieldFlash, setShieldFlash] = useState(0);
@@ -207,6 +264,8 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     exp: number;
     firstClear: boolean;
     timeBonus: number;
+    /** One-time streak-milestone coins paid with this save (day mode). */
+    milestoneBonus: number;
   } | null>(null);
   const [nextAfter, setNextAfter] = useState<{ unit: number; stage: number } | null>(null);
   const [compactViewport, setCompactViewport] = useState(false);
@@ -222,6 +281,17 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
   const [timeLeftSec, setTimeLeftSec] = useState(0);
   const [penaltyFlash, setPenaltyFlash] = useState(0);
   const penaltyMsRef = useRef(0);
+  // Freestyle: live WPM readout (updated once per second, like the clock)
+  // and the personal-best verdict after saving.
+  const [liveWpm, setLiveWpm] = useState(0);
+  const hitsRef = useRef(0);
+  useEffect(() => {
+    hitsRef.current = hits;
+  }, [hits]);
+  const [freestyleBest, setFreestyleBest] = useState<{
+    newBest: boolean;
+    bestWpm: number;
+  } | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const fieldRef = useRef<HTMLDivElement>(null);
@@ -287,7 +357,9 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
   const spawnGap = Math.min(SPAWN_GAP, 0.9 / maxConcurrent);
 
   // Which game skin plays this stage (context-based; see gameForStage).
-  const gameId = gameForStage(unit, stage);
+  // Day mode carries its own pick; freestyle races — the WPM arena IS the
+  // racer, speedometer and all.
+  const gameId = freestyle ? 'racer' : plan ? plan.gameId : gameForStage(unit, stage);
 
   const accuracy = hits + errors > 0 ? hits / (hits + errors) : 1;
 
@@ -318,14 +390,21 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
       {
         index,
         elapsedMs: 0,
+        // Base pace × in-round ramp × day speedFactor × the live combo dial
+        // (comboPace) — a hot streak makes NEW targets come in faster; any
+        // miss resets the combo and the pace relaxes with it.
         fallMs:
-          meteorSeconds(unit, stage) * 1000 * roundPace(index, rocks.length),
+          meteorSeconds(unit, stage) *
+          1000 *
+          roundPace(index, rocks.length) *
+          (plan?.speedFactor ?? (freestyle ? 0.9 : 1)) *
+          comboPace(comboRef.current),
       },
     ];
     liveRef.current = live;
     progressPool[live.length - 1]?.set(0);
     setLiveIndices(live.map((l) => l.index));
-  }, [rocks.length, unit, stage, progressPool]);
+  }, [rocks.length, unit, stage, progressPool, plan, freestyle]);
 
   // Retire the frontmost rock (destroyed by typing, or missed at the player).
   // Everything behind it shifts one slot forward AND KEEPS ITS OWN PROGRESS —
@@ -338,6 +417,7 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
         setBoom({
           x: clampedX(front.index),
           progress: Math.min(1, front.elapsedMs / front.fallMs),
+          id: front.index,
           tick: Date.now(),
         });
         playSound('correct');
@@ -420,6 +500,13 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
       );
       const leftSec = Math.ceil(leftMs / 1000);
       if (leftSec !== timeLeftSec) setTimeLeftSec(leftSec);
+    }
+
+    // Freestyle: live WPM readout (1 word = 5 keys), same 1/sec cadence.
+    if (freestyle) {
+      const minutes = Math.max(activeMsRef.current / 60000, 1 / 60);
+      const wpmNow = Math.round(hitsRef.current / 5 / minutes);
+      if (wpmNow !== liveWpm) setLiveWpm(wpmNow);
     }
   });
 
@@ -575,6 +662,69 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     return () => window.removeEventListener('keydown', onKey);
   }, [router, exitHref, phase, isPlaying, focused]);
 
+  // Practice-segment boundary (day mode, slot 1-3): when the last core rock
+  // resolves, cheer "ต่อด้วยฝึกฝน!" once and flip the HUD badge — same round,
+  // no interstitial, the flow never stops.
+  const inPractice =
+    isPlaying &&
+    practiceStartIndex < rocks.length &&
+    resolvedCount >= practiceStartIndex;
+  const practiceCheeredRef = useRef(false);
+  useEffect(() => {
+    if (phase === 'intro') practiceCheeredRef.current = false;
+  }, [phase]);
+  useEffect(() => {
+    if (
+      !practiceCheeredRef.current &&
+      isPlaying &&
+      practiceStartIndex > 0 &&
+      practiceStartIndex < rocks.length &&
+      resolvedCount === practiceStartIndex
+    ) {
+      practiceCheeredRef.current = true;
+      setCheer(t.typing.practiceCheer);
+      if (cheerTimer.current) clearTimeout(cheerTimer.current);
+      cheerTimer.current = setTimeout(() => setCheer(null), 1800);
+    }
+  }, [resolvedCount, practiceStartIndex, rocks.length, isPlaying, t]);
+
+  // Sentence section (day mode: unit-challenge tails, Phase B rounds).
+  // The tracker bar shows the sentence whose rocks are being typed, with the
+  // current word highlighted; entering the section cheers once.
+  const sentenceSpans = dayRocks?.sentences;
+  const activeSpan =
+    isPlaying && sentenceSpans
+      ? sentenceSpans.find(
+          (s) => activeIndex >= s.startIndex && activeIndex <= s.endIndex,
+        )
+      : undefined;
+  // Words fully typed within the active span = non-space rocks resolved
+  // before the active one (a space rock in flight highlights the NEXT word).
+  const activeWordPos = activeSpan
+    ? rocks
+        .slice(activeSpan.startIndex, activeIndex)
+        .filter((r) => r.text !== ' ').length
+    : 0;
+  const sentenceCheeredRef = useRef(false);
+  useEffect(() => {
+    if (phase === 'intro') sentenceCheeredRef.current = false;
+  }, [phase]);
+  useEffect(() => {
+    const firstStart = sentenceSpans?.[0]?.startIndex;
+    if (
+      !sentenceCheeredRef.current &&
+      isPlaying &&
+      firstStart !== undefined &&
+      firstStart > 0 &&
+      resolvedCount === firstStart
+    ) {
+      sentenceCheeredRef.current = true;
+      setCheer(t.typing.sentenceCheer);
+      if (cheerTimer.current) clearTimeout(cheerTimer.current);
+      cheerTimer.current = setTimeout(() => setCheer(null), 1800);
+    }
+  }, [resolvedCount, sentenceSpans, isPlaying, t]);
+
   // Offer the skip-finger-check escape a few seconds into the intro; hide it
   // again whenever we leave the intro (start / restart).
   useEffect(() => {
@@ -638,6 +788,8 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     activeMsRef.current = 0;
     penaltyMsRef.current = 0;
     setTimeLeftSec(0);
+    setLiveWpm(0);
+    setFreestyleBest(null);
     resetLive();
     setPhase('intro');
   };
@@ -662,6 +814,42 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
       timeBonus = Math.floor((leftMs / timeLimitMs) * mods.timed.bonusExpMax);
     }
     void (async () => {
+      if (freestyle) {
+        // Freestyle: record the run — the round's WPM is the score. Only
+        // passed (accuracy-gated) rounds reach here, so records are earned.
+        const minutes = Math.max(activeMsRef.current / 60000, 1 / 60);
+        const finalWpm = Math.round(hitsRef.current / 5 / minutes);
+        const res = await saveFreestyle({ userId: user.id, wpm: finalWpm });
+        setFreestyleBest({ newBest: res.newBest, bestWpm: res.bestWpm });
+        setReward({
+          exp: res.expGained,
+          firstClear: res.newBest, // loud coin banner on a new record
+          timeBonus: 0,
+          milestoneBonus: res.milestoneBonus,
+        });
+        setNextAfter(null);
+        await refreshUser();
+        return;
+      }
+      if (day !== undefined) {
+        // Day-mission save: routes into the stage-star economy for slot 1-3
+        // days, ty-day ids otherwise; also advances the calendar streak.
+        const res = await saveTypingDay({
+          userId: user.id,
+          day,
+          perfect,
+          bonusExp: timeBonus,
+        });
+        setReward({
+          exp: res.expGained,
+          firstClear: res.firstClear,
+          timeBonus: res.firstClear ? timeBonus : 0,
+          milestoneBonus: res.milestoneBonus,
+        });
+        setNextAfter(null); // day mode uses the "next day" CTA instead
+        await refreshUser();
+        return;
+      }
       const res = await saveTypingStage({
         userId: user.id,
         unit,
@@ -675,6 +863,7 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
         // Only first clears actually bank the bonus (saveTypingStage gates it);
         // show the line only when it was really awarded.
         timeBonus: res.firstClear ? timeBonus : 0,
+        milestoneBonus: 0,
       });
       // Recommend "next" as if this clear is already saved (refreshUser is void).
       const before = getTypingProgress(user);
@@ -703,18 +892,22 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
     // mods/timeLimitMs are stable for a given unit/stage; activeMsRef read at
     // finish. eslint wants them but they don't change within a round.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, passed, perfect, user, unit, stage, playSound, refreshUser]);
+  }, [phase, passed, perfect, user, unit, stage, day, freestyle, playSound, refreshUser]);
   // Reset the save guard on restart.
   useEffect(() => {
     if (phase === 'intro') savedRef.current = false;
   }, [phase]);
 
-  // "บทเรียน 4 · ตอนที่ 1/3 · รู้จักแป้น" — part number spelled out so the
-  // part's name never reads as the lesson's name.
-  const title = `${t.typing.unitWord} ${unit} · ${t.typing.stageOf(
-    stage,
-    lang === 'en' ? meta.enTitle : meta.thaiTitle,
-  )}`;
+  // Day mode: "วันที่ 7/100 · แป้นใหม่ T Y" — kid-facing day labels, no
+  // typing-teacher jargon. Classic mode keeps the unit/part title.
+  const title = freestyle
+    ? t.typing.freestyleTitle
+    : plan
+      ? `${t.typing.dayOf(plan.day)} · ${lang === 'en' ? plan.labelEn : plan.labelTh}`
+      : `${t.typing.unitWord} ${unit} · ${t.typing.stageOf(
+          stage,
+          lang === 'en' ? meta.enTitle : meta.thaiTitle,
+        )}`;
 
   // ----- Phone block — touch typing can't be practised on a phone screen
   // (no home row, on-screen keyboard eats the field). Show a friendly
@@ -778,6 +971,29 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
                 ? t.typing.passed
                 : t.typing.failed}
           </h1>
+
+          {/* Day-100 Grand Test cleared — the big one. */}
+          {passed && day === TOTAL_DAYS && (
+            <div className="mt-4 rounded-2xl border border-amber-400/50 bg-gradient-to-r from-amber-500/25 to-orange-500/20 px-4 py-4 text-lg font-extrabold text-amber-200">
+              {t.typing.day100Congrats}
+            </div>
+          )}
+
+          {/* Freestyle verdict — new record trumpets, otherwise show the bar
+              to beat. */}
+          {passed && freestyle && freestyleBest && (
+            <div
+              className={`mt-4 rounded-2xl px-4 py-3 text-base font-extrabold ${
+                freestyleBest.newBest
+                  ? 'border border-cyan-400/50 bg-gradient-to-r from-cyan-500/25 to-blue-500/20 text-cyan-100'
+                  : 'bg-white/[0.05] text-white/70'
+              }`}
+            >
+              {freestyleBest.newBest
+                ? t.typing.newRecord(freestyleBest.bestWpm)
+                : t.typing.myBest(freestyleBest.bestWpm)}
+            </div>
+          )}
           {/* Score tiles — the numbers ARE the reward, make them big. */}
           <div
             className={`mt-6 grid gap-3 ${
@@ -840,10 +1056,53 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
             </p>
           )}
 
+          {/* Streak-milestone coins (7/30/50/100 consecutive days) — a rare,
+              loud moment; the line only exists when it just got paid. */}
+          {passed && reward && reward.milestoneBonus > 0 && (
+            <p className="mt-2 text-sm font-bold text-orange-300">
+              {t.typing.streakBonus(reward.milestoneBonus)}
+            </p>
+          )}
+
+          {/* Phase C WPM goal — soft target: celebrated when hit, gently
+              encouraged when not. Never gates the pass. */}
+          {passed && plan?.wpmTarget !== undefined && (
+            <p
+              className={`mt-2 text-sm font-bold ${
+                wpm >= plan.wpmTarget ? 'text-emerald-300' : 'text-white/60'
+              }`}
+            >
+              {wpm >= plan.wpmTarget
+                ? t.typing.wpmGoalHit(wpm, plan.wpmTarget)
+                : t.typing.wpmGoalMiss(wpm, plan.wpmTarget)}
+            </p>
+          )}
+
           {/* Two buttons only: keep going (or retry on a fail) + back.
-              Replaying a passed stage lives on the unit page instead. */}
+              Day mode chains straight into the next day (no daily lock —
+              binge away); the streak line nudges tomorrow's return. */}
           <div className="mt-8 flex flex-col gap-3">
-            {passed && nextAfter ? (
+            {freestyle && passed ? (
+              <button
+                onClick={restart}
+                className="learn-accent-pill rounded-2xl px-6 py-3 font-bold shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-[0.99]"
+              >
+                {t.typing.playAgain}
+              </button>
+            ) : day !== undefined && passed ? (
+              <>
+                {day < TOTAL_DAYS && (
+                  <button
+                    onClick={() => router.push(`/typing/day/${day + 1}`)}
+                    className="learn-accent-pill flex items-center justify-center gap-2 rounded-2xl px-6 py-3 font-bold shadow-lg shadow-pink-500/30 transition hover:brightness-110 active:scale-[0.99]"
+                  >
+                    {t.typing.playNextDay(day + 1)}
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                )}
+                <p className="text-sm text-white/60">{t.typing.keepStreakHint}</p>
+              </>
+            ) : passed && nextAfter ? (
               <button
                 onClick={() =>
                   router.push(`/typing/${nextAfter.unit}/${nextAfter.stage}`)
@@ -896,6 +1155,31 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
         onClose={() => router.push(exitHref)}
       />
 
+      {/* Sentence tracker bar — the whole sentence being typed, word by
+          word: done words struck through, the live word highlighted. Sits
+          BETWEEN header and field (plain flow node — never overlaps the
+          timer pill or the game, no framer transforms to clobber). */}
+      {activeSpan && (
+        <div className="mx-auto w-full max-w-2xl px-4 pt-1.5">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 rounded-xl bg-white/[0.06] px-3 py-1.5 font-mono text-base font-bold">
+            {activeSpan.text.split(' ').map((w, i) => (
+              <span
+                key={i}
+                className={
+                  i < activeWordPos
+                    ? 'text-emerald-400/60 line-through'
+                    : i === activeWordPos
+                      ? 'rounded bg-fuchsia-500/35 px-1 text-white'
+                      : 'text-white/45'
+                }
+              >
+                {w}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Game field. While playing, any press inside the field keeps the
           hidden input focused (preventDefault stops the browser stealing
           focus) — during the intro we leave defaults alone so the start
@@ -932,6 +1216,14 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
                 <span className="text-2xl sm:text-3xl" aria-hidden>
                   🦖
                 </span>
+              ) : gameId === 'sushi' ? (
+                <span className="text-2xl sm:text-3xl" aria-hidden>
+                  🍣
+                </span>
+              ) : gameId === 'racer' ? (
+                <span className="text-2xl sm:text-3xl" aria-hidden>
+                  🏎️
+                </span>
               ) : (
                 <Rocket className="h-7 w-7 sm:h-8 sm:w-8" />
               )}
@@ -939,8 +1231,13 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
 
             {/* Today's lesson keys — compact, so the ritual below is the star
                 but the kid still sees which new keys this stage teaches (the
-                bottom keyboard + hands highlight them too). */}
-            <span className="flex flex-wrap items-center justify-center gap-2">
+                bottom keyboard + hands highlight them too). Freestyle teaches
+                nothing new — hide the row. */}
+            <span
+              className={`flex flex-wrap items-center justify-center gap-2 ${
+                freestyle ? 'hidden' : ''
+              }`}
+            >
               <span className="text-xs font-semibold uppercase tracking-wide text-white/45">
                 {t.typing.todayKeys}
               </span>
@@ -1030,6 +1327,10 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
               };
               return gameId === 'dino' ? (
                 <DinoRunField {...fieldProps} />
+              ) : gameId === 'sushi' ? (
+                <SushiBeltField {...fieldProps} />
+              ) : gameId === 'racer' ? (
+                <RacerField {...fieldProps} />
               ) : (
                 <SpaceDefenseField {...fieldProps} />
               );
@@ -1069,10 +1370,30 @@ export default function TypingRoundPlayer({ unit, stage }: Props) {
               </AnimatePresence>
             </div>
 
-            {/* Combo badge */}
+            {/* Combo badge — ⚡ marks the combo-speed boost kicking in (the
+                combo IS the speed dial; see comboPace). */}
             {combo >= 3 && (
               <div className="absolute right-3 top-2 z-10 rounded-full bg-orange-500/20 px-3 py-1 text-sm font-extrabold text-orange-300">
                 🔥 {t.typing.comboLabel} ×{combo}
+                {comboPace(combo) < 1 && ' ⚡'}
+              </div>
+            )}
+
+            {/* Practice-segment badge (day mode) — the lesson part is done,
+                now we're drilling. Positioned clear of the avatar corner. */}
+            {inPractice && (
+              <div className="absolute left-2 top-2 z-10 rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-extrabold text-emerald-300 sm:left-16">
+                💪 {t.typing.practiceBadge}
+              </div>
+            )}
+
+            {/* Freestyle live WPM — top-center (the spot the timer would use;
+                freestyle never has a timer, so no collision). */}
+            {freestyle && (
+              <div className="absolute left-1/2 top-2 z-10 -translate-x-1/2">
+                <div className="rounded-full bg-cyan-500/20 px-3 py-1 text-sm font-extrabold text-cyan-200">
+                  ⚡ {liveWpm} WPM
+                </div>
               </div>
             )}
 

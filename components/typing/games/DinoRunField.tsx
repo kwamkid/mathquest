@@ -15,7 +15,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion, useTransform } from 'framer-motion';
+import {
+  AnimatePresence,
+  motion,
+  useAnimationControls,
+  useTransform,
+} from 'framer-motion';
 import RockText from '../RockText';
 import type { GameFieldProps, LiveTarget } from './types';
 
@@ -53,6 +58,32 @@ export default function DinoRunField({
   arrivalTick,
   spaceLabel,
 }: GameFieldProps) {
+  // Effect animations restart via animation CONTROLS on persistent nodes —
+  // NOT via key-remounts. A keyed remount tears down and rebuilds the DOM on
+  // every correct key; the dino's CSS-mask then has to re-resolve, and on a
+  // busy frame that paints one unmasked frame = the intermittent flicker.
+  const recoilControls = useAnimationControls();
+  useEffect(() => {
+    if (laserTick > 0) {
+      void recoilControls.start({
+        x: [0, -7, 0],
+        rotate: [0, -12, 0],
+        transition: { duration: 0.24, ease: 'easeOut' },
+      });
+    }
+  }, [laserTick, recoilControls]);
+
+  const stumbleControls = useAnimationControls();
+  useEffect(() => {
+    if (arrivalTick > 0) {
+      void stumbleControls.start({
+        rotate: [0, -18, 0],
+        y: [0, 8, 0],
+        transition: { duration: 0.4, ease: 'easeInOut' },
+      });
+    }
+  }, [arrivalTick, stumbleControls]);
+
   return (
     <>
       {/* Ground — Chrome-dino style: one thin line + small pebbles scattered
@@ -97,24 +128,18 @@ export default function DinoRunField({
         className="absolute z-10 -translate-x-1/2 -translate-y-full"
         style={{ left: `${DINO_X_PCT}%`, top: `${GROUND_TOP_PCT}%` }}
       >
-        {/* Firing pose: each correct key (laserTick) rocks the dino back on
-            its heels — a lean-back pivoting at the FEET (transformOrigin
-            bottom) + a small kick, like absorbing the fireball's recoil. The
-            sprite itself also swaps to the braced (tucked-legs) frame for the
-            shot; see DinoSprite. */}
+        {/* Firing pose: each correct key rocks the dino back on its heels —
+            a lean-back pivoting at the FEET (transformOrigin bottom) + a
+            small kick, like absorbing the fireball's recoil. Driven by
+            controls on a PERSISTENT node (no key-remount → no mask flicker).
+            The sprite also swaps to the braced frame; see DinoSprite. */}
         <motion.div
-          key={`recoil-${laserTick}`}
           style={{ transformOrigin: 'bottom center' }}
-          animate={laserTick ? { x: [0, -7, 0], rotate: [0, -12, 0] } : { x: 0 }}
-          transition={{ duration: 0.24, ease: 'easeOut' }}
+          animate={recoilControls}
         >
           {/* Stumble layer: bumped by arrivalTick → dip + tilt, then recover.
               Carries NO positioning classes (see gotcha above). */}
-          <motion.div
-            key={`stumble-${arrivalTick}`}
-            animate={arrivalTick ? { rotate: [0, -18, 0], y: [0, 8, 0] } : { rotate: 0 }}
-            transition={{ duration: 0.4, ease: 'easeInOut' }}
-          >
+          <motion.div animate={stumbleControls}>
             <DinoSprite shootTick={laserTick} paused={paused} />
           </motion.div>
         </motion.div>
@@ -241,6 +266,28 @@ function Boulder({
   // Obstacle x: slides from SPAWN_X_PCT → DINO_X_PCT as progress goes 0 → 1.
   const left = useTransform(target.progress, (v) => `${xAt(v)}%`);
 
+  // Shake / flinch restart via controls on persistent nodes — a key-remount
+  // here rebuilt the boulder <img> + spinner every keystroke (rotation jump
+  // + occasional decode flash; same flicker family as the dino mask).
+  const shakeControls = useAnimationControls();
+  useEffect(() => {
+    if (active && shakeTick > 0) {
+      void shakeControls.start({
+        x: [0, -7, 7, -4, 0],
+        transition: { duration: 0.3 },
+      });
+    }
+  }, [active, shakeTick, shakeControls]);
+  const flinchControls = useAnimationControls();
+  useEffect(() => {
+    if (active && laserTick > 0) {
+      void flinchControls.start({
+        scale: [1, 0.9, 1],
+        transition: { delay: 0.18, duration: 0.16 },
+      });
+    }
+  }, [active, laserTick, flinchControls]);
+
   return (
     <motion.div
       style={{ left, top: `${GROUND_TOP_PCT}%` }}
@@ -252,21 +299,12 @@ function Boulder({
         active ? '' : 'opacity-60'
       }`}
     >
-      <motion.div
-        key={active ? shakeTick : 'queued'}
-        animate={active && shakeTick ? { x: [0, -7, 7, -4, 0] } : undefined}
-        transition={{ duration: 0.3 }}
-      >
+      <motion.div animate={shakeControls}>
         {/* Impact flinch — a quick squash when the shot lands. Delayed to
             match the bullet's ~0.22s flight so the boulder reacts when the
             fireball ARRIVES, not when the key is pressed. Scale-only, on its
             own node (bugs.md rule). */}
-        <motion.div
-          key={`hit-${active ? laserTick : 'queued'}`}
-          animate={active && laserTick ? { scale: [1, 0.9, 1] } : undefined}
-          transition={{ delay: 0.18, duration: 0.16 }}
-          className="relative"
-        >
+        <motion.div animate={flinchControls} className="relative">
           {/* Spinning boulder — rolls leftward, so it rotates counter-
               clockwise. Spin is on its own node (rotation only, no
               positioning classes). Freezes while paused. */}
@@ -341,7 +379,22 @@ function DinoSprite({ shootTick, paused }: { shootTick: number; paused: boolean 
   }, [shooting, paused]);
 
   const src = shooting ? DINO_JUMP : frame === 0 ? DINO_RUN_1 : DINO_RUN_2;
-  return <DinoLayer src={src} className={SPRITE_SIZE} />;
+  // ALL THREE mask layers stay mounted; the active one is revealed with
+  // `visibility`. Swapping the mask URL on a single node forces the browser
+  // to re-resolve/decode the mask image — on a busy frame that paints one
+  // unmasked (solid-rectangle) frame, the intermittent in-game flicker.
+  // Visibility flips never touch the mask, so the cut is always clean.
+  return (
+    <div className={`relative ${SPRITE_SIZE}`}>
+      {[DINO_RUN_1, DINO_RUN_2, DINO_JUMP].map((s) => (
+        <DinoLayer
+          key={s}
+          src={s}
+          className={`absolute inset-0 ${s === src ? '' : 'invisible'}`}
+        />
+      ))}
+    </div>
+  );
 }
 
 // One masked sprite layer, tinted via the mask fill (bright slate-100).

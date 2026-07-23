@@ -51,8 +51,10 @@ export interface GameFieldProps {
   laserProgress: number;
   /** Set when a target is destroyed → play the destroy effect. `progress` is
     * the target's approach value at destroy time, so position-based skins can
-    * place the burst exactly where the rock was. */
-  boom: { x: number; progress: number; tick: number } | null;
+    * place the burst exactly where the rock was; `id` is the resolved rock's
+    * round index, for skins whose effect re-draws the target itself (e.g. the
+    * racer's overtaken rival keeps its paint job). */
+  boom: { x: number; progress: number; id: number; tick: number } | null;
   /** Called when the destroy effect finishes so the engine can clear `boom`. */
   onBoomDone: () => void;
   /** Bumped when a target reaches the player (soft miss). */

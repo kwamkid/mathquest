@@ -11,16 +11,18 @@
 
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/client';
-import type { User } from '@/types';
+import type { TypingStreak, User } from '@/types';
 import type { CurriculumProgress } from '@/types/curriculum';
 import {
-  EXP_PER_PERFECT_BONUS,
+  dayBaseExp,
   EXP_PER_REPLAY,
-  EXP_PER_ROUND,
+  perfectBonus,
   SCORE_PER_ROUND,
+  stageBaseExp,
   STAGES_PER_UNIT,
   UNITS,
 } from './config';
+import { DAY_MILESTONES, dayPlan, TOTAL_DAYS } from './days';
 
 export const TYPING_CURRICULUM_ID = 'typing';
 
@@ -160,10 +162,12 @@ export const saveTypingStage = async (args: {
       : existing.completedLessonIds,
   };
 
-  // First clear pays full (+ optional timed bonus); replays pay a small
-  // practice bonus (score stays first-clear-only — an admin-side metric now).
+  // First clear pays full, scaled by unit difficulty (+ optional timed
+  // bonus); replays pay a small practice bonus (score stays first-clear-only
+  // — an admin-side metric now).
+  const base = stageBaseExp(unit);
   const expGained = firstClear
-    ? EXP_PER_ROUND + (perfect ? EXP_PER_PERFECT_BONUS : 0) + Math.max(0, bonusExp)
+    ? base + (perfect ? perfectBonus(base) : 0) + Math.max(0, bonusExp)
     : EXP_PER_REPLAY;
   const scoreGained = firstClear ? SCORE_PER_ROUND : 0;
 
@@ -178,4 +182,243 @@ export const saveTypingStage = async (args: {
   });
 
   return { expGained, scoreGained, firstClear };
+};
+
+// ===========================================================================
+// 100-day plan (แผน 100 วัน) — the day layer over the unit/stage curriculum.
+// ===========================================================================
+
+// Persisted id for a non-stage day (slot 4-5 and days 51+). NEVER change.
+export const dayId = (day: number) => `ty-day-${day}`;
+
+// Local calendar date as 'YYYY-MM-DD' (device timezone — a kid's "today").
+export const localDayISO = (d: Date = new Date()): string => {
+  const y = d.getFullYear();
+  const m = `${d.getMonth() + 1}`.padStart(2, '0');
+  const dd = `${d.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+};
+
+const yesterdayISO = (): string => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return localDayISO(d);
+};
+
+// Whether day n counts as completed. Slot 1-3 days ARE the old stages, so an
+// existing star completes them retroactively (zero migration). Slot 4-5 days
+// are also credited when the NEXT unit has any star ("surpass credit") — a
+// player who already moved past unit u shouldn't be dragged back to grind
+// unit u's new practice days.
+export const isDayDone = (
+  progress: CurriculumProgress | undefined,
+  day: number,
+): boolean => {
+  const plan = dayPlan(day);
+  if (plan.stageRef) {
+    return isStageCleared(progress, plan.stageRef.unit, plan.stageRef.stage);
+  }
+  if (progress?.completedLessonIds.includes(dayId(day))) return true;
+  if (plan.phase === 'A' && plan.unit < UNITS.length) {
+    return unitStars(progress, plan.unit + 1) > 0; // surpass credit
+  }
+  return false;
+};
+
+// First not-done day, scanning 1→100. TOTAL_DAYS+1 = everything finished
+// (Freestyle unlocks there). Derived fresh every call — can never desync.
+export const currentTypingDay = (
+  progress: CurriculumProgress | undefined,
+): number => {
+  for (let n = 1; n <= TOTAL_DAYS; n++) {
+    if (!isDayDone(progress, n)) return n;
+  }
+  return TOTAL_DAYS + 1;
+};
+
+export interface TypingDayState {
+  currentDay: number;
+  doneDays: Set<number>;
+  streak: TypingStreak;
+  /** True when the streak already counted a play today. */
+  playedToday: boolean;
+}
+
+const emptyStreak = (): TypingStreak => ({
+  current: 0,
+  best: 0,
+  lastDayISO: '',
+  milestonesPaid: [],
+});
+
+export const getTypingDayState = (user: User | null): TypingDayState => {
+  const progress = getTypingProgress(user ?? null);
+  const doneDays = new Set<number>();
+  for (let n = 1; n <= TOTAL_DAYS; n++) {
+    if (isDayDone(progress, n)) doneDays.add(n);
+  }
+  const streak = user?.typingStreak ?? emptyStreak();
+  return {
+    currentDay: currentTypingDay(progress),
+    doneDays,
+    streak,
+    playedToday: streak.lastDayISO === localDayISO(),
+  };
+};
+
+export interface SaveDayResult extends SaveStageResult {
+  /** Streak after this save. */
+  streak: TypingStreak;
+  /** One-time streak-milestone coins paid by THIS save (0 = none). */
+  milestoneBonus: number;
+}
+
+// Advance the calendar streak for "played a mission today" (day missions AND
+// freestyle rounds both count — showing up is what the flame rewards) and
+// collect any newly-crossed one-time milestone coins. Idempotent within a day.
+const advanceStreak = (
+  prev: TypingStreak | undefined,
+): { streak: TypingStreak; milestoneBonus: number } => {
+  const today = localDayISO();
+  const before = prev ?? emptyStreak();
+  let streak: TypingStreak;
+  if (before.lastDayISO === today) {
+    streak = before; // already counted today
+  } else {
+    const current =
+      before.lastDayISO === yesterdayISO() ? before.current + 1 : 1;
+    streak = {
+      current,
+      best: Math.max(before.best, current),
+      lastDayISO: today,
+      milestonesPaid: before.milestonesPaid ?? [],
+    };
+  }
+  let milestoneBonus = 0;
+  const paid = [...(streak.milestonesPaid ?? [])];
+  for (const [thresholdStr, coins] of Object.entries(DAY_MILESTONES)) {
+    const threshold = Number(thresholdStr);
+    if (streak.current >= threshold && !paid.includes(threshold)) {
+      milestoneBonus += coins;
+      paid.push(threshold);
+    }
+  }
+  return { streak: { ...streak, milestonesPaid: paid }, milestoneBonus };
+};
+
+// Persist a passed day mission: routes slot 1-3 days into the stage-star
+// economy (identical ids + payouts as the old flow) and other days into
+// `ty-day-{n}`, then advances the calendar streak + one-time milestones.
+// ONE read + ONE update, mirroring saveTypingStage.
+export const saveTypingDay = async (args: {
+  userId: string;
+  day: number;
+  perfect: boolean;
+  bonusExp?: number;
+}): Promise<SaveDayResult> => {
+  const { userId, day, perfect, bonusExp = 0 } = args;
+  const plan = dayPlan(day);
+  const id = plan.stageRef
+    ? stageId(plan.stageRef.unit, plan.stageRef.stage)
+    : dayId(day);
+
+  const snap = await getDoc(doc(db, 'users', userId));
+  if (!snap.exists()) {
+    return {
+      expGained: 0,
+      scoreGained: 0,
+      firstClear: false,
+      streak: emptyStreak(),
+      milestoneBonus: 0,
+    };
+  }
+  const user = snap.data() as User;
+
+  const existing =
+    user.curriculumProgress?.[TYPING_CURRICULUM_ID] ?? emptyProgress();
+  const firstClear = !existing.completedLessonIds.includes(id);
+
+  const next: CurriculumProgress = {
+    ...existing,
+    lastActiveAt: new Date().toISOString(),
+    completedLessonIds: firstClear
+      ? [...existing.completedLessonIds, id]
+      : existing.completedLessonIds,
+  };
+
+  // Day payouts scale with day-number difficulty: day 1 ≈ 15 max, day 100
+  // perfect + full time bonus ≈ 60. First clear only; replays stay tiny.
+  const base = dayBaseExp(day);
+  const expGained = firstClear
+    ? base + (perfect ? perfectBonus(base) : 0) + Math.max(0, bonusExp)
+    : EXP_PER_REPLAY;
+  const scoreGained = firstClear ? SCORE_PER_ROUND : 0;
+
+  const { streak, milestoneBonus } = advanceStreak(user.typingStreak);
+
+  const totalExp = expGained + milestoneBonus;
+  await updateDoc(doc(db, 'users', userId), {
+    [`curriculumProgress.${TYPING_CURRICULUM_ID}`]: next,
+    experience: (user.experience ?? 0) + totalExp,
+    ...(firstClear ? { totalScore: (user.totalScore ?? 0) + scoreGained } : {}),
+    lifetimeExp: (user.lifetimeExp ?? user.experience ?? 0) + totalExp,
+    typingStreak: streak,
+  });
+
+  return { expGained, scoreGained, firstClear, streak, milestoneBonus };
+};
+
+// ===========================================================================
+// Freestyle mode — the post-day-100 WPM arena.
+// ===========================================================================
+
+// Coins for beating your own record. Farm-proof by nature: paying again
+// requires actually typing faster than ever before.
+const FREESTYLE_NEW_BEST_EXP = 10;
+
+export interface SaveFreestyleResult {
+  expGained: number;
+  newBest: boolean;
+  bestWpm: number;
+  streak: TypingStreak;
+  milestoneBonus: number;
+}
+
+// Persist a completed freestyle round: every round pays the small replay
+// bonus, a new personal-best WPM pays extra, and the calendar streak advances
+// (freestyle counts as "played today" — day-100 finishers keep their flame).
+// The WPM the caller passes must already be accuracy-gated (engine only saves
+// passed rounds), so a sloppy speed-run can't set a record.
+export const saveFreestyle = async (args: {
+  userId: string;
+  wpm: number;
+}): Promise<SaveFreestyleResult> => {
+  const { userId, wpm } = args;
+  const snap = await getDoc(doc(db, 'users', userId));
+  if (!snap.exists()) {
+    return {
+      expGained: 0,
+      newBest: false,
+      bestWpm: 0,
+      streak: emptyStreak(),
+      milestoneBonus: 0,
+    };
+  }
+  const user = snap.data() as User;
+
+  const prevBest = user.typingBestWpm ?? 0;
+  const newBest = wpm > prevBest;
+  const bestWpm = Math.max(prevBest, wpm);
+  const { streak, milestoneBonus } = advanceStreak(user.typingStreak);
+  const expGained = EXP_PER_REPLAY + (newBest ? FREESTYLE_NEW_BEST_EXP : 0);
+  const totalExp = expGained + milestoneBonus;
+
+  await updateDoc(doc(db, 'users', userId), {
+    typingBestWpm: bestWpm,
+    experience: (user.experience ?? 0) + totalExp,
+    lifetimeExp: (user.lifetimeExp ?? user.experience ?? 0) + totalExp,
+    typingStreak: streak,
+  });
+
+  return { expGained, newBest, bestWpm, streak, milestoneBonus };
 };

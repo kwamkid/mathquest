@@ -11,7 +11,13 @@
 
 'use client';
 
-import { AnimatePresence, motion, useTransform } from 'framer-motion';
+import { useEffect } from 'react';
+import {
+  AnimatePresence,
+  motion,
+  useAnimationControls,
+  useTransform,
+} from 'framer-motion';
 import RockText from '../RockText';
 import type { GameFieldProps, LiveTarget } from './types';
 
@@ -141,18 +147,28 @@ function Meteor({
   const top = useTransform(target.progress, (v) => `${v * ROCK_TRAVEL_PCT}%`);
   const { active } = target;
 
+  // Shake restarts via controls on a persistent node — a key-remount here
+  // rebuilt the pill DOM every wrong key (occasional paint flash; same
+  // flicker family as the dino's mask remounts).
+  const shakeControls = useAnimationControls();
+  useEffect(() => {
+    if (active && shakeTick > 0) {
+      void shakeControls.start({
+        x: [0, -7, 7, -4, 0],
+        transition: { duration: 0.3 },
+      });
+    }
+  }, [active, shakeTick, shakeControls]);
+
   return (
     <motion.div
       style={{ top, left: `${target.x}%` }}
       className={`absolute z-10 -translate-x-1/2 ${active ? '' : 'opacity-50'}`}
     >
       {/* Only the live meteor reacts to keystrokes — a wrong key must not
-          rattle the one queued behind it. */}
-      <motion.div
-        key={active ? shakeTick : 'queued'}
-        animate={active && shakeTick ? { x: [0, -7, 7, -4, 0] } : undefined}
-        transition={{ duration: 0.3 }}
-      >
+          rattle the one queued behind it (the controls effect guards on
+          `active`). */}
+      <motion.div animate={shakeControls}>
         <div
           className={`rounded-2xl border bg-gradient-to-br px-4 py-2.5 shadow-xl shadow-black/40 ${
             active

@@ -17,14 +17,19 @@
 export type StageKind = 'keys' | 'combos' | 'words' | 'runs';
 
 // Which game "skin" plays a given stage. Chosen by CONTEXT, not at random:
-// single-key drills (stage 1) suit Dino Run — one keystroke = one jump, short
-// punchy rhythm; multi-char combos/words suit Space Defense, where the whole
-// target hangs in view long enough to read ahead. One function so the mapping
-// (or a future player-facing picker) lives in exactly one place.
-export type GameId = 'space' | 'dino';
+// single-key drills (stage 1) suit Dino Shoot — one keystroke = one shot,
+// punchy rhythm; WORD stages race the Typing Racer — a whole word rides the
+// rival's roof sign with read-ahead time as you close in; combos/runs keep
+// Space Defense. One function so the mapping lives in exactly one place.
+// ('sushi' was built too but read as silly — it survives in /game-test only.)
+export type GameId = 'space' | 'dino' | 'sushi' | 'racer';
 
-export const gameForStage = (unitNumber: number, stage: number): GameId =>
-  stageKind(unitNumber, stage) === 'keys' ? 'dino' : 'space';
+export const gameForStage = (unitNumber: number, stage: number): GameId => {
+  const kind = stageKind(unitNumber, stage);
+  if (kind === 'keys') return 'dino';
+  if (kind === 'words') return 'racer';
+  return 'space';
+};
 
 export interface UnitDef {
   number: number;       // 1-based, persisted in ids — keep stable
@@ -105,8 +110,8 @@ export function stageMeta(unitNumber: number, stage: number): StageMeta {
         stage: 3,
         thaiTitle: 'คำศัพท์',
         enTitle: 'Words',
-        thaiHint: 'หินคำศัพท์ภาษาอังกฤษ — พิมพ์ทั้งคำให้ระเบิด!',
-        enHint: 'English word rocks — type the whole word to blow them up!',
+        thaiHint: 'คำศัพท์อยู่บนหลังคารถคันหน้า 🏎️ — พิมพ์ทั้งคำให้จบ เหยียบไนโตรแซงเลย!',
+        enHint: 'Words ride the rival car ahead 🏎️ — type the whole word to hit nitro and overtake!',
       };
 }
 
@@ -116,10 +121,19 @@ export const COMBOS_S2 = 14;    // sequences in stage 2
 export const WORDS_S3 = 12;     // words in stage 3
 export const RUNS_S3 = 12;      // rhythm chunks in early-unit stage 3
 
-// ----- Pass / reward (same economy as timetable) -----
+// ----- Pass / reward -----
 export const PASSING_ACCURACY = 0.85; // accuracy = targets / (targets + errors)
-export const EXP_PER_ROUND = 10;
-export const EXP_PER_PERFECT_BONUS = 5; // perfect = zero errors
+// Difficulty-scaled payout (2026-07-23 rebalance — flat 10 read as stingy on
+// hard days): the base climbs +3 every 10 days, perfect pays HALF the base on
+// top, so a late-game perfect run lands ~50-60 coins while day 1 stays ~15.
+// Anti-farm (rule #13) intact: full payout is FIRST CLEAR ONLY; replays pay
+// the same small flat bonus as ever.
+export const dayBaseExp = (day: number) =>
+  10 + Math.floor((day - 1) / 10) * 3; // day 1-10 → 10 … day 91-100 → 37
+export const stageBaseExp = (unit: number) => 10 + (unit - 1) * 2; // classic route
+export const perfectBonus = (base: number) => Math.floor(base / 2);
+export const EXP_PER_ROUND = 10; // floor/base for anything unscaled
+export const EXP_PER_PERFECT_BONUS = 5; // legacy flat perfect (classic paths)
 export const SCORE_PER_ROUND = 2;
 // เล่นซ้ำรอบที่เคยผ่านแล้วยังได้เหรียญเล็กน้อย (ฝึกซ้ำไม่ฟรีเปล่า แต่ไม่คุ้มไว้ปั๊ม)
 export const EXP_PER_REPLAY = 3;
@@ -139,6 +153,8 @@ export function meteorSeconds(unitNumber: number, stage: number): number {
 const GAME_SPEED: Record<GameId, number> = {
   space: 1,
   dino: 0.6,
+  sushi: 1, // the belt glides at the meteor's leisurely read-ahead pace
+  racer: 0.85, // rivals close in a touch quicker — it's a race
 };
 
 // Within-round pace ramp: the first target gets the full approach time, the
@@ -152,6 +168,22 @@ export function roundPace(rockIndex: number, totalRocks: number): number {
   const t = Math.min(1, rockIndex / (totalRocks - 1));
   return 1 - t * (1 - RAMP_END);
 }
+
+// ----- Combo-driven adaptive speed -----
+// The kid's live combo IS the difficulty dial: every 5 combo, newly-spawned
+// targets approach 5% faster, capped at 25% (floor 0.75). Any error or miss
+// resets the combo — and with it the speed — so the rubber band loosens the
+// moment the pace outruns the kid. Feedback is free: the 🔥×N badge they
+// already watch is literally the speed knob (⚡ appears when boosted).
+export const COMBO_SPEED_STEP = 5;   // combo per speed step
+export const COMBO_SPEED_DROP = 0.05; // approach-time cut per step
+export const COMBO_SPEED_FLOOR = 0.75; // max 25% faster
+
+export const comboPace = (combo: number): number =>
+  Math.max(
+    COMBO_SPEED_FLOOR,
+    1 - Math.floor(combo / COMBO_SPEED_STEP) * COMBO_SPEED_DROP,
+  );
 
 // ----- Stage modifiers (opt-in per stage; see stageMods) -----
 // Timed = the round has a countdown; typing fast leaves time on the clock,

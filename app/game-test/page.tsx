@@ -17,11 +17,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMotionValue } from 'framer-motion';
 import DinoRunField from '@/components/typing/games/DinoRunField';
 import SpaceDefenseField from '@/components/typing/games/SpaceDefenseField';
+import SushiBeltField from '@/components/typing/games/SushiBeltField';
+import RacerField from '@/components/typing/games/RacerField';
 import HomeRowGate from '@/components/typing/HomeRowGate';
+import { comboPace } from '@/lib/typing/config';
 import type { GameFieldProps, LiveTarget } from '@/components/typing/games/types';
 import type { Rock } from '@/lib/typing/content';
 
-type GameId = 'dino' | 'space';
+type GameId = 'dino' | 'space' | 'sushi' | 'racer';
 
 // A little canned queue so there's always something to type.
 const SAMPLE_TEXTS = ['f', 'j', 'fj', 'jf', ' ', 'dk', 'fff', 'jack'];
@@ -31,6 +34,9 @@ interface Live {
   index: number;
   elapsed: number;
   x: number;
+  /** Approach time for THIS target, fixed at spawn (mirrors the engine —
+    * combo speed applies to newly-spawned targets, not ones in flight). */
+  fallMs: number;
 }
 
 export default function GameTestPage() {
@@ -53,11 +59,17 @@ export default function GameTestPage() {
   const [boom, setBoom] = useState<{
     x: number;
     progress: number;
+    id: number;
     tick: number;
   } | null>(null);
   const [liveIndices, setLiveIndices] = useState<number[]>([0]);
+  // Combo drives the adaptive speed (comboPace), same as the real engine.
+  const [combo, setCombo] = useState(0);
+  const comboRef = useRef(0);
 
-  const liveRef = useRef<Live[]>([{ index: 0, elapsed: 0, x: 50 }]);
+  const liveRef = useRef<Live[]>([
+    { index: 0, elapsed: 0, x: 50, fallMs: 8000 },
+  ]);
   const spawnedRef = useRef(1);
   const tickRef = useRef(0);
 
@@ -70,17 +82,27 @@ export default function GameTestPage() {
   const textFor = (index: number) => SAMPLE_TEXTS[index % SAMPLE_TEXTS.length];
   const frontProgress = () => {
     const f = liveRef.current[0];
-    return f ? Math.min(1, f.elapsed / (speed * 1000)) : 0;
+    return f ? Math.min(1, f.elapsed / f.fallMs) : 0;
   };
   const backProgress = () => {
     const b = liveRef.current[liveRef.current.length - 1];
-    return b ? Math.min(1, b.elapsed / (speed * 1000)) : 0;
+    return b ? Math.min(1, b.elapsed / b.fallMs) : 0;
   };
 
   const spawn = () => {
     const index = spawnedRef.current;
     spawnedRef.current += 1;
-    const live = [...liveRef.current, { index, elapsed: 0, x: 35 + Math.random() * 30 }];
+    const live = [
+      ...liveRef.current,
+      {
+        index,
+        elapsed: 0,
+        x: 35 + Math.random() * 30,
+        // Slider base × the live combo dial — same formula family as the
+        // engine's spawnRock.
+        fallMs: speed * 1000 * comboPace(comboRef.current),
+      },
+    ];
     liveRef.current = live;
     pool[live.length - 1]?.set(0);
     setLiveIndices(live.map((l) => l.index));
@@ -93,13 +115,14 @@ export default function GameTestPage() {
       tickRef.current += 1;
       setBoom({
         x: front.x,
-        progress: Math.min(1, front.elapsed / (speed * 1000)),
+        progress: Math.min(1, front.elapsed / front.fallMs),
+        id: front.index,
         tick: tickRef.current,
       });
     }
     const rest = liveRef.current.slice(1);
     liveRef.current = rest;
-    rest.forEach((l, slot) => pool[slot]?.set(Math.min(1, l.elapsed / (speed * 1000))));
+    rest.forEach((l, slot) => pool[slot]?.set(Math.min(1, l.elapsed / l.fallMs)));
     for (let s = rest.length; s < pool.length; s++) pool[s]?.set(0);
     setCharIndex(0);
     if (rest.length === 0) spawn();
@@ -117,11 +140,13 @@ export default function GameTestPage() {
         const live = liveRef.current;
         for (let s = 0; s < live.length; s++) {
           live[s].elapsed += dt;
-          pool[s]?.set(Math.min(1, live[s].elapsed / (speed * 1000)));
+          pool[s]?.set(Math.min(1, live[s].elapsed / live[s].fallMs));
         }
         if (frontProgress() >= 1) {
           tickRef.current += 1;
           setArrivalTick(tickRef.current);
+          comboRef.current = 0; // a miss resets the combo (and the speed)
+          setCombo(0);
           resolveFront(false);
         }
         if (
@@ -166,6 +191,8 @@ export default function GameTestPage() {
       e.preventDefault();
       if (ch === expected) {
         tickRef.current += 1;
+        comboRef.current += 1;
+        setCombo(comboRef.current);
         setLaser({ tick: tickRef.current, progress: frontProgress() });
         if (charIndex + 1 >= text.length) {
           resolveFront(true);
@@ -174,6 +201,8 @@ export default function GameTestPage() {
         }
       } else {
         tickRef.current += 1;
+        comboRef.current = 0; // wrong key resets the combo (and the speed)
+        setCombo(0);
         setShakeTick(tickRef.current);
       }
     };
@@ -214,7 +243,7 @@ export default function GameTestPage() {
       <div className="flex flex-wrap items-center gap-3 border-b border-white/10 px-4 py-3 text-sm">
         <span className="font-bold text-white/60">GAME TEST</span>
         <div className="flex gap-1 rounded-lg bg-white/5 p-1">
-          {(['dino', 'space'] as GameId[]).map((g) => (
+          {(['dino', 'space', 'sushi', 'racer'] as GameId[]).map((g) => (
             <button
               key={g}
               onClick={() => setGame(g)}
@@ -222,7 +251,13 @@ export default function GameTestPage() {
                 game === g ? 'bg-white/15 text-white' : 'text-white/50'
               }`}
             >
-              {g === 'dino' ? '🦖 Dino Run' : '🚀 Space Defense'}
+              {g === 'dino'
+                ? '🦖 Dino Run'
+                : g === 'sushi'
+                  ? '🍣 Sushi Belt'
+                  : g === 'racer'
+                    ? '🏎️ Racer'
+                    : '🚀 Space Defense'}
             </button>
           ))}
         </div>
@@ -264,6 +299,19 @@ export default function GameTestPage() {
           ))}
           <span className="px-1 text-white/40">obstacles</span>
         </div>
+        {/* Combo + live speed boost — proof the adaptive speed is working:
+            the % applies to the NEXT spawned target. */}
+        <span
+          className={`rounded-md px-3 py-1 font-bold ${
+            comboPace(combo) < 1
+              ? 'bg-orange-500/20 text-orange-300'
+              : 'bg-white/5 text-white/50'
+          }`}
+        >
+          🔥 ×{combo}
+          {comboPace(combo) < 1 &&
+            ` ⚡ +${Math.round((1 - comboPace(combo)) * 100)}% (ก้อนถัดไป)`}
+        </span>
         <span className="text-white/40">
           พิมพ์ตัวหน้าสุด (เช่น{' '}
           {targets[0]?.rock.text === ' ' ? 'SPACE' : targets[0]?.rock.text}) เพื่อยิง/กระโดด
@@ -275,6 +323,10 @@ export default function GameTestPage() {
         <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-black/40">
           {game === 'dino' ? (
             <DinoRunField {...fieldProps} />
+          ) : game === 'sushi' ? (
+            <SushiBeltField {...fieldProps} />
+          ) : game === 'racer' ? (
+            <RacerField {...fieldProps} />
           ) : (
             <SpaceDefenseField {...fieldProps} />
           )}
@@ -304,7 +356,7 @@ export default function GameTestPage() {
           {showGate && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/70 px-4 text-center backdrop-blur-sm">
               <p className="max-w-xs text-base font-bold text-white">
-                วางนิ้วให้ครบทั้ง 8 บนแป้นเหย้า แล้วกดพร้อมกัน!
+                วางนิ้วบนแป้นเหย้า แล้วกดให้ครบ 8 ปุ่ม — ทีละนิ้วได้เลย!
               </p>
               <HomeRowGate
                 onReady={() => setShowGate(false)}

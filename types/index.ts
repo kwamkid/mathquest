@@ -32,6 +32,22 @@ export interface User {
   // Phase 1: multi-curriculum learning system (optional, backward compatible)
   curriculumProgress?: Record<string, CurriculumProgress>;
   currentCurriculumId?: string;
+  // Typing 100-day plan: consecutive-calendar-day streak. Optional — absent
+  // means the user hasn't played a day mission yet. MUST survive grade
+  // change (like lifetimeExp — see updateUserProfile's reset list).
+  typingStreak?: TypingStreak;
+  // Freestyle mode personal-best WPM (accuracy-gated). Survives grade change.
+  typingBestWpm?: number;
+}
+
+// Consecutive calendar days with ≥1 typing day-mission completed.
+export interface TypingStreak {
+  current: number;
+  best: number;
+  /** Local calendar date ('YYYY-MM-DD') of the last counted play. */
+  lastDayISO: string;
+  /** Streak milestones already paid (7/30/50/100) — one-time bonuses. */
+  milestonesPaid: number[];
 }
 
 export enum Grade {
