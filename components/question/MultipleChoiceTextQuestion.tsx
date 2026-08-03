@@ -35,11 +35,18 @@ export default function MultipleChoiceTextQuestionView({
   disabled,
   resetSignal,
 }: Props) {
-  const [selected, setSelected] = useState<string | null>(null);
+  // The pick is stored WITH the question id it belongs to, and only counts
+  // while it matches the current question. Clearing via useEffect instead
+  // painted ONE frame of the next question with the previous pick still set
+  // — choice ids repeat across questions, so the new question's buttons
+  // flashed the old red/green reveal on load (very visible under
+  // auto-advance).
+  const [pick, setPick] = useState<{ qid: string; id: string } | null>(null);
+  const selected = pick && pick.qid === question.id ? pick.id : null;
 
   useEffect(() => {
-    setSelected(null);
-  }, [resetSignal, question.id]);
+    setPick(null);
+  }, [resetSignal]);
 
   const choices = useMemo(() => {
     return question.shuffleChoices === false
@@ -49,7 +56,7 @@ export default function MultipleChoiceTextQuestionView({
 
   const handlePick = (id: string) => {
     if (disabled) return;
-    setSelected(id);
+    setPick({ qid: question.id, id });
     onAnswered({
       correct: id === question.correctChoiceId,
       value: id,

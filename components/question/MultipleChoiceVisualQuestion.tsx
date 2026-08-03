@@ -34,11 +34,16 @@ export default function MultipleChoiceVisualQuestionView({
   disabled,
   resetSignal,
 }: Props) {
-  const [selected, setSelected] = useState<string | null>(null);
+  // Pick is stored WITH its question id and only counts while it matches —
+  // clearing via useEffect painted one frame of the NEXT question with the
+  // old red/green reveal (choice ids repeat across questions). Same fix as
+  // MultipleChoiceTextQuestion.
+  const [pick, setPick] = useState<{ qid: string; id: string } | null>(null);
+  const selected = pick && pick.qid === question.id ? pick.id : null;
 
   useEffect(() => {
-    setSelected(null);
-  }, [resetSignal, question.id]);
+    setPick(null);
+  }, [resetSignal]);
 
   const choices = useMemo(() => {
     return question.shuffleChoices === false
@@ -48,7 +53,7 @@ export default function MultipleChoiceVisualQuestionView({
 
   const handlePick = (id: string) => {
     if (disabled) return;
-    setSelected(id);
+    setPick({ qid: question.id, id });
     onAnswered({
       correct: id === question.correctChoiceId,
       value: id,
