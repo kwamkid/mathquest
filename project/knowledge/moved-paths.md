@@ -1,0 +1,16 @@
+# Moved paths
+
+> Notes moved to project/ on 2026-11-04. Old mentions in code comments or migrations may still use the old path.
+
+<!-- toc -->
+<!-- /toc -->
+
+---
+
+| Old | New |
+|---|---|
+| `memo/bugs.md` | `project/bugs/bugs_fixed.md` |
+| `memo/component.md` | `project/knowledge/component.md` |
+| `memo/devplan.md` | `project/jobs/devplan.md` |
+| `memo/learning.md` | `project/knowledge/learning/general.md` |
+| `memo/rules.md` | `project/knowledge/rules-notes.md` |
